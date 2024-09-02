@@ -147,7 +147,7 @@ class HomePage extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ); //Scaffold
   }
 
   // Function to show the login dialog
