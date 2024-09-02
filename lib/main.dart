@@ -179,33 +179,53 @@ class HomePage extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).pop(); // Close the dialog
-                        // Navigate to Family Head Login Page or Process
-                      },
-                      icon: const Icon(Icons.family_restroom),
-                      label: const Text('Login As Family Head'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.yellow[700],
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    // Login As Family Head Button
+                    Column(
+                      children: [
+                        Image.asset(
+                          'assets/logo-dark.png', // Replace with your logo image path
+                          height: 50, // Adjust the height as needed
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).pop(); // Close the dialog
+                            // Navigate to Family Head Login Page or Process
+                          },
+                          icon: const Icon(Icons.family_restroom),
+                          label: const Text('Login As Family Head'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.yellow[700],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).pop(); // Close the dialog
-                        // Navigate to Cook Login Page or Process
-                      },
-                      icon: const Icon(Icons.medical_services),
-                      label: const Text('Login As Cook'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.yellow[700],
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    // Login As Cook Button
+                    Column(
+                      children: [
+                        Image.asset(
+                          'assets/logo-dark.png', // Replace with your logo image path
+                          height: 50, // Adjust the height as needed
                         ),
-                      ),
+                        const SizedBox(height: 8),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).pop(); // Close the dialog
+                            // Navigate to Cook Login Page or Process
+                          },
+                          icon: const Icon(Icons.medical_services),
+                          label: const Text('Login As Cook'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.yellow[700],
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
