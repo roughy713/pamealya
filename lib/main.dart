@@ -190,7 +190,8 @@ class HomePage extends StatelessWidget {
                         ElevatedButton.icon(
                           onPressed: () {
                             Navigator.of(context).pop(); // Close the dialog
-                            // Navigate to Family Head Login Page or Process
+                            _showFamilyHeadLoginDialog(
+                                context); // Show family head login modal
                           },
                           icon: const Icon(Icons.family_restroom),
                           label: const Text('Login As Family Head'),
@@ -214,7 +215,8 @@ class HomePage extends StatelessWidget {
                         ElevatedButton.icon(
                           onPressed: () {
                             Navigator.of(context).pop(); // Close the dialog
-                            // Navigate to Cook Login Page or Process
+                            _showCookLoginDialog(
+                                context); // Show cook login modal
                           },
                           icon: const Icon(Icons.medical_services),
                           label: const Text('Login As Cook'),
@@ -228,6 +230,152 @@ class HomePage extends StatelessWidget {
                       ],
                     ),
                   ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Function to show the Family Head login dialog
+  void _showFamilyHeadLoginDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          content: Container(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Hi Welcome Back To',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                Image.asset(
+                  'assets/logo-dark.png', // Replace with your logo image path
+                  height: 100, // Adjust the height as needed
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Username',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    // Implement login logic here
+                  },
+                  child: const Text('Login'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow[700],
+                    foregroundColor:
+                        Colors.black, // Corrected text color parameter
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () {
+                    // Implement forgot password logic here
+                  },
+                  child: const Text('Forgot Password?'),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () {
+                    // Implement sign-up logic here
+                  },
+                  child: const Text("Don't Have An Account?"),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Function to show the Cook login dialog
+  void _showCookLoginDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          content: Container(
+            width: double.maxFinite,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Hi Welcome Back To',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                Image.asset(
+                  'assets/logo-dark.png', // Replace with your logo image path
+                  height: 100, // Adjust the height as needed
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  decoration: InputDecoration(
+                    labelText: 'Username',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    // Implement login logic here
+                  },
+                  child: const Text('Login'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow[700],
+                    foregroundColor:
+                        Colors.black, // Corrected text color parameter
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () {
+                    // Implement forgot password logic here
+                  },
+                  child: const Text('Forgot Password?'),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () {
+                    // Implement sign-up logic here
+                  },
+                  child: const Text("Don't Have An Account?"),
                 ),
               ],
             ),
