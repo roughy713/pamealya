@@ -150,7 +150,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // Function to show the login dialog
   void _showLoginDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -160,22 +159,22 @@ class HomePage extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           content: Container(
-            width: double.maxFinite,
+            width: 500, // Adjust the width to make the dialog smaller
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Padding(
-                  padding: EdgeInsets.all(16.0),
+                  padding: EdgeInsets.all(8.0),
                   child: Text(
                     'Hi Welcome Back To',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
                 Image.asset(
                   'assets/logo-dark.png', // Replace with your logo image path
-                  height: 100, // Adjust the height as needed
+                  height: 60, // Reduced height
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 10),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -184,7 +183,7 @@ class HomePage extends StatelessWidget {
                       children: [
                         Image.asset(
                           'assets/logo-dark.png', // Replace with your logo image path
-                          height: 50, // Adjust the height as needed
+                          height: 30, // Reduced height
                         ),
                         const SizedBox(height: 8),
                         ElevatedButton.icon(
@@ -194,7 +193,7 @@ class HomePage extends StatelessWidget {
                                 context); // Show family head login modal
                           },
                           icon: const Icon(Icons.family_restroom),
-                          label: const Text('Login As Family Head'),
+                          label: const Text('Family Head'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.yellow[700],
                             shape: RoundedRectangleBorder(
@@ -209,7 +208,7 @@ class HomePage extends StatelessWidget {
                       children: [
                         Image.asset(
                           'assets/logo-dark.png', // Replace with your logo image path
-                          height: 50, // Adjust the height as needed
+                          height: 30, // Reduced height
                         ),
                         const SizedBox(height: 8),
                         ElevatedButton.icon(
@@ -219,7 +218,7 @@ class HomePage extends StatelessWidget {
                                 context); // Show cook login modal
                           },
                           icon: const Icon(Icons.medical_services),
-                          label: const Text('Login As Cook'),
+                          label: const Text('Cook'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.yellow[700],
                             shape: RoundedRectangleBorder(
@@ -239,7 +238,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // Function to show the Family Head login dialog
   void _showFamilyHeadLoginDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -249,7 +247,7 @@ class HomePage extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           content: Container(
-            width: double.maxFinite,
+            width: 500, // Adjust the width to make the dialog smaller
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -260,7 +258,7 @@ class HomePage extends StatelessWidget {
                 const SizedBox(height: 10),
                 Image.asset(
                   'assets/logo-dark.png', // Replace with your logo image path
-                  height: 100, // Adjust the height as needed
+                  height: 60, // Reduced height
                 ),
                 const SizedBox(height: 20),
                 TextField(
@@ -287,7 +285,7 @@ class HomePage extends StatelessWidget {
                     backgroundColor: Colors.yellow[700],
                     foregroundColor:
                         Colors.black, // Corrected text color parameter
-                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 10),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -312,7 +310,6 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // Function to show the Cook login dialog
   void _showCookLoginDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -322,7 +319,7 @@ class HomePage extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           content: Container(
-            width: double.maxFinite,
+            width: 500, // Adjust the width to make the dialog smaller
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -333,7 +330,7 @@ class HomePage extends StatelessWidget {
                 const SizedBox(height: 10),
                 Image.asset(
                   'assets/logo-dark.png', // Replace with your logo image path
-                  height: 100, // Adjust the height as needed
+                  height: 60, // Reduced height
                 ),
                 const SizedBox(height: 20),
                 TextField(
@@ -360,7 +357,7 @@ class HomePage extends StatelessWidget {
                     backgroundColor: Colors.yellow[700],
                     foregroundColor:
                         Colors.black, // Corrected text color parameter
-                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                    padding: EdgeInsets.symmetric(horizontal: 40, vertical: 10),
                   ),
                 ),
                 const SizedBox(height: 10),
