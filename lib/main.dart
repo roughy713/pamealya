@@ -18,28 +18,8 @@
 // }
 
 //mao ni sya ang sa family head dashboard
-// import 'package:flutter/material.dart';
-// import 'famhead_dashboard.dart'; // Import the famhead_dashboard file
-
-// void main() {
-//   runApp(const MyApp());
-// }
-
-// class MyApp extends StatelessWidget {
-//   const MyApp({super.key});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return const MaterialApp(
-//       home:
-//           FamHeadDashboard(), // Run the FamHeadDashboard widget as the home screen
-//     );
-//   }
-// }
-
-//mao ni sya ang sa admin dashboard
 import 'package:flutter/material.dart';
-import 'admin_dashboard.dart'; // Import the famhead_dashboard file
+import 'famhead_dashboard.dart'; // Import the famhead_dashboard file
 
 void main() {
   runApp(const MyApp());
@@ -52,7 +32,27 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return const MaterialApp(
       home:
-          AdminDashboard(), // Run the AdminDashboard widget as the home screen
+          FamHeadDashboard(), // Run the FamHeadDashboard widget as the home screen
     );
   }
 }
+
+//mao ni sya ang sa admin dashboard
+// import 'package:flutter/material.dart';
+// import 'admin_dashboard.dart'; // Import the famhead_dashboard file
+
+// void main() {
+//   runApp(const MyApp());
+// }
+
+// class MyApp extends StatelessWidget {
+//   const MyApp({super.key});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return const MaterialApp(
+//       home:
+//           AdminDashboard(), // Run the AdminDashboard widget as the home screen
+//     );
+//   }
+// }
