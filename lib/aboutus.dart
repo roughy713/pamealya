@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 class AboutUsPage extends StatelessWidget {
+  const AboutUsPage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -8,11 +10,11 @@ class AboutUsPage extends StatelessWidget {
         title: const Text('About Us'),
         backgroundColor: const Color(0xFF0B6D4D),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: const Padding(
+        padding: EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: const [
+          children: [
             Text(
               'About Us',
               style: TextStyle(

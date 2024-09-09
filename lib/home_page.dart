@@ -5,6 +5,8 @@ import 'signup_famhead_dialog.dart'; // Import the Family Head Sign Up dialog
 import 'login_dialog.dart'; // Import the Login dialog
 
 class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -18,7 +20,7 @@ class HomePage extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => AboutUsPage()),
+                  MaterialPageRoute(builder: (context) => const AboutUsPage()),
                 );
               },
               child: const Text(
@@ -68,7 +70,7 @@ class HomePage extends StatelessWidget {
                     'assets/logo-dark.png',
                     height: 80,
                     errorBuilder: (context, error, stackTrace) {
-                      return Icon(Icons.error);
+                      return const Icon(Icons.error);
                     },
                   ),
                   const SizedBox(height: 20),
@@ -98,7 +100,7 @@ class HomePage extends StatelessWidget {
                     'assets/bowl.png',
                     height: 250,
                     errorBuilder: (context, error, stackTrace) {
-                      return Icon(Icons.error);
+                      return const Icon(Icons.error);
                     },
                   ),
                 ],
@@ -109,9 +111,9 @@ class HomePage extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             color: const Color(0xFF1CBB80),
-            child: Column(
+            child: const Column(
               crossAxisAlignment: CrossAxisAlignment.center,
-              children: const [
+              children: [
                 Text(
                   'About Us',
                   style: TextStyle(
@@ -133,11 +135,11 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: BottomAppBar(
-        color: const Color(0xFF0B6D4D),
+      bottomNavigationBar: const BottomAppBar(
+        color: Color(0xFF0B6D4D),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: const Text(
+          padding: EdgeInsets.all(16.0),
+          child: Text(
             'All Rights Reserved\nFOOTER',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white),
@@ -152,7 +154,7 @@ class HomePage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return SignUpFormDialog();
+        return const SignUpFormDialog();
       },
     );
   }
@@ -162,7 +164,7 @@ class HomePage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return SignUpCookDialog();
+        return const SignUpCookDialog();
       },
     );
   }

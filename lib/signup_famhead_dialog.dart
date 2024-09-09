@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 
 class SignUpFormDialog extends StatefulWidget {
+  const SignUpFormDialog({super.key});
+
   @override
-  _SignUpFormDialogState createState() => _SignUpFormDialogState();
+  SignUpFormDialogState1 createState() => SignUpFormDialogState1();
 }
 
-class _SignUpFormDialogState extends State<SignUpFormDialog> {
+class SignUpFormDialogState1 extends State<SignUpFormDialog> {
   bool _isChecked = false; // State variable to manage checkbox
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       contentPadding: EdgeInsets.zero,
-      content: Container(
+      content: SizedBox(
         width: MediaQuery.of(context).size.width * 0.5, // 50% of screen width
         height:
             MediaQuery.of(context).size.height * 0.9, // 90% of screen height
@@ -33,19 +35,19 @@ class _SignUpFormDialogState extends State<SignUpFormDialog> {
                       'assets/logo-dark.png', // Your logo path
                       height: 80,
                       errorBuilder: (context, error, stackTrace) {
-                        return Icon(
+                        return const Icon(
                             Icons.error); // Placeholder for missing image
                       },
                     ),
-                    SizedBox(height: 10),
-                    Text(
+                    const SizedBox(height: 10),
+                    const Text(
                       'Connecting Filipino families to a Nutritious Future!',
                       style: TextStyle(
                         fontSize: 16,
                         fontStyle: FontStyle.italic,
                       ),
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
                     // Profile Picture and Upload button
                     CircleAvatar(
@@ -61,9 +63,9 @@ class _SignUpFormDialogState extends State<SignUpFormDialog> {
                       onPressed: () {
                         // Upload profile picture logic
                       },
-                      child: Text('Upload Profile Picture'),
+                      child: const Text('Upload Profile Picture'),
                     ),
-                    SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
                     // Sign Up Form
                     Form(
@@ -74,16 +76,16 @@ class _SignUpFormDialogState extends State<SignUpFormDialog> {
                             children: [
                               Expanded(
                                 child: TextFormField(
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'First Name',
                                     border: OutlineInputBorder(),
                                   ),
                                 ),
                               ),
-                              SizedBox(width: 10),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: TextFormField(
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'Last Name',
                                     border: OutlineInputBorder(),
                                   ),
@@ -91,65 +93,65 @@ class _SignUpFormDialogState extends State<SignUpFormDialog> {
                               ),
                             ],
                           ),
-                          SizedBox(height: 10),
+                          const SizedBox(height: 10),
 
                           // Email and Username
                           TextFormField(
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               labelText: 'Email',
                               border: OutlineInputBorder(),
                             ),
                           ),
-                          SizedBox(height: 10),
+                          const SizedBox(height: 10),
                           TextFormField(
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               labelText: 'Username',
                               border: OutlineInputBorder(),
                             ),
                           ),
-                          SizedBox(height: 10),
+                          const SizedBox(height: 10),
 
                           // Password and Confirm Password
                           TextFormField(
                             obscureText: true,
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               labelText: 'Password',
                               border: OutlineInputBorder(),
                             ),
                           ),
-                          SizedBox(height: 10),
+                          const SizedBox(height: 10),
                           TextFormField(
                             obscureText: true,
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               labelText: 'Confirm Password',
                               border: OutlineInputBorder(),
                             ),
                           ),
-                          SizedBox(height: 10),
+                          const SizedBox(height: 10),
 
                           // Age, Gender, and Date of Birth
                           Row(
                             children: [
                               Expanded(
                                 child: TextFormField(
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'Age',
                                     border: OutlineInputBorder(),
                                   ),
                                   keyboardType: TextInputType.number,
                                 ),
                               ),
-                              SizedBox(width: 10),
+                              const SizedBox(width: 10),
                               Expanded(
                                 child: DropdownButtonFormField<String>(
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'Gender',
                                     border: OutlineInputBorder(),
                                   ),
                                   items: ['Male', 'Female', 'Other']
                                       .map((label) => DropdownMenuItem(
-                                            child: Text(label),
                                             value: label,
+                                            child: Text(label),
                                           ))
                                       .toList(),
                                   onChanged: (value) {
@@ -159,32 +161,32 @@ class _SignUpFormDialogState extends State<SignUpFormDialog> {
                               ),
                             ],
                           ),
-                          SizedBox(height: 10),
+                          const SizedBox(height: 10),
                           TextFormField(
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               labelText: 'Date of Birth',
                               border: OutlineInputBorder(),
                             ),
                             keyboardType: TextInputType.datetime,
                           ),
-                          SizedBox(height: 10),
+                          const SizedBox(height: 10),
 
                           // Phone Number and Address
                           TextFormField(
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               labelText: 'Phone Number',
                               border: OutlineInputBorder(),
                             ),
                             keyboardType: TextInputType.phone,
                           ),
-                          SizedBox(height: 10),
+                          const SizedBox(height: 10),
                           TextFormField(
-                            decoration: InputDecoration(
+                            decoration: const InputDecoration(
                               labelText: 'Address',
                               border: OutlineInputBorder(),
                             ),
                           ),
-                          SizedBox(height: 20),
+                          const SizedBox(height: 20),
 
                           // Terms and Conditions with Padding
                           Padding(
@@ -200,7 +202,7 @@ class _SignUpFormDialogState extends State<SignUpFormDialog> {
                                     });
                                   },
                                 ),
-                                Expanded(
+                                const Expanded(
                                   child: Text(
                                     'I agree to the Terms and Conditions and Privacy Policy',
                                   ),
@@ -208,7 +210,7 @@ class _SignUpFormDialogState extends State<SignUpFormDialog> {
                               ],
                             ),
                           ),
-                          SizedBox(height: 20),
+                          const SizedBox(height: 20),
 
                           // Sign Up Button
                           ElevatedButton(
@@ -217,19 +219,19 @@ class _SignUpFormDialogState extends State<SignUpFormDialog> {
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.yellow[700],
-                              padding: EdgeInsets.symmetric(
+                              padding: const EdgeInsets.symmetric(
                                   horizontal: 60, vertical: 15),
                             ),
-                            child: Text('Sign Up'),
+                            child: const Text('Sign Up'),
                           ),
                         ],
                       ),
                     ),
-                    SizedBox(height: 10),
+                    const SizedBox(height: 10),
 
                     // Footer Text
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 10),
                       child: Text(
                         'All Rights Reserved\nFOOTER',
                         textAlign: TextAlign.center,

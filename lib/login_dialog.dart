@@ -10,7 +10,7 @@ void showLoginDialog(BuildContext context) {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
-        content: Container(
+        content: SizedBox(
           width: 500, // Adjust the width to make the dialog smaller
           child: Column(
             mainAxisSize: MainAxisSize.min,

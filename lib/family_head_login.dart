@@ -8,7 +8,7 @@ void showFamilyHeadLoginDialog(BuildContext context) {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),
-        content: Container(
+        content: SizedBox(
           width: 500, // Adjust the width to make the dialog smaller
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -23,14 +23,14 @@ void showFamilyHeadLoginDialog(BuildContext context) {
                 height: 60, // Reduced height
               ),
               const SizedBox(height: 20),
-              TextField(
+              const TextField(
                 decoration: InputDecoration(
                   labelText: 'Username',
                   border: OutlineInputBorder(),
                 ),
               ),
               const SizedBox(height: 10),
-              TextField(
+              const TextField(
                 obscureText: true,
                 decoration: InputDecoration(
                   labelText: 'Password',
@@ -42,13 +42,14 @@ void showFamilyHeadLoginDialog(BuildContext context) {
                 onPressed: () {
                   // Implement login logic here
                 },
-                child: const Text('Login'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.yellow[700],
                   foregroundColor:
                       Colors.black, // Corrected text color parameter
-                  padding: EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
                 ),
+                child: const Text('Login'),
               ),
               const SizedBox(height: 10),
               TextButton(
