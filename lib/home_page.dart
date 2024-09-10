@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'aboutus.dart'; // Import the About Us page
 import 'signup_cook_dialog.dart'; // Import the SignUp Cook dialog
 import 'signup_famhead_dialog.dart'; // Import the Family Head Sign Up dialog
 import 'login_dialog.dart'; // Import the Login dialog
@@ -14,47 +13,32 @@ class HomePage extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
         title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          mainAxisAlignment:
+              MainAxisAlignment.end, // Align buttons to the right
           children: [
             TextButton(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const AboutUsPage()),
-                );
+                // Show the sign-up cook dialog
+                showSignUpCookDialog(context);
               },
               child: const Text(
-                'About Us',
+                'Become one of our Cooks',
                 style: TextStyle(color: Colors.black),
               ),
             ),
-            Row(
-              children: [
-                TextButton(
-                  onPressed: () {
-                    // Show the sign-up cook dialog
-                    showSignUpCookDialog(context);
-                  },
-                  child: const Text(
-                    'Become one of our Cooks',
-                    style: TextStyle(color: Colors.black),
-                  ),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: () {
+                // Show the login dialog
+                showLoginDialog(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.yellow[700],
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    // Show the login dialog
-                    showLoginDialog(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.yellow[700],
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text('Login'),
-                ),
-              ],
+              ),
+              child: const Text('Login'),
             ),
           ],
         ),

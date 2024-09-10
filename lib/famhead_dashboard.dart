@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // for formatting date
 
 class FamHeadDashboard extends StatefulWidget {
   const FamHeadDashboard({super.key});
@@ -309,27 +310,127 @@ class MyFamilyPage extends StatelessWidget {
   }
 }
 
-// Add Family Member Dialog
-class AddFamilyMemberDialog extends StatelessWidget {
+//Add Family Member Dialog
+class AddFamilyMemberDialog extends StatefulWidget {
   const AddFamilyMemberDialog({super.key});
+
+  @override
+  AddFamilyMemberDialogState createState() => AddFamilyMemberDialogState();
+}
+
+class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
+  // Controllers for the form fields
+  final TextEditingController _dobController = TextEditingController();
+  final DateFormat _dateFormat = DateFormat('MM/dd/yyyy'); // Format the date
+
+  // Function to show date picker
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(), // Default date
+      firstDate: DateTime(1900), // Earliest date
+      lastDate: DateTime.now(), // Latest date
+    );
+    if (picked != null) {
+      setState(() {
+        _dobController.text =
+            _dateFormat.format(picked); // Format and set the selected date
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _dobController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Add Family Member'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            decoration: const InputDecoration(labelText: 'Name'),
+      content: SizedBox(
+        width: 400, // Set the width to make the dialog wider
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Profile picture upload placeholder
+              CircleAvatar(
+                radius: 40,
+                child: IconButton(
+                  icon: const Icon(Icons.camera_alt),
+                  onPressed: () {
+                    // Add logic to upload a profile picture
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text('Upload Profile Picture'),
+
+              const SizedBox(height: 16),
+
+              // Position in the family dropdown
+              DropdownButtonFormField<String>(
+                decoration:
+                    const InputDecoration(labelText: 'Position in the Family'),
+                items: <String>['Father', 'Mother', 'Sibling', 'Child', 'Other']
+                    .map((String value) {
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(value),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  // Handle the selected value
+                },
+              ),
+
+              const SizedBox(height: 8),
+
+              // First Name field
+              const TextField(
+                decoration: InputDecoration(labelText: 'First Name'),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Last Name field
+              const TextField(
+                decoration: InputDecoration(labelText: 'Last Name'),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Date of Birth field with calendar selection
+              TextFormField(
+                controller: _dobController,
+                decoration: const InputDecoration(
+                  labelText: 'Date of Birth',
+                  suffixIcon: Icon(Icons.calendar_today),
+                ),
+                readOnly: true,
+                onTap: () {
+                  _selectDate(context); // Show calendar when tapped
+                },
+              ),
+
+              const SizedBox(height: 10),
+
+              // Age field
+              const TextField(
+                decoration: InputDecoration(labelText: 'Age'),
+              ),
+
+              const SizedBox(height: 8),
+
+              // Gender field
+              const TextField(
+                decoration: InputDecoration(labelText: 'Gender'),
+              ),
+            ],
           ),
-          TextField(
-            decoration: const InputDecoration(labelText: 'Age'),
-          ),
-          TextField(
-            decoration: const InputDecoration(labelText: 'Relationship'),
-          ),
-        ],
+        ),
       ),
       actions: [
         TextButton(
@@ -355,10 +456,10 @@ class BMICalculatorPage extends StatefulWidget {
   const BMICalculatorPage({super.key});
 
   @override
-  _BMICalculatorPageState createState() => _BMICalculatorPageState();
+  BMICalculatorPageState createState() => BMICalculatorPageState();
 }
 
-class _BMICalculatorPageState extends State<BMICalculatorPage> {
+class BMICalculatorPageState extends State<BMICalculatorPage> {
   final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
   String _result = '';

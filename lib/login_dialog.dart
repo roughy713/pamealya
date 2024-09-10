@@ -34,8 +34,8 @@ void showLoginDialog(BuildContext context) {
                   Column(
                     children: [
                       Image.asset(
-                        'assets/logo-dark.png', // Replace with your logo image path
-                        height: 30, // Reduced height
+                        'assets/family-head.png', // Replace with your logo image path
+                        height: 150, // Reduced height
                       ),
                       const SizedBox(height: 8),
                       ElevatedButton.icon(
@@ -44,7 +44,6 @@ void showLoginDialog(BuildContext context) {
                           showFamilyHeadLoginDialog(
                               context); // Show family head login modal
                         },
-                        icon: const Icon(Icons.family_restroom),
                         label: const Text('Family Head'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.yellow[700],
@@ -59,8 +58,8 @@ void showLoginDialog(BuildContext context) {
                   Column(
                     children: [
                       Image.asset(
-                        'assets/logo-dark.png', // Replace with your logo image path
-                        height: 30, // Reduced height
+                        'assets/cook.png', // Replace with your logo image path
+                        height: 150, // Reduced height
                       ),
                       const SizedBox(height: 8),
                       ElevatedButton.icon(
@@ -68,7 +67,6 @@ void showLoginDialog(BuildContext context) {
                           Navigator.of(context).pop(); // Close the dialog
                           showCookLoginDialog(context); // Show cook login modal
                         },
-                        icon: const Icon(Icons.medical_services),
                         label: const Text('Cook'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.yellow[700],
