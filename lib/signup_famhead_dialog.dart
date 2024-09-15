@@ -13,7 +13,7 @@ class SignUpFormDialogState1 extends State<SignUpFormDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      contentPadding: EdgeInsets.zero,
+      contentPadding: const EdgeInsets.all(16.0),
       content: SizedBox(
         width: MediaQuery.of(context).size.width * 0.5, // 50% of screen width
         height:
@@ -26,8 +26,7 @@ class SignUpFormDialogState1 extends State<SignUpFormDialog> {
                 elevation: 0,
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 32.0, vertical: 20.0),
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
                     // Logo and App Name
