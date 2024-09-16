@@ -56,22 +56,12 @@ class CookDashboardState extends State<CookDashboard> {
             backgroundColor: Colors.white,
             iconTheme: const IconThemeData(color: Color(0xFF1CBB80)),
             elevation: 0,
-            title: Row(
-              children: [
-                Image.asset(
-                  'assets/logo-dark.png', // Path to your logo
-                  height: 30, // Adjust size accordingly
-                  fit: BoxFit.contain, // Make sure the image scales properly
-                ),
-                const SizedBox(width: 10), // Spacing between logo and title
-                Text(
-                  _titles[_selectedIndex],
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+            title: Text(
+              _titles[_selectedIndex],
+              style: const TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             leading: IconButton(
               icon: const Icon(Icons.menu),
@@ -88,7 +78,14 @@ class CookDashboardState extends State<CookDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // User Profile
+              // Add logo to the top of the user profile
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Image.asset(
+                  'assets/logo-white.png', // Path to your logo
+                  height: 50, // Adjust size accordingly
+                ),
+              ),
               const Padding(
                 padding: EdgeInsets.all(16.0),
                 child: Row(

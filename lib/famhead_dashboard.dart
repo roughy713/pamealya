@@ -83,6 +83,14 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Add logo to the top of the user profile
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Image.asset(
+                  'assets/logo-white.png', // Path to your logo
+                  height: 50, // Adjust size accordingly
+                ),
+              ),
               // User Profile
               const Padding(
                 padding: EdgeInsets.all(16.0),
