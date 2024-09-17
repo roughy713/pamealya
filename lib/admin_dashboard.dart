@@ -19,6 +19,7 @@ class AdminDashboardState extends State<AdminDashboard> {
     ViewCooksPage(),
     ViewFamilyHeadsPage(),
     ApprovalPage(),
+    MyProfilePage(), // Added MyProfilePage
   ];
 
   // List of titles for AppBar
@@ -28,6 +29,7 @@ class AdminDashboardState extends State<AdminDashboard> {
     'View Cooks',
     'View Family Heads',
     'Approval',
+    'My Profile', // Added My Profile
   ];
 
   void _onSelectItem(int index) {
@@ -103,25 +105,36 @@ class NavigationDrawer extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Add logo above profile
           const Padding(
             padding: EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.person, color: Color(0xFF1CBB80)),
-                ),
-                SizedBox(width: 10),
-                Text(
-                  'Admin',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
+            child: Image(
+              image: AssetImage('assets/logo-white.png'),
+              height: 50,
+            ),
+          ),
+          GestureDetector(
+            onTap: () => onSelectItem(5), // Navigate to My Profile page
+            child: const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Colors.white,
+                    child: Icon(Icons.person, color: Color(0xFF1CBB80)),
                   ),
-                ),
-              ],
+                  SizedBox(width: 10),
+                  Text(
+                    'Admin',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           const Divider(color: Colors.white),
@@ -294,22 +307,20 @@ class DashboardPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(height: 20), // Make this const
+          SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              Icon(Icons.person, size: 40), // This is already const
-              Icon(Icons.group, size: 40), // This is already const
+              Icon(Icons.person, size: 40),
+              Icon(Icons.group, size: 40),
             ],
           ),
-          SizedBox(height: 10), // Make this const
+          SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              Text('10 Cooks',
-                  style: TextStyle(fontSize: 18)), // This is already const
-              Text('10 Family Heads',
-                  style: TextStyle(fontSize: 18)), // This is already const
+              Text('10 Cooks', style: TextStyle(fontSize: 18)),
+              Text('10 Family Heads', style: TextStyle(fontSize: 18)),
             ],
           ),
         ],
@@ -351,5 +362,17 @@ class ApprovalPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Center(child: Text('Approve requests'));
+  }
+}
+
+// New My Profile Page
+class MyProfilePage extends StatelessWidget {
+  const MyProfilePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text('My Profile Page'),
+    );
   }
 }

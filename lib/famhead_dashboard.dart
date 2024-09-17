@@ -16,11 +16,11 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
   // Details for each page
   final List<Widget> _pageDetails = [
     const Center(child: Text('Welcome to the Dashboard!')),
-    const MyFamilyPage(), // MyFamilyPage updated here
+    const MyFamilyPage(), // MyFamilyPage integrated here
     const Center(child: Text('Chat with family members.')),
     const Center(child: Text('Consult with a cook here.')),
     const Center(child: Text('Your notifications will appear here.')),
-    const BMICalculatorPage(), // Updated to include the BMI Calculator page
+    const BMICalculatorPage(), // BMI Calculator integrated here
     const Center(child: Text('View your transactions here.')),
   ];
 
@@ -38,6 +38,8 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
   void _onSelectItem(int index) {
     setState(() {
       _selectedIndex = index;
+      _scaffoldKey.currentState
+          ?.closeDrawer(); // Close the drawer after selection
     });
   }
 
@@ -318,7 +320,7 @@ class MyFamilyPage extends StatelessWidget {
   }
 }
 
-//Add Family Member Dialog
+// Add Family Member Dialog
 class AddFamilyMemberDialog extends StatefulWidget {
   const AddFamilyMemberDialog({super.key});
 
@@ -327,29 +329,29 @@ class AddFamilyMemberDialog extends StatefulWidget {
 }
 
 class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
-  // Controllers for the form fields
-  final TextEditingController _dobController = TextEditingController();
-  final DateFormat _dateFormat = DateFormat('MM/dd/yyyy'); // Format the date
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _relationshipController = TextEditingController();
+  DateTime? _selectedDate;
 
-  // Function to show date picker
+  // Show the date picker
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(), // Default date
-      firstDate: DateTime(1900), // Earliest date
-      lastDate: DateTime.now(), // Latest date
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
     );
-    if (picked != null) {
+    if (picked != null && picked != _selectedDate) {
       setState(() {
-        _dobController.text =
-            _dateFormat.format(picked); // Format and set the selected date
+        _selectedDate = picked;
       });
     }
   }
 
   @override
   void dispose() {
-    _dobController.dispose();
+    _nameController.dispose();
+    _relationshipController.dispose();
     super.dispose();
   }
 
@@ -357,102 +359,48 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       title: const Text('Add Family Member'),
-      content: SizedBox(
-        width: 400, // Set the width to make the dialog wider
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Profile picture upload placeholder
-              CircleAvatar(
-                radius: 40,
-                child: IconButton(
-                  icon: const Icon(Icons.camera_alt),
-                  onPressed: () {
-                    // Add logic to upload a profile picture
-                  },
+      content: SingleChildScrollView(
+        child: Column(
+          children: [
+            TextField(
+              controller: _nameController,
+              decoration: const InputDecoration(labelText: 'Name'),
+            ),
+            TextField(
+              controller: _relationshipController,
+              decoration: const InputDecoration(labelText: 'Relationship'),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Text(
+                  _selectedDate == null
+                      ? 'No Date Selected'
+                      : DateFormat('yyyy-MM-dd').format(_selectedDate!),
                 ),
-              ),
-              const SizedBox(height: 8),
-              const Text('Upload Profile Picture'),
-
-              const SizedBox(height: 16),
-
-              // Position in the family dropdown
-              DropdownButtonFormField<String>(
-                decoration:
-                    const InputDecoration(labelText: 'Position in the Family'),
-                items: <String>['Father', 'Mother', 'Sibling', 'Child', 'Other']
-                    .map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  // Handle the selected value
-                },
-              ),
-
-              const SizedBox(height: 8),
-
-              // First Name field
-              const TextField(
-                decoration: InputDecoration(labelText: 'First Name'),
-              ),
-
-              const SizedBox(height: 8),
-
-              // Last Name field
-              const TextField(
-                decoration: InputDecoration(labelText: 'Last Name'),
-              ),
-
-              const SizedBox(height: 8),
-
-              // Date of Birth field with calendar selection
-              TextFormField(
-                controller: _dobController,
-                decoration: const InputDecoration(
-                  labelText: 'Date of Birth',
-                  suffixIcon: Icon(Icons.calendar_today),
+                IconButton(
+                  icon: const Icon(Icons.calendar_today),
+                  onPressed: () => _selectDate(context),
                 ),
-                readOnly: true,
-                onTap: () {
-                  _selectDate(context); // Show calendar when tapped
-                },
-              ),
-
-              const SizedBox(height: 10),
-
-              // Age field
-              const TextField(
-                decoration: InputDecoration(labelText: 'Age'),
-              ),
-
-              const SizedBox(height: 8),
-
-              // Gender field
-              const TextField(
-                decoration: InputDecoration(labelText: 'Gender'),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       ),
       actions: [
-        TextButton(
+        ElevatedButton(
           onPressed: () {
-            Navigator.of(context).pop(); // Close the dialog
+            // Logic to save the family member details goes here
+
+            Navigator.of(context).pop();
           },
-          child: const Text('Cancel'),
+          child: const Text('Add'),
         ),
         ElevatedButton(
           onPressed: () {
-            // Handle adding the family member logic here
-            Navigator.of(context).pop(); // Close the dialog
+            Navigator.of(context).pop();
           },
-          child: const Text('Add'),
+          child: const Text('Cancel'),
         ),
       ],
     );
@@ -468,101 +416,57 @@ class BMICalculatorPage extends StatefulWidget {
 }
 
 class BMICalculatorPageState extends State<BMICalculatorPage> {
-  final TextEditingController _heightController = TextEditingController();
   final TextEditingController _weightController = TextEditingController();
-  String _result = '';
-  String _bmiCategory = '';
+  final TextEditingController _heightController = TextEditingController();
+  double _bmi = 0.0;
 
-  void _calculateBMI() {
-    final double height = double.tryParse(_heightController.text) ?? 0.0;
-    final double weight = double.tryParse(_weightController.text) ?? 0.0;
-
-    if (height > 0 && weight > 0) {
-      final double bmi = weight / (height * height);
-      setState(() {
-        _result = 'Your BMI is: ${bmi.toStringAsFixed(1)}';
-        _bmiCategory = _getBMICategory(bmi);
-      });
-    } else {
-      setState(() {
-        _result = 'Please enter valid height and weight';
-        _bmiCategory = '';
-      });
-    }
+  @override
+  void dispose() {
+    _weightController.dispose();
+    _heightController.dispose();
+    super.dispose();
   }
 
-  String _getBMICategory(double bmi) {
-    if (bmi < 18.5) {
-      return 'Underweight';
-    } else if (bmi >= 18.5 && bmi < 24.9) {
-      return 'Normal weight';
-    } else if (bmi >= 25 && bmi < 29.9) {
-      return 'Overweight';
-    } else {
-      return 'Obese';
-    }
+  void _calculateBMI() {
+    final double weight = double.parse(_weightController.text);
+    final double height = double.parse(_heightController.text) / 100;
+
+    setState(() {
+      _bmi = weight / (height * height);
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'BMI Calculator',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-          TextField(
-            controller: _heightController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Height (in meters)',
-              border: OutlineInputBorder(),
+    return Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextField(
+              controller: _weightController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Weight (kg)',
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          TextField(
-            controller: _weightController,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(
-              labelText: 'Weight (in kg)',
-              border: OutlineInputBorder(),
+            TextField(
+              controller: _heightController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Height (cm)',
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            onPressed: _calculateBMI,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1CBB80), // Custom button color
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _calculateBMI,
+              child: const Text('Calculate BMI'),
             ),
-            child: const Text('Calculate BMI'),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            _result,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          Text(
-            _bmiCategory,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Colors.blueGrey,
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'BMI Categories:',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const Text('Underweight: BMI < 18.5'),
-          const Text('Normal weight: BMI 18.5–24.9'),
-          const Text('Overweight: BMI 25–29.9'),
-          const Text('Obese: BMI ≥ 30'),
-        ],
+            const SizedBox(height: 20),
+            Text('Your BMI is: ${_bmi.toStringAsFixed(2)}'),
+          ],
+        ),
       ),
     );
   }

@@ -19,6 +19,7 @@ class CookDashboardState extends State<CookDashboard> {
     const Center(child: Text('Chat with customers or family members.')),
     const Center(child: Text('Your notifications will appear here.')),
     const Center(child: Text('View your transactions here.')),
+    const ProfilePage(), // Add Profile Page here
   ];
 
   // Titles for the AppBar for each section
@@ -28,11 +29,14 @@ class CookDashboardState extends State<CookDashboard> {
     'Chat',
     'Notifications',
     'Transactions',
+    'My Profile', // Title for Profile Page
   ];
 
   void _onSelectItem(int index) {
     setState(() {
       _selectedIndex = index;
+      _scaffoldKey.currentState
+          ?.closeDrawer(); // Close the drawer when an item is selected
     });
   }
 
@@ -86,24 +90,29 @@ class CookDashboardState extends State<CookDashboard> {
                   height: 50, // Adjust size accordingly
                 ),
               ),
-              const Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: Colors.white,
-                      child: Icon(Icons.person, color: Color(0xFF1CBB80)),
-                    ),
-                    SizedBox(width: 10),
-                    Text(
-                      'John Doe, Cook',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
+              GestureDetector(
+                onTap: () {
+                  _onSelectItem(5); // Navigate to 'My Profile'
+                },
+                child: const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: Colors.white,
+                        child: Icon(Icons.person, color: Color(0xFF1CBB80)),
                       ),
-                    ),
-                  ],
+                      SizedBox(width: 10),
+                      Text(
+                        'John Doe, Cook',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const Divider(color: Colors.white),
@@ -132,6 +141,11 @@ class CookDashboardState extends State<CookDashboard> {
                 title: 'Transactions',
                 isSelected: _selectedIndex == 4,
                 onTap: () => _onSelectItem(4),
+              ),
+              _SidebarMenuItem(
+                title: 'My Profile',
+                isSelected: _selectedIndex == 5,
+                onTap: () => _onSelectItem(5),
               ),
               const Spacer(),
               // Logout Button
@@ -335,6 +349,59 @@ class AddDishDialogState extends State<AddDishDialog> {
           child: const Text('Add'),
         ),
       ],
+    );
+  }
+}
+
+// Profile Page with editable fields and password change
+class ProfilePage extends StatefulWidget {
+  const ProfilePage({super.key});
+
+  @override
+  ProfilePageState createState() => ProfilePageState();
+}
+
+class ProfilePageState extends State<ProfilePage> {
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Edit Profile',
+            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 20),
+          TextField(
+            controller: _nameController,
+            decoration: const InputDecoration(labelText: 'Name'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _emailController,
+            decoration: const InputDecoration(labelText: 'Email'),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _passwordController,
+            decoration: const InputDecoration(labelText: 'Password'),
+            obscureText: true,
+          ),
+          const SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              // Handle saving profile updates here
+            },
+            child: const Text('Save Changes'),
+          ),
+        ],
+      ),
     );
   }
 }
