@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class SignUpCookDialog extends StatefulWidget {
   @override
@@ -21,10 +22,10 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
   final TextEditingController cityController = TextEditingController();
   final TextEditingController provinceController = TextEditingController();
   final TextEditingController postalCodeController = TextEditingController();
+  final TextEditingController dateOfBirthController =
+      TextEditingController(); // New controller
 
-  // Removed controllers for specialties, experience, and introduction
-
-  String gender = 'Male';
+  String gender = '';
   DateTime? dateOfBirth;
   List<String> availabilityDays = [];
   TimeOfDay? timeFrom;
@@ -60,6 +61,8 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
     if (picked != null && picked != dateOfBirth) {
       setState(() {
         dateOfBirth = picked;
+        dateOfBirthController.text =
+            DateFormat('MM-dd-yyyy').format(picked); // Format the date
       });
     }
   }
@@ -274,7 +277,11 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: DropdownButtonFormField<String>(
-                                  value: gender,
+                                  value: gender.isEmpty
+                                      ? null
+                                      : gender, // Display null if no gender is selected
+                                  hint:
+                                      const Text('Gender'), // Placeholder text
                                   decoration: const InputDecoration(
                                     labelText: 'Gender',
                                     border: OutlineInputBorder(),
@@ -298,6 +305,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
 
                           // Date of Birth
                           TextFormField(
+                            controller: dateOfBirthController,
                             decoration: const InputDecoration(
                               labelText: 'Date of Birth',
                               border: OutlineInputBorder(),
@@ -361,20 +369,24 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                           // Availability Days
                           const Text('Availability Days:',
                               style: TextStyle(fontWeight: FontWeight.bold)),
-                          ...daysOfWeek.map((day) {
-                            return CheckboxListTile(
-                              title: Text(day),
-                              value: daySelection[day],
-                              onChanged: (bool? value) {
-                                setState(() {
-                                  daySelection[day] = value!;
-                                  availabilityDays = daysOfWeek
-                                      .where((d) => daySelection[d] == true)
-                                      .toList();
-                                });
-                              },
-                            );
-                          }).toList(),
+                          Wrap(
+                            spacing: 10, // Horizontal spacing
+                            runSpacing: 5, // Vertical spacing
+                            children: daysOfWeek.map((day) {
+                              return ChoiceChip(
+                                label: Text(day),
+                                selected: daySelection[day]!,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    daySelection[day] = selected;
+                                    availabilityDays = daysOfWeek
+                                        .where((d) => daySelection[d] == true)
+                                        .toList();
+                                  });
+                                },
+                              );
+                            }).toList(),
+                          ),
                           const SizedBox(height: 10),
 
                           // Available From and Available To

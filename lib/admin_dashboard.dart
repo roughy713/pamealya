@@ -15,21 +15,21 @@ class AdminDashboardState extends State<AdminDashboard> {
   // List of pages to navigate to
   final List<Widget> _pages = const [
     DashboardPage(),
-    AddCookPage(),
+    AddAdminPage(),
     ViewCooksPage(),
     ViewFamilyHeadsPage(),
     ApprovalPage(),
-    MyProfilePage(), // Added MyProfilePage
+    MyProfilePage(),
   ];
 
   // List of titles for AppBar
   final List<String> _titles = const [
     'Dashboard',
-    'Add Cook',
+    'Add Admin',
     'View Cooks',
     'View Family Heads',
-    'Approval',
-    'My Profile', // Added My Profile
+    'Cooks Approval',
+    'My Profile',
   ];
 
   void _onSelectItem(int index) {
@@ -146,7 +146,7 @@ class NavigationDrawer extends StatelessWidget {
             onTap: () => onSelectItem(0),
           ),
           SidebarMenuItem(
-            title: 'Add Cook',
+            title: 'Add Admin', // New "Add Admin" menu item
             isSelected: selectedIndex == 1,
             onTap: () => onSelectItem(1),
           ),
@@ -161,9 +161,14 @@ class NavigationDrawer extends StatelessWidget {
             onTap: () => onSelectItem(3),
           ),
           SidebarMenuItem(
-            title: 'Approval',
+            title: 'Cooks Approval',
             isSelected: selectedIndex == 4,
             onTap: () => onSelectItem(4),
+          ),
+          SidebarMenuItem(
+            title: 'My Profile', // New "My Profile" menu item
+            isSelected: selectedIndex == 5,
+            onTap: () => onSelectItem(5),
           ),
           const Spacer(),
           // Logout Button
@@ -329,15 +334,6 @@ class DashboardPage extends StatelessWidget {
   }
 }
 
-class AddCookPage extends StatelessWidget {
-  const AddCookPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('Add a new Cook'));
-  }
-}
-
 class ViewCooksPage extends StatelessWidget {
   const ViewCooksPage({super.key});
 
@@ -373,6 +369,18 @@ class MyProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Text('My Profile Page'),
+    );
+  }
+}
+
+// New Add Admin Page
+class AddAdminPage extends StatelessWidget {
+  const AddAdminPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text('Add Admin Page'),
     );
   }
 }

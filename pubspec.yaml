@@ -68,6 +68,7 @@ flutter:
     - assets/logo-light.png
     - assets/cook.png
     - assets/family-head.png
+    - assets/bowl.webp
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
