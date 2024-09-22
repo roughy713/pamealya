@@ -26,6 +26,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
       TextEditingController(); // New controller
 
   String gender = '';
+  String? _selectedGender; // Fix for line 290: define _selectedGender
   DateTime? dateOfBirth;
   List<String> availabilityDays = [];
   TimeOfDay? timeFrom;
@@ -107,7 +108,6 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               AppBar(
-                backgroundColor: Colors.white,
                 elevation: 0,
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -277,25 +277,18 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: DropdownButtonFormField<String>(
-                                  value: gender.isEmpty
-                                      ? null
-                                      : gender, // Display null if no gender is selected
-                                  hint:
-                                      const Text('Gender'), // Placeholder text
                                   decoration: const InputDecoration(
                                     labelText: 'Gender',
                                     border: OutlineInputBorder(),
                                   ),
                                   items: ['Male', 'Female', 'Other']
-                                      .map((gender) => DropdownMenuItem<String>(
-                                            value: gender,
-                                            child: Text(gender),
+                                      .map((label) => DropdownMenuItem(
+                                            value: label,
+                                            child: Text(label),
                                           ))
                                       .toList(),
                                   onChanged: (value) {
-                                    setState(() {
-                                      gender = value!;
-                                    });
+                                    _selectedGender = value;
                                   },
                                 ),
                               ),

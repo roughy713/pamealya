@@ -10,6 +10,7 @@ class HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.white,
         elevation: 0,
         title: Row(
           mainAxisAlignment:
@@ -42,94 +43,127 @@ class HomePage extends StatelessWidget {
           ],
         ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          // Added to enable scrolling
-          child: Column(
-            children: [
-              Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Image.asset(
-                      'assets/logo-dark.png',
-                      height: 80,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.error);
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    const Text(
-                      'Connecting Filipino Families to a Nutritious Future!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
+      body: SingleChildScrollView(
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            Column(
+              children: [
+                // White section
+                Container(
+                  width: double.infinity,
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 80)
+                      .copyWith(bottom: 150), // Added bottom padding
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/logo-dark.png',
+                        height: 80,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(Icons.error);
+                        },
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () {
-                        showFamilyHeadSignUpDialog(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.yellow[700],
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Connecting Filipino Families to a Nutritious Future!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      child: const Text('Sign up Now!'),
-                    ),
-                    const SizedBox(height: 20),
-                    Image.asset(
-                      'assets/bowl.png',
-                      height: 250,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const Icon(Icons.error);
-                      },
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20), // Add some space between sections
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                color: const Color(0xFF1CBB80),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: const [
-                    Text(
-                      'About Us',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          showFamilyHeadSignUpDialog(context);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.yellow[700],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text('Sign up Now!'),
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 10),
-                    Text(
-                      '''At paMEALya, we are dedicated to enhancing the dietary diversity and overall health of Filipino families through innovative solutions. Our platform is designed to offer personalized meal plans featuring locally sourced foods, tailored to meet the unique nutritional needs of each family member. Our mission is to simplify healthy eating by allowing family heads to create detailed profiles for every member of their household. By inputting essential health information and dietary preferences, users receive customized meal plans that ensure balanced nutrition. Our service provides automated weekly meal plans complete with easy-to-follow recipes, promoting variety and nutritional balance in every meal. Understanding that busy lifestyles can make cooking a challenge, paMEALya offers the added convenience of booking local cooks. These skilled professionals can prepare and deliver meals directly to your home, ensuring that nutritious and delicious food is always within reach. The prevalence of malnutrition highlights the urgent need for a solution that addresses diverse dietary needs among Filipino families. paMEALya aims to bridge this gap by leveraging technology to deliver personalized meal plans and local cook services. By doing so, we promote better dietary practices and make healthy eating more accessible and convenient for everyone. Join us on our journey to transform family nutrition and health with paMEALya—where technology meets tradition for a healthier future.''',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                // Green section
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  color: const Color(0xFF1CBB80),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 30, vertical: 70),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        const SizedBox(
+                            height: 100), // Leave space for the bowl image
+                        const Text(
+                          'About Us',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontFamily: 'Inter', // Added Inter font
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 30),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20), // Add padding on the sides
+                          child: const Text(
+                            'At paMEALya, we are dedicated to enhancing the dietary diversity and overall health of Filipino families through innovative solutions. Our platform is designed to offer personalized meal plans featuring locally sourced foods, tailored to meet the unique nutritional needs of each family member.\n\n'
+                            'Our mission is to simplify healthy eating by allowing family heads to create detailed profiles for every member of their household. By inputting essential health information and dietary preferences, users receive customized meal plans that ensure balanced nutrition. Our service provides automated weekly meal plans complete with easy-to-follow recipes, promoting variety and nutritional balance in every meal.\n\n'
+                            'Understanding that busy lifestyles can make cooking a challenge, paMEALya offers the added convenience of booking local cooks. These skilled professionals can prepare and deliver meals directly to your home, ensuring that nutritious and delicious food is always within reach.\n\n'
+                            'The prevalence of malnutrition highlights the urgent need for a solution that addresses diverse dietary needs among Filipino families. paMEALya aims to bridge this gap by leveraging technology to deliver personalized meal plans and local cook services. By doing so, we promote better dietary practices and make healthy eating more accessible and convenient for everyone.\n\n'
+                            'Join us on our journey to transform family nutrition and health with paMEALya—where technology meets tradition for a healthier future.',
+                            textAlign: TextAlign
+                                .center, // Align text properly for readability
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontFamily:
+                                  'Inter', // Use Inter font for body text
+                              fontSize: 16, // Adjusted font size
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                // Footer section
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  color: const Color(0xFF0B6D4D),
+                  child: Text(
+                    '© 2024 paMEALya. All Rights Reserved.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+            // Positioned bowl image to overlap white and green sections
+            Positioned(
+              top: 280, // Adjusted position for the bowl image
+              child: Image.asset(
+                'assets/bowl.png',
+                height: 350,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(Icons.error);
+                },
               ),
-            ],
-          ),
-        ),
-      ),
-      bottomNavigationBar: const BottomAppBar(
-        color: Color(0xFF0B6D4D),
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Text(
-            'All Rights Reserved\nFOOTER',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white),
-          ),
+            ),
+          ],
         ),
       ),
     );

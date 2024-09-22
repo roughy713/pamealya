@@ -121,7 +121,6 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
             child: Column(
               children: [
                 AppBar(
-                  backgroundColor: Colors.white,
                   elevation: 0,
                 ),
                 Padding(
