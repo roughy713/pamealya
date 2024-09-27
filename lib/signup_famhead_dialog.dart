@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart'; // For date formatting
+import 'package:uuid/uuid.dart'; // Import the uuid package
+import 'home_page.dart'; // Import the home page
 
 class SignUpFormDialog extends StatefulWidget {
   const SignUpFormDialog({super.key});
@@ -32,13 +34,11 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
   String? _selectedGender;
   bool _isChecked = false;
 
-  // Function to handle sign-up
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) {
       return; // Form is not valid
     }
     if (_passwordController.text != _confirmPasswordController.text) {
-      // Show an error if passwords do not match
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Passwords do not match')),
       );
@@ -46,52 +46,71 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
     }
 
     try {
-      // Sign up the user with Supabase
-      final AuthResponse response = await Supabase.instance.client.auth.signUp(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
+      const uuid = Uuid(); // Create an instance of the Uuid class
+      final famheadId = uuid.v4(); // Generate a unique UUID for famheadid
 
-      if (response.user != null) {
-        // Insert additional user data into Supabase table
-        await Supabase.instance.client.from('profiles').insert({
-          'id': response.user!.id,
-          'first_name': _firstNameController.text,
-          'last_name': _lastNameController.text,
-          'username': _usernameController.text,
-          'age': int.tryParse(_ageController.text),
-          'gender': _selectedGender,
-          'dob': _dobController.text,
-          'phone': _phoneController.text,
-          'address_line1': _addressLine1Controller.text,
-          'barangay': _barangayController.text,
-          'city': _cityController.text,
-          'province': _provinceController.text,
-          'postal_code': _postalCodeController.text,
-        });
+      final response =
+          await Supabase.instance.client.from('Family_Head').insert({
+        'famheadid': famheadId, // Use the generated UUID here
+        'first_name': _firstNameController.text,
+        'last_name': _lastNameController.text,
+        'username': _usernameController.text,
+        'password': _passwordController.text,
+        'email': _emailController.text,
+        'age': int.tryParse(_ageController.text),
+        'gender': _selectedGender,
+        'phone': _phoneController.text,
+        'address_line1': _addressLine1Controller.text,
+        'barangay': _barangayController.text,
+        'city': _cityController.text,
+        'province': _provinceController.text,
+        'postal_code': _postalCodeController.text,
+        'dob': _dobController.text,
+      });
 
-        // Show success message
+      if (response == null || response.hasError) {
+        final errorMessage =
+            response?.error?.message ?? 'Unknown error occurred';
+        print('Error inserting data: $errorMessage');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sign up successful')),
+          SnackBar(content: Text('Insert Error: $errorMessage')),
         );
-
-        // Close the dialog
-        Navigator.of(context).pop();
       } else {
-        // Show error message if user is not created
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sign up failed. Please try again.')),
-        );
+        await _showSuccessDialog();
       }
     } catch (e) {
-      // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
     }
   }
 
-  // Function to pick date
+  Future<void> _showSuccessDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible:
+          false, // Prevent dismissing the dialog by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Account Created'),
+          content: const Text('Your account has been created successfully!'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HomePage()),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -278,7 +297,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           ),
                           const SizedBox(height: 10),
 
-                          // Phone Number
+                          // Phone Number and Address
                           TextFormField(
                             controller: _phoneController,
                             decoration: const InputDecoration(
@@ -359,7 +378,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           ElevatedButton(
                             onPressed: () {
                               if (_isChecked) {
-                                _handleSignUp();
+                                _handleSignUp(); // Call the signup function that interacts with Supabase
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -385,7 +404,6 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
           ),
         ),
       ),
-      backgroundColor: Colors.white, // Background color for footer and form
     );
   }
 }

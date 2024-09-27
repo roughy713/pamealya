@@ -96,15 +96,13 @@ class HomePage extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   color: const Color(0xFF1CBB80),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 30, vertical: 70),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 70),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        const SizedBox(
-                            height: 100), // Leave space for the bowl image
-                        const Text(
+                        SizedBox(height: 100), // Leave space for the bowl image
+                        Text(
                           'About Us',
                           style: TextStyle(
                             color: Colors.white,
@@ -114,11 +112,11 @@ class HomePage extends StatelessWidget {
                           ),
                           textAlign: TextAlign.center,
                         ),
-                        const SizedBox(height: 30),
+                        SizedBox(height: 30),
                         Padding(
-                          padding: const EdgeInsets.symmetric(
+                          padding: EdgeInsets.symmetric(
                               horizontal: 20), // Add padding on the sides
-                          child: const Text(
+                          child: Text(
                             'At paMEALya, we are dedicated to enhancing the dietary diversity and overall health of Filipino families through innovative solutions. Our platform is designed to offer personalized meal plans featuring locally sourced foods, tailored to meet the unique nutritional needs of each family member.\n\n'
                             'Our mission is to simplify healthy eating by allowing family heads to create detailed profiles for every member of their household. By inputting essential health information and dietary preferences, users receive customized meal plans that ensure balanced nutrition. Our service provides automated weekly meal plans complete with easy-to-follow recipes, promoting variety and nutritional balance in every meal.\n\n'
                             'Understanding that busy lifestyles can make cooking a challenge, paMEALya offers the added convenience of booking local cooks. These skilled professionals can prepare and deliver meals directly to your home, ensuring that nutritious and delicious food is always within reach.\n\n'
@@ -143,10 +141,10 @@ class HomePage extends StatelessWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.all(16),
                   color: const Color(0xFF0B6D4D),
-                  child: Text(
+                  child: const Text(
                     '© 2024 paMEALya. All Rights Reserved.',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: Colors.white),
                   ),
                 ),
               ],

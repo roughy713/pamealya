@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:typed_data';
+import 'package:uuid/uuid.dart'; // Added for generating UUIDs
 
 class SignUpCookDialog extends StatefulWidget {
   @override
@@ -16,22 +20,22 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
   final TextEditingController passwordController = TextEditingController();
   final TextEditingController confirmPasswordController =
       TextEditingController();
+  final TextEditingController ageController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
   final TextEditingController barangayController = TextEditingController();
   final TextEditingController cityController = TextEditingController();
   final TextEditingController provinceController = TextEditingController();
   final TextEditingController postalCodeController = TextEditingController();
-  final TextEditingController dateOfBirthController =
-      TextEditingController(); // New controller
+  final TextEditingController dateOfBirthController = TextEditingController();
 
-  String gender = '';
-  String? _selectedGender; // Fix for line 290: define _selectedGender
+  String? _selectedGender;
   DateTime? dateOfBirth;
   List<String> availabilityDays = [];
   TimeOfDay? timeFrom;
   TimeOfDay? timeTo;
-  bool agreeToTerms = false;
+  String? certificationUrl;
+  String? uploadedFileName;
 
   final List<String> daysOfWeek = [
     'Monday',
@@ -42,6 +46,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
     'Saturday',
     'Sunday'
   ];
+
   final Map<String, bool> daySelection = {
     'Monday': false,
     'Tuesday': false,
@@ -62,8 +67,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
     if (picked != null && picked != dateOfBirth) {
       setState(() {
         dateOfBirth = picked;
-        dateOfBirthController.text =
-            DateFormat('MM-dd-yyyy').format(picked); // Format the date
+        dateOfBirthController.text = DateFormat('MM-dd-yyyy').format(picked);
       });
     }
   }
@@ -84,10 +88,90 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
     }
   }
 
-  void uploadFile() {
-    // Implement file upload logic here
-    // This can be a file picker dialog or any other file upload functionality
-    print('Upload Certification and Licenses button pressed');
+  // File upload function for web
+  Future<String?> handleFileUpload() async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles(
+      withData: true,
+    );
+
+    if (result != null) {
+      Uint8List? fileBytes = result.files.first.bytes;
+      String fileName = result.files.first.name;
+
+      setState(() {
+        uploadedFileName = fileName;
+      });
+
+      if (fileBytes != null) {
+        try {
+          final filePath = 'public/$fileName';
+          final response = await Supabase.instance.client.storage
+              .from('certifications')
+              .uploadBinary(filePath, fileBytes);
+
+          if (response.isNotEmpty) {
+            final urlResponse = Supabase.instance.client.storage
+                .from('certifications')
+                .getPublicUrl(filePath);
+
+            return urlResponse;
+          }
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('File upload failed: $e')),
+          );
+        }
+      }
+    }
+    return null;
+  }
+
+  Future<void> handleFormSubmission() async {
+    if (formKey.currentState?.validate() == true) {
+      String? uploadedFileUrl = certificationUrl;
+
+      final uuid = Uuid();
+
+      // Insert form details into Supabase
+      final response =
+          await Supabase.instance.client.from('Local_Cook').insert({
+        'localcookid': uuid.v4(), // Generate a valid UUID
+        'first_name': firstNameController.text,
+        'last_name': lastNameController.text,
+        'email': emailController.text,
+        'username': usernameController.text,
+        'password':
+            passwordController.text, // Make sure to hash passwords if necessary
+        'age': int.tryParse(ageController.text),
+        'gender': _selectedGender,
+        'dateofbirth': dateOfBirth != null
+            ? DateFormat('yyyy-MM-dd').format(dateOfBirth!)
+            : null,
+        'phone': phoneController.text,
+        'address_line1': locationController.text,
+        'barangay': barangayController.text,
+        'city': cityController.text,
+        'province': provinceController.text,
+        'postal_code': postalCodeController.text,
+        'availability_days': availabilityDays.join(','),
+        'time_available_from': timeFrom?.format(context),
+        'time_available_to': timeTo?.format(context),
+        'certifications': uploadedFileUrl ?? '', // Store uploaded file URL
+      });
+
+      if (!mounted) return;
+
+      if (response.error == null) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Sign up successful!')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${response.error!.message}')),
+        );
+      }
+    }
   }
 
   @override
@@ -99,9 +183,8 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
         borderRadius: BorderRadius.circular(10.0),
       ),
       child: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.5, // 50% of screen width
-        height:
-            MediaQuery.of(context).size.height * 0.9, // 90% of screen height
+        width: MediaQuery.of(context).size.width * 0.5,
+        height: MediaQuery.of(context).size.height * 0.9,
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -112,41 +195,32 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back, color: Colors.black),
                   onPressed: () {
-                    Navigator.of(context).pop(); // Close the dialog
+                    Navigator.of(context).pop();
                   },
                 ),
               ),
               Center(
                 child: Column(
                   children: [
-                    // Logo
                     Image.asset(
                       'assets/logo-dark.png',
                       height: 80,
                       errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
-                            Icons.error); // Placeholder for missing image
+                        return const Icon(Icons.error);
                       },
                     ),
                     const SizedBox(height: 10),
                     const Text(
                       'Connecting Filipino families to a Nutritious Future!',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontStyle: FontStyle.italic,
-                      ),
+                      style:
+                          TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
                     ),
                     const SizedBox(height: 20),
-
-                    // Profile Picture and Upload button
                     CircleAvatar(
                       radius: 50,
                       backgroundColor: Colors.grey[300],
-                      child: Icon(
-                        Icons.person,
-                        size: 50,
-                        color: Colors.grey[600],
-                      ),
+                      child:
+                          Icon(Icons.person, size: 50, color: Colors.grey[600]),
                     ),
                     TextButton(
                       onPressed: () {
@@ -155,14 +229,11 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                       child: const Text('Upload Profile Picture'),
                     ),
                     const SizedBox(height: 20),
-
-                    // Form
                     Form(
                       key: formKey,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // First Name and Last Name
                           Row(
                             children: [
                               Expanded(
@@ -199,8 +270,6 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                             ],
                           ),
                           const SizedBox(height: 10),
-
-                          // Email and Username
                           TextFormField(
                             controller: emailController,
                             decoration: const InputDecoration(
@@ -229,8 +298,6 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                             },
                           ),
                           const SizedBox(height: 10),
-
-                          // Password and Confirm Password
                           TextFormField(
                             controller: passwordController,
                             obscureText: true,
@@ -257,21 +324,28 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                               if (value == null || value.isEmpty) {
                                 return 'Please confirm your password';
                               }
+                              if (value != passwordController.text) {
+                                return 'Passwords do not match';
+                              }
                               return null;
                             },
                           ),
                           const SizedBox(height: 10),
-
-                          // Age, Gender, and Date of Birth
                           Row(
                             children: [
                               Expanded(
                                 child: TextFormField(
+                                  controller: ageController,
                                   decoration: const InputDecoration(
                                     labelText: 'Age',
                                     border: OutlineInputBorder(),
                                   ),
-                                  keyboardType: TextInputType.number,
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter your age';
+                                    }
+                                    return null;
+                                  },
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -281,47 +355,52 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                                     labelText: 'Gender',
                                     border: OutlineInputBorder(),
                                   ),
-                                  items: ['Male', 'Female', 'Other']
-                                      .map((label) => DropdownMenuItem(
-                                            value: label,
-                                            child: Text(label),
-                                          ))
-                                      .toList(),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'Male',
+                                      child: Text('Male'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Female',
+                                      child: Text('Female'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'Other',
+                                      child: Text('Other'),
+                                    ),
+                                  ],
                                   onChanged: (value) {
-                                    _selectedGender = value;
+                                    setState(() {
+                                      _selectedGender = value;
+                                    });
+                                  },
+                                  validator: (value) {
+                                    if (value == null) {
+                                      return 'Please select your gender';
+                                    }
+                                    return null;
                                   },
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 10),
-
-                          // Date of Birth
                           TextFormField(
                             controller: dateOfBirthController,
+                            readOnly: true,
                             decoration: const InputDecoration(
                               labelText: 'Date of Birth',
                               border: OutlineInputBorder(),
                             ),
-                            readOnly: true,
                             onTap: () => selectDate(context),
-                            validator: (value) {
-                              if (dateOfBirth == null) {
-                                return 'Please select your date of birth';
-                              }
-                              return null;
-                            },
                           ),
                           const SizedBox(height: 10),
-
-                          // Phone Number
                           TextFormField(
                             controller: phoneController,
                             decoration: const InputDecoration(
                               labelText: 'Phone Number',
                               border: OutlineInputBorder(),
                             ),
-                            keyboardType: TextInputType.phone,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
                                 return 'Please enter your phone number';
@@ -330,59 +409,100 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                             },
                           ),
                           const SizedBox(height: 10),
-
-                          // Address Fields
                           TextFormField(
                             controller: locationController,
                             decoration: const InputDecoration(
-                                labelText: 'Address Line 1'),
-                          ),
-                          TextFormField(
-                            controller: barangayController,
-                            decoration:
-                                const InputDecoration(labelText: 'Barangay'),
-                          ),
-                          TextFormField(
-                            controller: cityController,
-                            decoration:
-                                const InputDecoration(labelText: 'City'),
-                          ),
-                          TextFormField(
-                            controller: provinceController,
-                            decoration:
-                                const InputDecoration(labelText: 'Province'),
-                          ),
-                          TextFormField(
-                            controller: postalCodeController,
-                            decoration:
-                                const InputDecoration(labelText: 'Postal Code'),
+                              labelText: 'Address Line 1',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your location';
+                              }
+                              return null;
+                            },
                           ),
                           const SizedBox(height: 10),
-
-                          // Availability Days
-                          const Text('Availability Days:',
-                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          TextFormField(
+                            controller: barangayController,
+                            decoration: const InputDecoration(
+                              labelText: 'Barangay',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your barangay';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                            controller: cityController,
+                            decoration: const InputDecoration(
+                              labelText: 'City',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your city';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                            controller: provinceController,
+                            decoration: const InputDecoration(
+                              labelText: 'Province',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your province';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                            controller: postalCodeController,
+                            decoration: const InputDecoration(
+                              labelText: 'Postal Code',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your postal code';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 10),
+                          const Text(
+                            'Availability Days:',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           Wrap(
-                            spacing: 10, // Horizontal spacing
-                            runSpacing: 5, // Vertical spacing
+                            spacing: 8.0,
                             children: daysOfWeek.map((day) {
                               return ChoiceChip(
                                 label: Text(day),
-                                selected: daySelection[day]!,
+                                selected: daySelection[day] ?? false,
                                 onSelected: (selected) {
                                   setState(() {
                                     daySelection[day] = selected;
-                                    availabilityDays = daysOfWeek
-                                        .where((d) => daySelection[d] == true)
-                                        .toList();
+                                    if (selected) {
+                                      availabilityDays.add(day);
+                                    } else {
+                                      availabilityDays.remove(day);
+                                    }
                                   });
                                 },
                               );
                             }).toList(),
                           ),
                           const SizedBox(height: 10),
-
-                          // Available From and Available To
                           Row(
                             children: [
                               Expanded(
@@ -419,8 +539,6 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                             ],
                           ),
                           const SizedBox(height: 20),
-
-                          // Upload Certification and Licenses
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -429,65 +547,40 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                                 style: TextStyle(fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 10),
-                              ElevatedButton(
-                                onPressed: uploadFile,
-                                child: const Text('Upload File'),
+                              Row(
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: () async {
+                                      certificationUrl =
+                                          await handleFileUpload();
+                                    },
+                                    child: const Text('Upload File'),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  if (uploadedFileName != null)
+                                    Text(
+                                      uploadedFileName!,
+                                      style: TextStyle(color: Colors.black87),
+                                    ),
+                                ],
                               ),
                             ],
                           ),
                           const SizedBox(height: 20),
-
-                          // Terms and Conditions Checkbox
-                          Row(
-                            children: [
-                              Checkbox(
-                                value: agreeToTerms,
-                                onChanged: (value) {
-                                  setState(() {
-                                    agreeToTerms = value!;
-                                  });
-                                },
-                              ),
-                              const Expanded(
-                                child: Text(
-                                  'I agree to the Terms and Conditions and Privacy Policy',
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-
-                          // Sign Up Button
                           Center(
                             child: ElevatedButton(
-                              onPressed: () {
-                                if (formKey.currentState?.validate() == true) {
-                                  // Handle form submission
-                                }
-                              },
+                              onPressed: handleFormSubmission,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.yellow[700],
+                                backgroundColor: Colors.yellow,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 60, vertical: 15),
+                                  vertical: 16.0,
+                                  horizontal: 32.0,
+                                ),
                               ),
-                              child: const Text('Sign Up'),
+                              child: const Text('Submit'),
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Footer Text
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: Text(
-                        'All Rights Reserved\nFOOTER',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                        ),
                       ),
                     ),
                   ],

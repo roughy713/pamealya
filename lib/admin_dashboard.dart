@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart'; // For generating a unique admin_id
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({super.key});
@@ -301,6 +303,226 @@ class SidebarMenuItem extends StatelessWidget {
   }
 }
 
+// Add Admin Page
+class AddAdminPage extends StatefulWidget {
+  const AddAdminPage({super.key});
+
+  @override
+  _AddAdminPageState createState() => _AddAdminPageState();
+}
+
+class _AddAdminPageState extends State<AddAdminPage> {
+  final _formKey = GlobalKey<FormState>();
+
+  // Controllers for form fields
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
+
+  // Function to handle adding admin
+  Future<void> _handleAddAdmin() async {
+    if (_formKey.currentState?.validate() == true) {
+      // Ensure passwords match
+      if (passwordController.text != confirmPasswordController.text) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Passwords do not match')),
+        );
+        return;
+      }
+
+      // Generate a UUID for the admin_id
+      var uuid = const Uuid();
+      String adminId = uuid.v4(); // Generate a unique admin_id
+
+      // Insert the admin data into Supabase table
+      final response = await Supabase.instance.client.from('admin').insert({
+        'admin_id': adminId, // Insert the generated admin_id
+        'name': nameController.text,
+        'email': emailController.text,
+        'username': usernameController.text,
+        'password': passwordController.text, // In production, hash the password
+      });
+
+      // Check for errors
+      if (response.error == null) {
+        // Clear form fields on success
+        nameController.clear();
+        emailController.clear();
+        usernameController.clear();
+        passwordController.clear();
+        confirmPasswordController.clear();
+
+        // Show success dialog
+        _showSuccessDialog();
+      } else {
+        // Show error message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${response.error!.message}')),
+        );
+      }
+    }
+  }
+
+  // Show success dialog when admin is added successfully
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: const Text('Admin Created'),
+          content:
+              const Text('The admin account has been created successfully.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Add Admin'),
+        backgroundColor: const Color(0xFF1CBB80), // Customize as needed
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Create New Admin',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 20),
+
+                // Name field
+                TextFormField(
+                  controller: nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Name',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a name';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                // Email field
+                TextFormField(
+                  controller: emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter an email';
+                    }
+                    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                        .hasMatch(value)) {
+                      return 'Please enter a valid email address';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                // Username field
+                TextFormField(
+                  controller: usernameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Username',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a username';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                // Password field
+                TextFormField(
+                  controller: passwordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Password',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a password';
+                    }
+                    if (value.length < 6) {
+                      return 'Password must be at least 6 characters long';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                // Confirm Password field
+                TextFormField(
+                  controller: confirmPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Confirm Password',
+                    border: OutlineInputBorder(),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please confirm your password';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 30),
+
+                // Submit Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _handleAddAdmin,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1CBB80),
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    ),
+                    child:
+                        const Text('Add Admin', style: TextStyle(fontSize: 16)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // Sample page for Dashboard section
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -369,18 +591,6 @@ class MyProfilePage extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Text('My Profile Page'),
-    );
-  }
-}
-
-// New Add Admin Page
-class AddAdminPage extends StatelessWidget {
-  const AddAdminPage({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Add Admin Page'),
     );
   }
 }
