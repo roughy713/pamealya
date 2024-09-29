@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart'; // For generating a unique admin_id
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'login_admin.dart'; // Import the Login page
 
 class AdminDashboard extends StatefulWidget {
-  const AdminDashboard({super.key});
+  final String firstName; // Add firstName parameter to display admin's name
+
+  const AdminDashboard({super.key, required this.firstName});
 
   @override
   AdminDashboardState createState() => AdminDashboardState();
@@ -80,6 +83,7 @@ class AdminDashboardState extends State<AdminDashboard> {
         child: NavigationDrawer(
           selectedIndex: _selectedIndex,
           onSelectItem: _onSelectItem,
+          firstName: widget.firstName, // Pass the firstName to the drawer
         ),
       ),
       onDrawerChanged: _onDrawerStateChanged, // Callback to track drawer state
@@ -96,9 +100,14 @@ class AdminDashboardState extends State<AdminDashboard> {
 class NavigationDrawer extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onSelectItem;
+  final String firstName; // Accept the firstName parameter
 
-  const NavigationDrawer(
-      {super.key, required this.selectedIndex, required this.onSelectItem});
+  const NavigationDrawer({
+    super.key,
+    required this.selectedIndex,
+    required this.onSelectItem,
+    required this.firstName, // Add this
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -117,19 +126,19 @@ class NavigationDrawer extends StatelessWidget {
           ),
           GestureDetector(
             onTap: () => onSelectItem(5), // Navigate to My Profile page
-            child: const Padding(
-              padding: EdgeInsets.all(16.0),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
               child: Row(
                 children: [
-                  CircleAvatar(
+                  const CircleAvatar(
                     radius: 30,
                     backgroundColor: Colors.white,
                     child: Icon(Icons.person, color: Color(0xFF1CBB80)),
                   ),
-                  SizedBox(width: 10),
+                  const SizedBox(width: 10),
                   Text(
-                    'Admin',
-                    style: TextStyle(
+                    firstName, // Display the admin's first name here
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 18,
@@ -140,15 +149,13 @@ class NavigationDrawer extends StatelessWidget {
             ),
           ),
           const Divider(color: Colors.white),
-
-          // Drawer menu items
           SidebarMenuItem(
             title: 'Dashboard',
             isSelected: selectedIndex == 0,
             onTap: () => onSelectItem(0),
           ),
           SidebarMenuItem(
-            title: 'Add Admin', // New "Add Admin" menu item
+            title: 'Add Admin',
             isSelected: selectedIndex == 1,
             onTap: () => onSelectItem(1),
           ),
@@ -168,12 +175,11 @@ class NavigationDrawer extends StatelessWidget {
             onTap: () => onSelectItem(4),
           ),
           SidebarMenuItem(
-            title: 'My Profile', // New "My Profile" menu item
+            title: 'My Profile',
             isSelected: selectedIndex == 5,
             onTap: () => onSelectItem(5),
           ),
           const Spacer(),
-          // Logout Button
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -196,13 +202,11 @@ class NavigationDrawer extends StatelessWidget {
                                 content: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    // Logo
                                     Image.asset(
                                       'assets/logo-dark.png',
                                       height: 50,
                                     ),
                                     const SizedBox(height: 20),
-                                    // Confirmation Text
                                     const Text(
                                       'Are you sure you want to log out?',
                                       style: TextStyle(
@@ -210,7 +214,6 @@ class NavigationDrawer extends StatelessWidget {
                                       textAlign: TextAlign.center,
                                     ),
                                     const SizedBox(height: 20),
-                                    // Buttons
                                     Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.spaceEvenly,
@@ -219,11 +222,16 @@ class NavigationDrawer extends StatelessWidget {
                                           onPressed: () {
                                             Navigator.of(context)
                                                 .pop(); // Close the dialog
-                                            // Handle the logout action here
+                                            Navigator.of(context)
+                                                .pushAndRemoveUntil(
+                                              MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      LoginAdmin()), // Navigate back to LoginAdmin
+                                              (route) => false,
+                                            );
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors
-                                                .red, // Red color for the Logout button
+                                            backgroundColor: Colors.red,
                                           ),
                                           child: const Text('Logout'),
                                         ),
@@ -233,8 +241,7 @@ class NavigationDrawer extends StatelessWidget {
                                                 .pop(); // Close the dialog
                                           },
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors
-                                                .orange, // Orange color for the Cancel button
+                                            backgroundColor: Colors.orange,
                                           ),
                                           child: const Text('Cancel'),
                                         ),
@@ -251,7 +258,6 @@ class NavigationDrawer extends StatelessWidget {
                           style: TextStyle(color: Colors.red),
                         ),
                       ),
-                      // Padding below the Logout button
                       const SizedBox(height: 20),
                     ],
                   ),
@@ -265,6 +271,7 @@ class NavigationDrawer extends StatelessWidget {
   }
 }
 
+// Sidebar menu item widget
 class SidebarMenuItem extends StatelessWidget {
   final String title;
   final bool isSelected;
