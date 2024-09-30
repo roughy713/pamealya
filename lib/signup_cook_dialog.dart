@@ -3,7 +3,8 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
-import 'package:uuid/uuid.dart'; // Added for generating UUIDs
+import 'package:uuid/uuid.dart';
+import 'home_page.dart'; // Import the HomePage for redirection after success
 
 class SignUpCookDialog extends StatefulWidget {
   @override
@@ -57,6 +58,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
     'Sunday': false,
   };
 
+  // Select a date
   Future<void> selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -72,6 +74,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
     }
   }
 
+  // Select a time
   Future<void> selectTime(BuildContext context, bool isFrom) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
@@ -88,8 +91,8 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
     }
   }
 
-  // File upload function for web
-  Future<String?> handleFileUpload() async {
+  // File upload function
+  Future<void> uploadFile() async {
     FilePickerResult? result = await FilePicker.platform.pickFiles(
       withData: true,
     );
@@ -114,7 +117,13 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                 .from('certifications')
                 .getPublicUrl(filePath);
 
-            return urlResponse;
+            setState(() {
+              certificationUrl = urlResponse;
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('File uploaded successfully!')),
+            );
           }
         } catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -123,52 +132,76 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
         }
       }
     }
-    return null;
   }
 
+  // Handle form submission
   Future<void> handleFormSubmission() async {
     if (formKey.currentState?.validate() == true) {
-      String? uploadedFileUrl = certificationUrl;
-
       final uuid = Uuid();
 
-      // Insert form details into Supabase
-      final response =
-          await Supabase.instance.client.from('Local_Cook').insert({
-        'localcookid': uuid.v4(), // Generate a valid UUID
-        'first_name': firstNameController.text,
-        'last_name': lastNameController.text,
-        'email': emailController.text,
-        'username': usernameController.text,
-        'password':
-            passwordController.text, // Make sure to hash passwords if necessary
-        'age': int.tryParse(ageController.text),
-        'gender': _selectedGender,
-        'dateofbirth': dateOfBirth != null
-            ? DateFormat('yyyy-MM-dd').format(dateOfBirth!)
-            : null,
-        'phone': phoneController.text,
-        'address_line1': locationController.text,
-        'barangay': barangayController.text,
-        'city': cityController.text,
-        'province': provinceController.text,
-        'postal_code': postalCodeController.text,
-        'availability_days': availabilityDays.join(','),
-        'time_available_from': timeFrom?.format(context),
-        'time_available_to': timeTo?.format(context),
-        'certifications': uploadedFileUrl ?? '', // Store uploaded file URL
-      });
+      try {
+        // Insert form details including the file URL into Supabase
+        final response =
+            await Supabase.instance.client.from('Local_Cook').insert({
+          'localcookid': uuid.v4(),
+          'first_name': firstNameController.text,
+          'last_name': lastNameController.text,
+          'email': emailController.text,
+          'username': usernameController.text,
+          'password': passwordController.text,
+          'age': int.tryParse(ageController.text),
+          'gender': _selectedGender,
+          'dateofbirth': dateOfBirth != null
+              ? DateFormat('yyyy-MM-dd').format(dateOfBirth!)
+              : null,
+          'phone': phoneController.text,
+          'address_line1': locationController.text,
+          'barangay': barangayController.text,
+          'city': cityController.text,
+          'province': provinceController.text,
+          'postal_code': postalCodeController.text,
+          'availability_days': availabilityDays.join(','),
+          'time_available_from': timeFrom?.format(context),
+          'time_available_to': timeTo?.format(context),
+          'certifications': certificationUrl ?? '',
+        });
 
-      if (!mounted) return;
-
-      if (response.error == null) {
-        Navigator.of(context).pop();
+        if (response.error == null) {
+          // Success: Show dialog and navigate
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                title: const Text('Sign Up Successful'),
+                content:
+                    const Text('Your account has been created successfully.'),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) => HomePage(),
+                        ),
+                      );
+                    },
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            },
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${response.error!.message}')),
+          );
+        }
+      } catch (e) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sign up successful!')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${response.error!.message}')),
+          SnackBar(content: Text('An error occurred: $e')),
         );
       }
     }
@@ -221,12 +254,6 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                       backgroundColor: Colors.grey[300],
                       child:
                           Icon(Icons.person, size: 50, color: Colors.grey[600]),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        // Handle profile picture upload
-                      },
-                      child: const Text('Upload Profile Picture'),
                     ),
                     const SizedBox(height: 20),
                     Form(
@@ -550,17 +577,15 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                               Row(
                                 children: [
                                   ElevatedButton(
-                                    onPressed: () async {
-                                      certificationUrl =
-                                          await handleFileUpload();
-                                    },
+                                    onPressed: uploadFile,
                                     child: const Text('Upload File'),
                                   ),
                                   const SizedBox(width: 20),
                                   if (uploadedFileName != null)
                                     Text(
                                       uploadedFileName!,
-                                      style: TextStyle(color: Colors.black87),
+                                      style: const TextStyle(
+                                          color: Colors.black87),
                                     ),
                                 ],
                               ),

@@ -344,30 +344,39 @@ class _AddAdminPageState extends State<AddAdminPage> {
       var uuid = const Uuid();
       String adminId = uuid.v4(); // Generate a unique admin_id
 
-      // Insert the admin data into Supabase table
-      final response = await Supabase.instance.client.from('admin').insert({
-        'admin_id': adminId, // Insert the generated admin_id
-        'name': nameController.text,
-        'email': emailController.text,
-        'username': usernameController.text,
-        'password': passwordController.text, // In production, hash the password
-      });
+      try {
+        // Insert the admin data into Supabase table
+        final response = await Supabase.instance.client.from('admin').insert({
+          'admin_id': adminId, // Insert the generated admin_id
+          'name': nameController.text,
+          'email': emailController.text,
+          'username': usernameController.text,
+          'password':
+              passwordController.text, // In production, hash the password
+        }).select(); // Select after insert to get the result back.
 
-      // Check for errors
-      if (response.error == null) {
-        // Clear form fields on success
-        nameController.clear();
-        emailController.clear();
-        usernameController.clear();
-        passwordController.clear();
-        confirmPasswordController.clear();
+        // Check if the response has data or not
+        if (response.isNotEmpty) {
+          // Clear form fields on success
+          nameController.clear();
+          emailController.clear();
+          usernameController.clear();
+          passwordController.clear();
+          confirmPasswordController.clear();
 
-        // Show success dialog
-        _showSuccessDialog();
-      } else {
-        // Show error message
+          // Show success dialog
+          _showSuccessDialog();
+        } else {
+          // Handle an empty response, which indicates failure
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('An error occurred while adding admin')),
+          );
+        }
+      } catch (error) {
+        // Catch unexpected errors
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${response.error!.message}')),
+          SnackBar(content: Text('An unexpected error occurred: $error')),
         );
       }
     }

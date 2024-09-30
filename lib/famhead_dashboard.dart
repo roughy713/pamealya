@@ -437,6 +437,7 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
       final position = _selectedPosition ?? '';
 
       try {
+        // Insert data into Supabase
         final response =
             await Supabase.instance.client.from('familymember').insert({
           'familymember_id': familymemberId, // UUID field
@@ -444,21 +445,22 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
           'last_name': lastName,
           'age': age,
           'gender': gender,
-          'dietaryrestriction':
-              dietaryRestriction, // Changed to dietaryrestriction
+          'dietaryrestriction': dietaryRestriction,
           'dob': dob,
           'position': position,
-        });
+        }).select();
 
-        if (response.error == null) {
-          // If successful, show the success dialog
-          _showSuccessDialog();
+        // Check if the response contains data (i.e., insertion was successful)
+        if (response != null && response.isNotEmpty) {
+          _showSuccessDialog(); // Show success dialog if insertion was successful
         } else {
+          // Handle the case where the insertion failed
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${response.error!.message}')),
+            const SnackBar(content: Text('Error submitting data.')),
           );
         }
       } catch (e) {
+        // Catch any exceptions and show error
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error submitting data: $e')),
         );
@@ -466,7 +468,6 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
     }
   }
 
-  // Show Success Dialog
   Future<void> _showSuccessDialog() async {
     return showDialog<void>(
       context: context,
