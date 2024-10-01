@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart'; // For generating a unique admin_id
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import 'login_admin.dart'; // Import the Login page
 
 class AdminDashboard extends StatefulWidget {
-  final String firstName; // Add firstName parameter to display admin's name
+  final String firstName;
 
   const AdminDashboard({super.key, required this.firstName});
 
@@ -17,7 +17,6 @@ class AdminDashboardState extends State<AdminDashboard> {
   int _selectedIndex = 0;
   bool _isDrawerOpen = false;
 
-  // List of pages to navigate to
   final List<Widget> _pages = const [
     DashboardPage(),
     AddAdminPage(),
@@ -27,7 +26,6 @@ class AdminDashboardState extends State<AdminDashboard> {
     MyProfilePage(),
   ];
 
-  // List of titles for AppBar
   final List<String> _titles = const [
     'Dashboard',
     'Add Admin',
@@ -41,7 +39,7 @@ class AdminDashboardState extends State<AdminDashboard> {
     setState(() {
       _selectedIndex = index;
     });
-    Navigator.pop(context); // Close the drawer after selecting an item
+    Navigator.pop(context);
   }
 
   void _onDrawerStateChanged(bool isOpen) {
@@ -68,8 +66,7 @@ class AdminDashboardState extends State<AdminDashboard> {
             ),
             backgroundColor: Colors.white,
             elevation: 0,
-            iconTheme:
-                const IconThemeData(color: Colors.black), // Set icon color
+            iconTheme: const IconThemeData(color: Colors.black),
             leading: IconButton(
               icon: const Icon(Icons.menu),
               onPressed: () {
@@ -83,10 +80,10 @@ class AdminDashboardState extends State<AdminDashboard> {
         child: NavigationDrawer(
           selectedIndex: _selectedIndex,
           onSelectItem: _onSelectItem,
-          firstName: widget.firstName, // Pass the firstName to the drawer
+          firstName: widget.firstName,
         ),
       ),
-      onDrawerChanged: _onDrawerStateChanged, // Callback to track drawer state
+      onDrawerChanged: _onDrawerStateChanged,
       body: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         margin: EdgeInsets.only(left: _isDrawerOpen ? 200 : 0),
@@ -96,17 +93,16 @@ class AdminDashboardState extends State<AdminDashboard> {
   }
 }
 
-// Drawer widget
 class NavigationDrawer extends StatelessWidget {
   final int selectedIndex;
   final Function(int) onSelectItem;
-  final String firstName; // Accept the firstName parameter
+  final String firstName;
 
   const NavigationDrawer({
     super.key,
     required this.selectedIndex,
     required this.onSelectItem,
-    required this.firstName, // Add this
+    required this.firstName,
   });
 
   @override
@@ -116,7 +112,6 @@ class NavigationDrawer extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Add logo above profile
           const Padding(
             padding: EdgeInsets.all(16.0),
             child: Image(
@@ -125,7 +120,7 @@ class NavigationDrawer extends StatelessWidget {
             ),
           ),
           GestureDetector(
-            onTap: () => onSelectItem(5), // Navigate to My Profile page
+            onTap: () => onSelectItem(5),
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -137,7 +132,7 @@ class NavigationDrawer extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    firstName, // Display the admin's first name here
+                    firstName,
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -188,10 +183,8 @@ class NavigationDrawer extends StatelessWidget {
                 Center(
                   child: Column(
                     children: [
-                      // The Logout button
                       TextButton(
                         onPressed: () {
-                          // Show logout confirmation dialog
                           showDialog(
                             context: context,
                             builder: (BuildContext context) {
@@ -220,13 +213,12 @@ class NavigationDrawer extends StatelessWidget {
                                       children: [
                                         ElevatedButton(
                                           onPressed: () {
-                                            Navigator.of(context)
-                                                .pop(); // Close the dialog
+                                            Navigator.of(context).pop();
                                             Navigator.of(context)
                                                 .pushAndRemoveUntil(
                                               MaterialPageRoute(
                                                   builder: (context) =>
-                                                      LoginAdmin()), // Navigate back to LoginAdmin
+                                                      LoginAdmin()),
                                               (route) => false,
                                             );
                                           },
@@ -237,8 +229,7 @@ class NavigationDrawer extends StatelessWidget {
                                         ),
                                         ElevatedButton(
                                           onPressed: () {
-                                            Navigator.of(context)
-                                                .pop(); // Close the dialog
+                                            Navigator.of(context).pop();
                                           },
                                           style: ElevatedButton.styleFrom(
                                             backgroundColor: Colors.orange,
@@ -271,7 +262,6 @@ class NavigationDrawer extends StatelessWidget {
   }
 }
 
-// Sidebar menu item widget
 class SidebarMenuItem extends StatelessWidget {
   final String title;
   final bool isSelected;
@@ -310,7 +300,6 @@ class SidebarMenuItem extends StatelessWidget {
   }
 }
 
-// Add Admin Page
 class AddAdminPage extends StatefulWidget {
   const AddAdminPage({super.key});
 
@@ -321,7 +310,6 @@ class AddAdminPage extends StatefulWidget {
 class _AddAdminPageState extends State<AddAdminPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers for form fields
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController usernameController = TextEditingController();
@@ -329,10 +317,8 @@ class _AddAdminPageState extends State<AddAdminPage> {
   final TextEditingController confirmPasswordController =
       TextEditingController();
 
-  // Function to handle adding admin
   Future<void> _handleAddAdmin() async {
     if (_formKey.currentState?.validate() == true) {
-      // Ensure passwords match
       if (passwordController.text != confirmPasswordController.text) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Passwords do not match')),
@@ -340,41 +326,33 @@ class _AddAdminPageState extends State<AddAdminPage> {
         return;
       }
 
-      // Generate a UUID for the admin_id
       var uuid = const Uuid();
-      String adminId = uuid.v4(); // Generate a unique admin_id
+      String adminId = uuid.v4();
 
       try {
-        // Insert the admin data into Supabase table
         final response = await Supabase.instance.client.from('admin').insert({
-          'admin_id': adminId, // Insert the generated admin_id
+          'admin_id': adminId,
           'name': nameController.text,
           'email': emailController.text,
           'username': usernameController.text,
-          'password':
-              passwordController.text, // In production, hash the password
-        }).select(); // Select after insert to get the result back.
+          'password': passwordController.text,
+        });
 
-        // Check if the response has data or not
-        if (response.isNotEmpty) {
-          // Clear form fields on success
+        if (response != null) {
           nameController.clear();
           emailController.clear();
           usernameController.clear();
           passwordController.clear();
           confirmPasswordController.clear();
 
-          // Show success dialog
           _showSuccessDialog();
         } else {
-          // Handle an empty response, which indicates failure
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
                 content: Text('An error occurred while adding admin')),
           );
         }
       } catch (error) {
-        // Catch unexpected errors
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('An unexpected error occurred: $error')),
         );
@@ -382,7 +360,6 @@ class _AddAdminPageState extends State<AddAdminPage> {
     }
   }
 
-  // Show success dialog when admin is added successfully
   void _showSuccessDialog() {
     showDialog(
       context: context,
@@ -397,7 +374,7 @@ class _AddAdminPageState extends State<AddAdminPage> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
+                Navigator.of(context).pop();
               },
               child: const Text('OK'),
             ),
@@ -412,7 +389,7 @@ class _AddAdminPageState extends State<AddAdminPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Add Admin'),
-        backgroundColor: const Color(0xFF1CBB80), // Customize as needed
+        backgroundColor: const Color(0xFF1CBB80),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -427,8 +404,6 @@ class _AddAdminPageState extends State<AddAdminPage> {
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 20),
-
-                // Name field
                 TextFormField(
                   controller: nameController,
                   decoration: const InputDecoration(
@@ -443,8 +418,6 @@ class _AddAdminPageState extends State<AddAdminPage> {
                   },
                 ),
                 const SizedBox(height: 20),
-
-                // Email field
                 TextFormField(
                   controller: emailController,
                   decoration: const InputDecoration(
@@ -463,8 +436,6 @@ class _AddAdminPageState extends State<AddAdminPage> {
                   },
                 ),
                 const SizedBox(height: 20),
-
-                // Username field
                 TextFormField(
                   controller: usernameController,
                   decoration: const InputDecoration(
@@ -479,8 +450,6 @@ class _AddAdminPageState extends State<AddAdminPage> {
                   },
                 ),
                 const SizedBox(height: 20),
-
-                // Password field
                 TextFormField(
                   controller: passwordController,
                   obscureText: true,
@@ -499,8 +468,6 @@ class _AddAdminPageState extends State<AddAdminPage> {
                   },
                 ),
                 const SizedBox(height: 20),
-
-                // Confirm Password field
                 TextFormField(
                   controller: confirmPasswordController,
                   obscureText: true,
@@ -516,8 +483,6 @@ class _AddAdminPageState extends State<AddAdminPage> {
                   },
                 ),
                 const SizedBox(height: 30),
-
-                // Submit Button
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -539,7 +504,6 @@ class _AddAdminPageState extends State<AddAdminPage> {
   }
 }
 
-// Sample page for Dashboard section
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
 
@@ -581,25 +545,268 @@ class ViewCooksPage extends StatelessWidget {
   }
 }
 
-class ViewFamilyHeadsPage extends StatelessWidget {
+// View Family Heads Page with table display
+class ViewFamilyHeadsPage extends StatefulWidget {
   const ViewFamilyHeadsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return const Center(child: Text('View all Family Heads'));
-  }
+  _ViewFamilyHeadsPageState createState() => _ViewFamilyHeadsPageState();
 }
 
-class ApprovalPage extends StatelessWidget {
-  const ApprovalPage({super.key});
+class _ViewFamilyHeadsPageState extends State<ViewFamilyHeadsPage> {
+  List<dynamic> familyHeads = [];
+  bool isLoading = true;
+  bool hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchFamilyHeads();
+  }
+
+  Future<void> _fetchFamilyHeads() async {
+    setState(() {
+      isLoading = true;
+      hasError = false;
+    });
+
+    try {
+      final response =
+          await Supabase.instance.client.from('Family_Head').select();
+
+      if (response != null && response.isNotEmpty) {
+        setState(() {
+          familyHeads = response;
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          isLoading = false;
+          hasError = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No family heads found')),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        hasError = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Approve requests'));
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('View Family Heads'),
+        backgroundColor: const Color(0xFF1CBB80),
+      ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : hasError
+              ? const Center(child: Text('Error loading data'))
+              : familyHeads.isEmpty
+                  ? const Center(child: Text('No family heads found'))
+                  : SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: const [
+                          DataColumn(label: Text('First Name')),
+                          DataColumn(label: Text('Last Name')),
+                          DataColumn(label: Text('Email')),
+                          DataColumn(label: Text('Phone')),
+                          DataColumn(label: Text('Address')),
+                        ],
+                        rows: familyHeads
+                            .map(
+                              (head) => DataRow(cells: [
+                                DataCell(Text(head['first_name'] ?? '')),
+                                DataCell(Text(head['last_name'] ?? '')),
+                                DataCell(Text(head['email'] ?? '')),
+                                DataCell(Text(head['phone'] ?? '')),
+                                DataCell(Text(head['address_line1'] ?? '')),
+                              ]),
+                            )
+                            .toList(),
+                      ),
+                    ),
+    );
   }
 }
 
-// New My Profile Page
+class ApprovalPage extends StatefulWidget {
+  const ApprovalPage({super.key});
+
+  @override
+  _ApprovalPageState createState() => _ApprovalPageState();
+}
+
+class _ApprovalPageState extends State<ApprovalPage> {
+  List<dynamic> cooks = [];
+  bool isLoading = true;
+  bool hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCooks();
+  }
+
+  Future<void> _fetchCooks() async {
+    setState(() {
+      isLoading = true;
+      hasError = false;
+    });
+
+    try {
+      final response =
+          await Supabase.instance.client.from('Local_Cook').select();
+
+      if (response != null && response.isNotEmpty) {
+        setState(() {
+          cooks = response;
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          isLoading = false;
+          hasError = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No pending cooks found')),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        hasError = true;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred: $e')),
+      );
+    }
+  }
+
+  Future<void> _approveCook(Map<String, dynamic> cook) async {
+    final cookId = cook['localcookid'];
+    try {
+      await Supabase.instance.client.from('Local_Cook_Approved').insert({
+        'localcookid': cookId,
+        'first_name': cook['first_name'],
+        'last_name': cook['last_name'],
+        'email': cook['email'],
+        'username': cook['username'],
+        'dateofbirth': cook['dateofbirth'],
+        'phone': cook['phone'],
+        'address_line1': cook['address_line1'],
+        'barangay': cook['barangay'],
+        'city': cook['city'],
+        'province': cook['province'],
+        'postal_code': cook['postal_code'],
+        'availability_days': cook['availability_days'],
+        'time_available_from': cook['time_available_from'],
+        'time_available_to': cook['time_available_to'],
+        'certifications': cook['certifications'],
+      });
+
+      await Supabase.instance.client
+          .from('Local_Cook')
+          .delete()
+          .eq('localcookid', cookId);
+
+      _showApprovalSuccessDialog();
+      _fetchCooks();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error approving cook: $e')),
+      );
+    }
+  }
+
+  Future<void> _rejectCook(Map<String, dynamic> cook) async {
+    final cookId = cook['localcookid'];
+    try {
+      await Supabase.instance.client
+          .from('Local_Cook')
+          .delete()
+          .eq('localcookid', cookId);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cook rejected successfully!')),
+      );
+
+      _fetchCooks();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error rejecting cook: $e')),
+      );
+    }
+  }
+
+  void _showApprovalSuccessDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Cook Approved'),
+          content: const Text('The cook has been approved successfully!'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : hasError
+              ? const Center(child: Text('Error loading data'))
+              : cooks.isEmpty
+                  ? const Center(child: Text('No pending cook approvals'))
+                  : ListView.builder(
+                      itemCount: cooks.length,
+                      itemBuilder: (context, index) {
+                        final cook = cooks[index];
+                        return ListTile(
+                          title: Text(
+                              '${cook['first_name']} ${cook['last_name']}'),
+                          subtitle: Text('Email: ${cook['email']}'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.check,
+                                    color: Colors.green),
+                                onPressed: () => _approveCook(cook),
+                              ),
+                              IconButton(
+                                icon:
+                                    const Icon(Icons.clear, color: Colors.red),
+                                onPressed: () => _rejectCook(cook),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+    );
+  }
+}
+
 class MyProfilePage extends StatelessWidget {
   const MyProfilePage({super.key});
 

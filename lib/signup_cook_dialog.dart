@@ -7,6 +7,8 @@ import 'package:uuid/uuid.dart';
 import 'home_page.dart'; // Import the HomePage for redirection after success
 
 class SignUpCookDialog extends StatefulWidget {
+  const SignUpCookDialog({super.key});
+
   @override
   SignUpCookDialogState createState() => SignUpCookDialogState();
 }
@@ -145,14 +147,16 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
             borderRadius: BorderRadius.circular(15),
           ),
           title: const Text('Sign Up Successful'),
-          content: const Text('Your account has been created successfully.'),
+          content: const Text(
+            'Your account has been created successfully. Please wait for the admin to confirm your account.',
+          ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Close dialog
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
-                    builder: (context) => HomePage(),
+                    builder: (context) => const HomePage(),
                   ),
                 );
               },
@@ -167,7 +171,9 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
   // Handle form submission
   Future<void> handleFormSubmission() async {
     if (formKey.currentState?.validate() == true) {
-      final uuid = Uuid();
+      debugPrint("Form validation successful");
+
+      const uuid = Uuid();
 
       try {
         // Insert form details including the file URL into Supabase
@@ -203,12 +209,14 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
           // Success: Show the success dialog
           await _showSuccessDialog();
         } else if (response?.error != null) {
+          debugPrint("Supabase error: ${response.error!.message}");
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: ${response.error!.message}')),
           );
         }
       } catch (e) {
         // Handle any exceptions
+        debugPrint("An error occurred during form submission: $e");
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('An error occurred: $e')),
         );
@@ -553,7 +561,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                                   onTap: () => selectTime(context, true),
                                   controller: TextEditingController(
                                     text: timeFrom != null
-                                        ? '${timeFrom!.format(context)}'
+                                        ? timeFrom!.format(context)
                                         : '',
                                   ),
                                 ),
@@ -569,7 +577,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                                   onTap: () => selectTime(context, false),
                                   controller: TextEditingController(
                                     text: timeTo != null
-                                        ? '${timeTo!.format(context)}'
+                                        ? timeTo!.format(context)
                                         : '',
                                   ),
                                 ),

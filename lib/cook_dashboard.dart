@@ -1,7 +1,15 @@
 import 'package:flutter/material.dart';
+import 'home_page.dart'; // Import HomePage for redirection after logout
 
 class CookDashboard extends StatefulWidget {
-  const CookDashboard({super.key});
+  final String firstName;
+  final String lastName;
+
+  const CookDashboard({
+    super.key,
+    required this.firstName,
+    required this.lastName,
+  });
 
   @override
   CookDashboardState createState() => CookDashboardState();
@@ -36,7 +44,7 @@ class CookDashboardState extends State<CookDashboard> {
     setState(() {
       _selectedIndex = index;
       _scaffoldKey.currentState
-          ?.closeDrawer(); // Close the drawer when an item is selected
+          ?.closeDrawer(); // Close the drawer after selection
     });
   }
 
@@ -44,6 +52,65 @@ class CookDashboardState extends State<CookDashboard> {
     setState(() {
       _isDrawerOpen = isOpen;
     });
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    // Show logout confirmation dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/logo-dark.png',
+                height: 50,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Are you sure you want to log out?',
+                style: TextStyle(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close the dialog
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const HomePage(), // Redirect to HomePage
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                    ),
+                    child: const Text('Logout'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop(); // Close the dialog
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange,
+                    ),
+                    child: const Text('Cancel'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -94,19 +161,19 @@ class CookDashboardState extends State<CookDashboard> {
                 onTap: () {
                   _onSelectItem(5); // Navigate to 'My Profile'
                 },
-                child: const Padding(
-                  padding: EdgeInsets.all(16.0),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
                   child: Row(
                     children: [
-                      CircleAvatar(
+                      const CircleAvatar(
                         radius: 30,
                         backgroundColor: Colors.white,
                         child: Icon(Icons.person, color: Color(0xFF1CBB80)),
                       ),
-                      SizedBox(width: 10),
+                      const SizedBox(width: 10),
                       Text(
-                        'John Doe, Cook',
-                        style: TextStyle(
+                        '${widget.firstName} ${widget.lastName}, Cook', // Display the logged-in cook's name
+                        style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
@@ -159,61 +226,8 @@ class CookDashboardState extends State<CookDashboard> {
                         children: [
                           TextButton(
                             onPressed: () {
-                              // Show logout confirmation dialog
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                    content: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Image.asset(
-                                          'assets/logo-dark.png',
-                                          height: 50,
-                                        ),
-                                        const SizedBox(height: 20),
-                                        const Text(
-                                          'Are you sure you want to log out?',
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.bold),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        const SizedBox(height: 20),
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceEvenly,
-                                          children: [
-                                            ElevatedButton(
-                                              onPressed: () {
-                                                Navigator.of(context)
-                                                    .pop(); // Close the dialog
-                                                // Handle the logout action here
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.red,
-                                              ),
-                                              child: const Text('Logout'),
-                                            ),
-                                            ElevatedButton(
-                                              onPressed: () {
-                                                Navigator.of(context)
-                                                    .pop(); // Close the dialog
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.orange,
-                                              ),
-                                              child: const Text('Cancel'),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              );
+                              _handleLogout(
+                                  context); // Call the logout function
                             },
                             child: const Text(
                               'Logout',
