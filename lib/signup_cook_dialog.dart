@@ -134,6 +134,36 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
     }
   }
 
+  // Show success dialog
+  Future<void> _showSuccessDialog() async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false, // Prevent dismissing by tapping outside
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: const Text('Sign Up Successful'),
+          content: const Text('Your account has been created successfully.'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => HomePage(),
+                  ),
+                );
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // Handle form submission
   Future<void> handleFormSubmission() async {
     if (formKey.currentState?.validate() == true) {
@@ -166,44 +196,25 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
           'certifications': certificationUrl ?? '',
         });
 
-        if (response.error == null) {
-          // Success: Show dialog and navigate
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              return AlertDialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                title: const Text('Sign Up Successful'),
-                content:
-                    const Text('Your account has been created successfully.'),
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (context) => HomePage(),
-                        ),
-                      );
-                    },
-                    child: const Text('OK'),
-                  ),
-                ],
-              );
-            },
-          );
-        } else {
+        // Check if the insertion was successful
+        if (response != null && response.error == null) {
+          debugPrint("Insert successful, showing success dialog");
+
+          // Success: Show the success dialog
+          await _showSuccessDialog();
+        } else if (response?.error != null) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: ${response.error!.message}')),
           );
         }
       } catch (e) {
+        // Handle any exceptions
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('An error occurred: $e')),
         );
       }
+    } else {
+      debugPrint("Form validation failed");
     }
   }
 

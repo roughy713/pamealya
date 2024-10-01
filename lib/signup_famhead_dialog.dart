@@ -49,6 +49,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
       const uuid = Uuid(); // Create an instance of the Uuid class
       final famheadId = uuid.v4(); // Generate a unique UUID for famheadid
 
+      // Attempt to insert data into Supabase
       final response =
           await Supabase.instance.client.from('Family_Head').insert({
         'famheadid': famheadId, // Use the generated UUID here
@@ -66,17 +67,16 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
         'province': _provinceController.text,
         'postal_code': _postalCodeController.text,
         'dob': _dobController.text,
-      });
+      }).select();
 
-      if (response == null || response.hasError) {
-        final errorMessage =
-            response?.error?.message ?? 'Unknown error occurred';
-        print('Error inserting data: $errorMessage');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Insert Error: $errorMessage')),
-        );
-      } else {
+      // Check if data was inserted successfully
+      if (response.isNotEmpty) {
+        // Show success dialog and redirect
         await _showSuccessDialog();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Insert Error: No data returned')),
+        );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

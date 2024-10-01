@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // Supabase import
-import 'package:uuid/uuid.dart'; // For generating UUIDs
+import 'home_page.dart'; // Home page import for redirection
 
 class FamHeadDashboard extends StatefulWidget {
-  const FamHeadDashboard({super.key});
+  final String firstName;
+  final String lastName;
+
+  const FamHeadDashboard({
+    Key? key,
+    required this.firstName,
+    required this.lastName,
+  }) : super(key: key);
 
   @override
   FamHeadDashboardState createState() => FamHeadDashboardState();
@@ -49,6 +56,24 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     setState(() {
       _isDrawerOpen = isOpen;
     });
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    try {
+      // Sign out from Supabase
+      await Supabase.instance.client.auth.signOut();
+
+      // Redirect to HomePage after logout
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const HomePage(),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error during logout: $e')),
+      );
+    }
   }
 
   @override
@@ -96,19 +121,19 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
                 ),
               ),
               // User Profile
-              const Padding(
-                padding: EdgeInsets.all(16.0),
+              Padding(
+                padding: const EdgeInsets.all(16.0),
                 child: Row(
                   children: [
-                    CircleAvatar(
+                    const CircleAvatar(
                       radius: 30,
                       backgroundColor: Colors.white,
                       child: Icon(Icons.person, color: Color(0xFF1CBB80)),
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Text(
-                      'Mercy Grace Estano',
-                      style: TextStyle(
+                      '${widget.firstName} ${widget.lastName}', // Dynamically replace the name with logged-in user's name
+                      style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
                       ),
@@ -200,7 +225,8 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
                                               onPressed: () {
                                                 Navigator.of(context)
                                                     .pop(); // Close the dialog
-                                                // Handle the logout action here
+                                                _handleLogout(
+                                                    context); // Logout and redirect to HomePage
                                               },
                                               style: ElevatedButton.styleFrom(
                                                 backgroundColor: Colors
@@ -232,7 +258,6 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
                               style: TextStyle(color: Colors.red),
                             ),
                           ),
-                          // Padding below the Logout button
                           const SizedBox(height: 20),
                         ],
                       ),
@@ -398,9 +423,6 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
     'Nut-Free',
   ];
 
-  // UUID generator
-  final Uuid uuid = const Uuid();
-
   @override
   void dispose() {
     _firstNameController.dispose();
@@ -427,7 +449,6 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
 
   Future<void> _submitDataToSupabase() async {
     if (_formKey.currentState?.validate() == true) {
-      final familymemberId = uuid.v4(); // Generate UUID for familymember_id
       final firstName = _firstNameController.text;
       final lastName = _lastNameController.text;
       final age = _ageController.text;
@@ -437,10 +458,8 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
       final position = _selectedPosition ?? '';
 
       try {
-        // Insert data into Supabase
         final response =
             await Supabase.instance.client.from('familymember').insert({
-          'familymember_id': familymemberId, // UUID field
           'first_name': firstName,
           'last_name': lastName,
           'age': age,
@@ -448,19 +467,16 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
           'dietaryrestriction': dietaryRestriction,
           'dob': dob,
           'position': position,
-        }).select();
+        });
 
-        // Check if the response contains data (i.e., insertion was successful)
-        if (response != null && response.isNotEmpty) {
-          _showSuccessDialog(); // Show success dialog if insertion was successful
+        if (response.error == null) {
+          _showSuccessDialog(); // Show success dialog
         } else {
-          // Handle the case where the insertion failed
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Error submitting data.')),
+            SnackBar(content: Text('Error: ${response.error!.message}')),
           );
         }
       } catch (e) {
-        // Catch any exceptions and show error
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error submitting data: $e')),
         );
@@ -476,20 +492,12 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Success'),
-          content: const SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text('Family member has been added successfully.'),
-              ],
-            ),
-          ),
+          content: const Text('Family member has been added successfully.'),
           actions: <Widget>[
             TextButton(
               child: const Text('Okay'),
               onPressed: () {
                 Navigator.of(context).pop(); // Close the dialog
-                Navigator.of(context)
-                    .pop(); // Close the Add Family Member dialog
               },
             ),
           ],
@@ -508,19 +516,6 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.grey,
-                child: Icon(Icons.person, size: 50),
-              ),
-              const SizedBox(height: 10),
-              TextButton(
-                onPressed: () {
-                  // Handle profile picture upload
-                },
-                child: const Text('Upload Profile Picture'),
-              ),
-              const SizedBox(height: 10),
               TextFormField(
                 controller: _firstNameController,
                 decoration: const InputDecoration(
