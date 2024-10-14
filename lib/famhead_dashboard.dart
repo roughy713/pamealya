@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // Supabase import
-import 'home_page.dart'; // Home page import for redirection
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'home_page.dart';
 
 class FamHeadDashboard extends StatefulWidget {
   final String firstName;
@@ -22,18 +22,6 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
   int _selectedIndex = 0;
   bool _isDrawerOpen = false;
 
-  // Details for each page
-  final List<Widget> _pageDetails = [
-    const Center(child: Text('Welcome to the Dashboard!')),
-    MyFamilyPage(), // MyFamilyPage integrated here
-    const Center(child: Text('Chat with family members.')),
-    const Center(child: Text('Consult with a cook here.')),
-    const Center(child: Text('Your notifications will appear here.')),
-    const BMICalculatorPage(), // BMI Calculator integrated here
-    const Center(child: Text('View your transactions here.')),
-  ];
-
-  // Titles for the AppBar for each section
   final List<String> _titles = [
     'Dashboard',
     'My Family',
@@ -44,11 +32,20 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     'Transactions',
   ];
 
+  List<Widget> get _pageDetails => [
+        Center(child: Text('Dashboard Content')),
+        MyFamilyPage(firstName: widget.firstName, lastName: widget.lastName),
+        const Center(child: Text('Chat with family members.')),
+        const Center(child: Text('Consult with a cook here.')),
+        const Center(child: Text('Your notifications will appear here.')),
+        const BMICalculatorPage(),
+        const Center(child: Text('View your transactions here.')),
+      ];
+
   void _onSelectItem(int index) {
     setState(() {
       _selectedIndex = index;
-      _scaffoldKey.currentState
-          ?.closeDrawer(); // Close the drawer after selection
+      _scaffoldKey.currentState?.closeDrawer();
     });
   }
 
@@ -60,14 +57,9 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
 
   Future<void> _handleLogout(BuildContext context) async {
     try {
-      // Sign out from Supabase
       await Supabase.instance.client.auth.signOut();
-
-      // Redirect to HomePage after logout
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => const HomePage(),
-        ),
+        MaterialPageRoute(builder: (context) => const HomePage()),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -93,9 +85,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
             title: Text(
               _titles[_selectedIndex],
               style: const TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-              ),
+                  color: Colors.black, fontWeight: FontWeight.bold),
             ),
             leading: IconButton(
               icon: const Icon(Icons.menu),
@@ -108,19 +98,17 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
       ),
       drawer: Drawer(
         child: Container(
-          color: const Color(0xFF1CBB80), // Green color for sidebar
+          color: const Color(0xFF1CBB80),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Add logo to the top of the user profile
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Image.asset(
-                  'assets/logo-white.png', // Path to your logo
-                  height: 50, // Adjust size accordingly
+                  'assets/logo-white.png',
+                  height: 50,
                 ),
               ),
-              // User Profile
               Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -132,17 +120,14 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      '${widget.firstName} ${widget.lastName}', // Dynamically replace the name with logged-in user's name
+                      '${widget.firstName} ${widget.lastName}',
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                          color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
               ),
               const Divider(color: Colors.white),
-              // Navigation Menu
               _SidebarMenuItem(
                 title: 'Dashboard',
                 isSelected: _selectedIndex == 0,
@@ -179,118 +164,82 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
                 onTap: () => _onSelectItem(6),
               ),
               const Spacer(),
-              // Logout Button
               Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Center(
-                      child: Column(
-                        children: [
-                          // The Logout button
-                          TextButton(
-                            onPressed: () {
-                              // Show logout confirmation dialog
-                              showDialog(
-                                context: context,
-                                builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(15),
-                                    ),
-                                    content: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        // Logo
-                                        Image.asset(
-                                          'assets/logo-dark.png',
-                                          height: 50,
-                                        ),
-                                        const SizedBox(height: 20),
-                                        // Confirmation Text
-                                        const Text(
-                                          'Are you sure you want to log out?',
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.bold),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        const SizedBox(height: 20),
-                                        // Buttons
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceEvenly,
-                                          children: [
-                                            ElevatedButton(
-                                              onPressed: () {
-                                                Navigator.of(context)
-                                                    .pop(); // Close the dialog
-                                                _handleLogout(
-                                                    context); // Logout and redirect to HomePage
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors
-                                                    .red, // Red color for the Logout button
-                                              ),
-                                              child: const Text('Logout'),
-                                            ),
-                                            ElevatedButton(
-                                              onPressed: () {
-                                                Navigator.of(context)
-                                                    .pop(); // Close the dialog
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors
-                                                    .orange, // Orange color for the Cancel button
-                                              ),
-                                              child: const Text('Cancel'),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                            child: const Text(
-                              'Logout',
-                              style: TextStyle(color: Colors.red),
-                            ),
+                child: TextButton(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
                           ),
-                          const SizedBox(height: 20),
-                        ],
-                      ),
-                    ),
-                  ],
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.asset('assets/logo-dark.png', height: 50),
+                              const SizedBox(height: 20),
+                              const Text(
+                                'Are you sure you want to log out?',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 20),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                      _handleLogout(context);
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.red),
+                                    child: const Text('Logout'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.orange),
+                                    child: const Text('Cancel'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  child:
+                      const Text('Logout', style: TextStyle(color: Colors.red)),
                 ),
               ),
             ],
           ),
         ),
       ),
-      onDrawerChanged: _onDrawerStateChanged, // Callback to track drawer state
+      onDrawerChanged: _onDrawerStateChanged,
       body: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         margin: EdgeInsets.only(left: _isDrawerOpen ? 200 : 0),
-        child: _pageDetails[
-            _selectedIndex], // Update the center with selected details
+        child: _pageDetails[_selectedIndex],
       ),
     );
   }
 }
 
-// Sidebar menu item widget
 class _SidebarMenuItem extends StatelessWidget {
   final String title;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _SidebarMenuItem({
-    required this.title,
-    required this.onTap,
-    this.isSelected = false,
-  });
+  const _SidebarMenuItem(
+      {required this.title, required this.onTap, this.isSelected = false});
 
   @override
   Widget build(BuildContext context) {
@@ -299,9 +248,7 @@ class _SidebarMenuItem extends StatelessWidget {
       child: Container(
         decoration: isSelected
             ? BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-              )
+                color: Colors.white, borderRadius: BorderRadius.circular(16))
             : null,
         child: ListTile(
           title: Text(
@@ -318,14 +265,93 @@ class _SidebarMenuItem extends StatelessWidget {
   }
 }
 
-// My Family Page
 class MyFamilyPage extends StatefulWidget {
+  final String firstName;
+  final String lastName;
+
+  const MyFamilyPage(
+      {Key? key, required this.firstName, required this.lastName})
+      : super(key: key);
+
   @override
-  State<MyFamilyPage> createState() => _MyFamilyPageState();
+  _MyFamilyPageState createState() => _MyFamilyPageState();
 }
 
 class _MyFamilyPageState extends State<MyFamilyPage> {
   List<Map<String, String>> familyMembers = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _addFamilyHead();
+    fetchFamilyMembers();
+  }
+
+  Future<void> _addFamilyHead() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('familymember')
+          .select()
+          .eq('first_name', widget.firstName)
+          .eq('last_name', widget.lastName)
+          .eq('position', 'Family Head')
+          .maybeSingle();
+
+      if (response == null) {
+        await Supabase.instance.client.from('familymember').insert({
+          'first_name': widget.firstName,
+          'last_name': widget.lastName,
+          'age': '',
+          'gender': '',
+          'dob': '',
+          'position': 'Family Head',
+          'dietaryrestriction': 'None',
+          'family_head': '${widget.firstName} ${widget.lastName}',
+        });
+
+        setState(() {
+          familyMembers.insert(0, {
+            'firstName': widget.firstName,
+            'lastName': widget.lastName,
+            'position': 'Family Head',
+          });
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error adding family head: $e')),
+      );
+    }
+  }
+
+  Future<void> fetchFamilyMembers() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('familymember')
+          .select()
+          .eq('family_head', '${widget.firstName} ${widget.lastName}');
+
+      // Check if there's data
+      if (response == null || response.isEmpty) {
+        throw Exception('No family members found.');
+      }
+
+      setState(() {
+        familyMembers =
+            (response as List<dynamic>).map<Map<String, String>>((member) {
+          return {
+            'firstName': member['first_name'] as String,
+            'lastName': member['last_name'] as String,
+            'position': member['position'] as String,
+          };
+        }).toList();
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching family members: $e')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -334,69 +360,91 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Column(
-                children: [
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return const AddFamilyMemberDialog();
-                        },
-                      ).then((result) {
-                        if (result != null) {
-                          setState(() {
-                            familyMembers.add(result);
-                          });
-                        }
-                      });
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Family Member'),
-                  ),
-                  const SizedBox(height: 10),
-                  familyMembers.isNotEmpty
-                      ? Expanded(
-                          child: ListView.builder(
-                            itemCount: familyMembers.length,
-                            itemBuilder: (context, index) {
-                              final member = familyMembers[index];
-                              return ListTile(
-                                title: Text(
-                                  '${member['firstName']} ${member['lastName']}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                subtitle: Text(
-                                  '${member['position']} - ${member['dateOfBirth']}',
-                                ),
-                                leading: const CircleAvatar(
-                                  backgroundColor: Colors.grey,
-                                  child: Icon(Icons.person),
-                                ),
-                              );
-                            },
-                          ),
-                        )
-                      : const Center(
-                          child: Text('No family members added yet.'),
-                        ),
-                ],
+            ListTile(
+              leading: const Icon(Icons.person, size: 50),
+              title: Text(
+                '${widget.firstName} ${widget.lastName} (Family Head)',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            const Divider(),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return AddFamilyMemberDialog(onAdd: (data) {
+                      _addFamilyMember(data);
+                    });
+                  },
+                );
+              },
+              icon: const Icon(Icons.add),
+              label: const Text('Add Family Member'),
+            ),
+            const SizedBox(height: 20),
+            Expanded(
+              child: ListView.builder(
+                itemCount: familyMembers.length,
+                itemBuilder: (context, index) {
+                  final member = familyMembers[index];
+                  return ListTile(
+                    title: Text(
+                      '${member['firstName']} ${member['lastName']}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(member['position'] ?? ''),
+                    leading: const CircleAvatar(
+                      backgroundColor: Colors.grey,
+                      child: Icon(Icons.person),
+                    ),
+                  );
+                },
               ),
             ),
           ],
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          // Your meal plan generation logic here
+        },
+        label: const Text('Generate Meal Plans'),
+        backgroundColor: Colors.yellow,
+      ),
     );
+  }
+
+  Future<void> _addFamilyMember(Map<String, String> data) async {
+    try {
+      await Supabase.instance.client.from('familymember').insert({
+        'first_name': data['firstName'],
+        'last_name': data['lastName'],
+        'age': data['age'],
+        'gender': data['gender'],
+        'dob': data['dob'],
+        'position': data['position'],
+        'dietaryrestriction': data['dietaryRestriction'],
+        'family_head': '${widget.firstName} ${widget.lastName}',
+      });
+
+      setState(() {
+        familyMembers.add(data);
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error adding family member: $e')),
+      );
+    }
   }
 }
 
-// Add Family Member Form Dialog
 class AddFamilyMemberDialog extends StatefulWidget {
-  const AddFamilyMemberDialog({super.key});
+  final Function(Map<String, String>) onAdd;
+
+  const AddFamilyMemberDialog({Key? key, required this.onAdd})
+      : super(key: key);
 
   @override
   AddFamilyMemberDialogState createState() => AddFamilyMemberDialogState();
@@ -423,15 +471,6 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
     'Nut-Free',
   ];
 
-  @override
-  void dispose() {
-    _firstNameController.dispose();
-    _lastNameController.dispose();
-    _ageController.dispose();
-    _dateOfBirthController.dispose();
-    super.dispose();
-  }
-
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -445,65 +484,6 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
         _dateOfBirthController.text = DateFormat('MM/dd/yyyy').format(picked);
       });
     }
-  }
-
-  Future<void> _submitDataToSupabase() async {
-    if (_formKey.currentState?.validate() == true) {
-      final firstName = _firstNameController.text;
-      final lastName = _lastNameController.text;
-      final age = _ageController.text;
-      final gender = _selectedGender ?? '';
-      final dietaryRestriction = _selectedDietaryRestriction ?? 'None';
-      final dob = _dateOfBirthController.text;
-      final position = _selectedPosition ?? '';
-
-      try {
-        final response =
-            await Supabase.instance.client.from('familymember').insert({
-          'first_name': firstName,
-          'last_name': lastName,
-          'age': age,
-          'gender': gender,
-          'dietaryrestriction': dietaryRestriction,
-          'dob': dob,
-          'position': position,
-        });
-
-        if (response.error == null) {
-          _showSuccessDialog(); // Show success dialog
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${response.error!.message}')),
-          );
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error submitting data: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _showSuccessDialog() async {
-    return showDialog<void>(
-      context: context,
-      barrierDismissible:
-          false, // Dialog cannot be dismissed by tapping outside
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Success'),
-          content: const Text('Family member has been added successfully.'),
-          actions: <Widget>[
-            TextButton(
-              child: const Text('Okay'),
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-            ),
-          ],
-        );
-      },
-    );
   }
 
   @override
@@ -653,7 +633,20 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
       ),
       actions: [
         ElevatedButton(
-          onPressed: _submitDataToSupabase, // Submit data to Supabase on click
+          onPressed: () {
+            if (_formKey.currentState?.validate() ?? false) {
+              widget.onAdd({
+                'firstName': _firstNameController.text,
+                'lastName': _lastNameController.text,
+                'age': _ageController.text,
+                'gender': _selectedGender ?? '',
+                'dob': _dateOfBirthController.text,
+                'position': _selectedPosition ?? '',
+                'dietaryRestriction': _selectedDietaryRestriction ?? 'None',
+              });
+              Navigator.of(context).pop();
+            }
+          },
           child: const Text('Submit'),
         ),
         TextButton(
@@ -667,7 +660,6 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
   }
 }
 
-// BMI Calculator Page
 class BMICalculatorPage extends StatefulWidget {
   const BMICalculatorPage({super.key});
 
@@ -679,6 +671,7 @@ class BMICalculatorPageState extends State<BMICalculatorPage> {
   final TextEditingController _weightController = TextEditingController();
   final TextEditingController _heightController = TextEditingController();
   double _bmi = 0.0;
+  String _bmiCategory = '';
 
   @override
   void dispose() {
@@ -693,7 +686,20 @@ class BMICalculatorPageState extends State<BMICalculatorPage> {
 
     setState(() {
       _bmi = weight / (height * height);
+      _bmiCategory = _getBMICategory(_bmi);
     });
+  }
+
+  String _getBMICategory(double bmi) {
+    if (bmi < 18.5) {
+      return 'Underweight';
+    } else if (bmi < 24.9) {
+      return 'Normal weight';
+    } else if (bmi < 29.9) {
+      return 'Overweight';
+    } else {
+      return 'Obesity';
+    }
   }
 
   @override
@@ -724,7 +730,7 @@ class BMICalculatorPageState extends State<BMICalculatorPage> {
               child: const Text('Calculate BMI'),
             ),
             const SizedBox(height: 20),
-            Text('Your BMI is: ${_bmi.toStringAsFixed(2)}'),
+            Text('Your BMI is: ${_bmi.toStringAsFixed(2)} ($_bmiCategory)'),
           ],
         ),
       ),
