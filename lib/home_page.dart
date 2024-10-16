@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'signup_cook_dialog.dart'; // Import the SignUp Cook dialog
-import 'signup_famhead_dialog.dart'; // Import the Family Head Sign Up dialog
-import 'login_dialog.dart'; // Import the Login dialog
+import 'signup/signup_cook_dialog.dart'; // Import the SignUp Cook dialog
+import 'signup/signup_famhead_dialog.dart'; // Import the Family Head Sign Up dialog
+import 'login/login_dialog.dart'; // Import the Login dialog
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});

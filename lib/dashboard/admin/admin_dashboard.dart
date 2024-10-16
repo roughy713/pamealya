@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
-import 'login_admin.dart'; // Import the Login page
+import '../../login/login_admin.dart'; // Import the Login page
 
 class AdminDashboard extends StatefulWidget {
   final String firstName;

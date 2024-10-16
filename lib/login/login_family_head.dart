@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'famhead_dashboard.dart'; // Redirect to this page after successful login
+import '../dashboard/famhead/famhead_dashboard.dart'; // Redirect to this page after successful login
 
 class LoginDialog extends StatefulWidget {
   @override

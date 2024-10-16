@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
 import 'package:uuid/uuid.dart';
-import 'home_page.dart'; // Import the HomePage for redirection after success
+import '../home_page.dart'; // Import the HomePage for redirection after success
 
 class SignUpCookDialog extends StatefulWidget {
   const SignUpCookDialog({super.key});

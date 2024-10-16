@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // Supabase package for database
-import 'admin_dashboard.dart'; // Import the AdminDashboard
+import '../dashboard/admin/admin_dashboard.dart'; // Import the AdminDashboard
 
 class LoginAdmin extends StatefulWidget {
   @override

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'cook_dashboard.dart'; // Redirect to this page after successful login
+import '../dashboard/cook/cook_dashboard.dart'; // Redirect to this page after successful login
 
 class CookLoginDialog extends StatefulWidget {
   @override
