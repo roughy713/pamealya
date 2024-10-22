@@ -42,7 +42,7 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
           MaterialPageRoute(
             builder: (context) => CookDashboard(
               firstName: firstName, // Pass firstName
-              lastName: lastName, // Pass lastName
+              lastName: lastName, currentUserId: '', // Pass lastName
             ),
           ),
         );
