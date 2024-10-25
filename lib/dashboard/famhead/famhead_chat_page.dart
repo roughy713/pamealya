@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../shared/private_chat.dart';
+import '../../shared/private_chat.dart'; // Assuming this is where PrivateChatPage is located
 
 class FamHeadChatPage extends StatelessWidget {
   final String currentUserId;
@@ -13,7 +13,10 @@ class FamHeadChatPage extends StatelessWidget {
     final response =
         await Supabase.instance.client.from('Local_Cook_Approved').select();
 
-    // Check if the response data is not empty
+    // Print the entire response for debugging purposes
+    print("Fetched cooks: $response");
+
+    // Check if the response has data
     if (response != null) {
       return List<Map<String, dynamic>>.from(response as List);
     } else {
@@ -44,16 +47,40 @@ class FamHeadChatPage extends StatelessWidget {
             itemCount: cooks.length,
             itemBuilder: (context, index) {
               final cook = cooks[index];
+              final cookUserId = cook['localcookid']; // Fetching cook's UUID
+              final cookFirstName = cook['first_name'];
+              final cookLastName = cook['last_name'];
+
+              // Log the fetched values for debugging
+              print('Cook #$index ID: $cookUserId');
+              print('Cook #$index First Name: $cookFirstName');
+              print('Cook #$index Last Name: $cookLastName');
+
+              // Check if any required field is null
+              if (cookUserId == null ||
+                  cookFirstName == null ||
+                  cookLastName == null) {
+                return ListTile(
+                  title: Text('Error: Missing cook information'),
+                  subtitle:
+                      Text('One or more fields are missing for this cook.'),
+                );
+              }
+
               return ListTile(
-                title: Text('${cook['first_name']} ${cook['last_name']}'),
+                title: Text('$cookFirstName $cookLastName'),
                 onTap: () {
+                  // Navigate to PrivateChatPage when a cook is selected
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => PrivateChatPage(
                         currentUserId: currentUserId,
-                        otherUserId: cook[
-                            'id'], // Replace 'id' with the correct column name for cook's ID
+                        otherUserId: cookUserId, // Pass the valid cook's UUID
+                        otherUserName:
+                            '$cookFirstName $cookLastName', // Pass the cook's full name
+                        isCookInitiated:
+                            false, // Family head initiates the chat
                       ),
                     ),
                   );

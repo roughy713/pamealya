@@ -1,112 +1,93 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../shared/private_chat.dart';
 
 class CookChatPage extends StatefulWidget {
-  final String currentUserId;
-  final String otherUserId; // Ensure the parameter is defined here
+  final String currentUserId; // Cook's user ID
 
-  const CookChatPage({
-    Key? key,
-    required this.currentUserId,
-    required this.otherUserId, // This is needed to pass the family head ID
-  }) : super(key: key);
+  const CookChatPage({Key? key, required this.currentUserId}) : super(key: key);
 
   @override
   _CookChatPageState createState() => _CookChatPageState();
 }
 
 class _CookChatPageState extends State<CookChatPage> {
-  final TextEditingController _messageController = TextEditingController();
+  List<Map<String, dynamic>>? _familyHeads;
+  bool _isLoading = true;
 
-  Future<void> _sendMessage() async {
-    final content = _messageController.text.trim();
+  @override
+  void initState() {
+    super.initState();
+    _loadFamilyHeads(); // Load data once in initState
+  }
 
-    if (content.isEmpty) return;
-
-    final response = await Supabase.instance.client.from('messages').insert({
-      'sender_id': widget.currentUserId,
-      'receiver_id': widget.otherUserId, // Use the otherUserId here
-      'message': content,
-    });
-
-    if (response.error == null) {
-      _messageController.clear();
-    } else {
-      print('Error sending message: ${response.error?.message}');
+  // Load family heads data
+  Future<void> _loadFamilyHeads() async {
+    try {
+      final response =
+          await Supabase.instance.client.from('Family_Head').select();
+      if (response != null) {
+        setState(() {
+          _familyHeads = List<Map<String, dynamic>>.from(response as List);
+          _isLoading = false;
+        });
+      }
+    } catch (error) {
+      print('Error fetching family heads: $error');
+      setState(() => _isLoading = false);
     }
   }
 
-  Stream<List<Map<String, dynamic>>> _getMessageStream() {
-    return Supabase.instance.client
-        .from('messages')
-        .stream(primaryKey: ['message_id'])
-        .order('created_at', ascending: true)
-        .map((data) {
-          return data.where((message) {
-            final isSentByCurrentUser =
-                message['sender_id'] == widget.currentUserId &&
-                    message['receiver_id'] == widget.otherUserId;
-            final isReceivedByCurrentUser =
-                message['receiver_id'] == widget.currentUserId &&
-                    message['sender_id'] == widget.otherUserId;
-            return isSentByCurrentUser || isReceivedByCurrentUser;
-          }).toList();
-        });
+  // Direct navigation to PrivateChatPage
+  void _navigateToChat(String famHeadUserId, String famHeadName) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PrivateChatPage(
+          currentUserId: widget.currentUserId,
+          otherUserId: famHeadUserId,
+          otherUserName: famHeadName,
+          isCookInitiated: true,
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cook Chat with Family Head'),
+        title: const Text('Select Family Head'),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: _getMessageStream(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                }
-
-                final messages = snapshot.data ?? [];
-                return ListView.builder(
-                  itemCount: messages.length,
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _familyHeads == null || _familyHeads!.isEmpty
+              ? const Center(
+                  child: Text('No family heads available to chat with.'))
+              : ListView.builder(
+                  itemCount: _familyHeads!.length,
                   itemBuilder: (context, index) {
-                    final message = messages[index];
+                    final famHead = _familyHeads![index];
+                    final famHeadUserId = famHead['famheadid'];
+                    final famHeadFirstName = famHead['first_name'];
+                    final famHeadLastName = famHead['last_name'];
+
+                    if (famHeadUserId == null ||
+                        famHeadFirstName == null ||
+                        famHeadLastName == null) {
+                      return const ListTile(
+                        title: Text('Error: Missing family head information'),
+                      );
+                    }
+
+                    final famHeadName = '$famHeadFirstName $famHeadLastName';
+
                     return ListTile(
-                      title: Text(message['message']),
+                      title: Text(famHeadName),
+                      onTap: () => _navigateToChat(famHeadUserId, famHeadName),
                     );
                   },
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: const InputDecoration(
-                      hintText: 'Enter your message',
-                    ),
-                  ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

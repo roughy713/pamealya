@@ -24,7 +24,7 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
   final List<String> _positions = ['Father', 'Mother', 'Son', 'Daughter'];
   final List<String> _dietaryRestrictions = [
     'None',
-    'Vegan',
+    'Halal',
     'Vegetarian',
     'Gluten-Free',
     'Dairy-Free',
