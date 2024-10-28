@@ -15,8 +15,7 @@ class _LoginDialogState extends State<LoginDialog> {
   // Function to handle the login logic
   Future<void> _handleLogin(BuildContext context) async {
     if (!_formKey.currentState!.validate()) {
-      // If form is not valid, return early
-      return;
+      return; // If form is not valid, return early
     }
 
     final username = _usernameController.text;
@@ -26,23 +25,23 @@ class _LoginDialogState extends State<LoginDialog> {
       // Query the Family_Head table to get the user by username and password
       final response = await Supabase.instance.client
           .from('Family_Head')
-          .select('first_name, last_name')
+          .select('first_name, last_name, username')
           .eq('username', username)
           .eq('password', password)
-          .single(); // 'single' will return a single row instead of a list
+          .single();
 
-      // Check if a user was found
       if (response != null) {
-        // Extract first name and last name from the response
         final firstName = response['first_name'];
         final lastName = response['last_name'];
+        final userUsername = response['username'];
 
-        // Login successful, redirect to the Family Head Dashboard with the user's name
+        // Login successful, redirect to the Family Head Dashboard
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => FamHeadDashboard(
               firstName: firstName,
               lastName: lastName,
+              currentUserUsername: userUsername, // Pass username here
             ),
           ),
         );
@@ -75,7 +74,7 @@ class _LoginDialogState extends State<LoginDialog> {
         borderRadius: BorderRadius.circular(10),
       ),
       content: SizedBox(
-        width: 500, // Adjust the width to make the dialog smaller
+        width: 500,
         child: Form(
           key: _formKey,
           child: Column(
@@ -88,7 +87,7 @@ class _LoginDialogState extends State<LoginDialog> {
               const SizedBox(height: 10),
               Image.asset(
                 'assets/logo-dark.png', // Replace with your logo image path
-                height: 60, // Reduced height
+                height: 60,
               ),
               const SizedBox(height: 20),
               TextFormField(
@@ -99,7 +98,7 @@ class _LoginDialogState extends State<LoginDialog> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter username'; // Show this message if field is empty
+                    return 'Please enter username';
                   }
                   return null;
                 },
@@ -114,7 +113,7 @@ class _LoginDialogState extends State<LoginDialog> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter password'; // Show this message if field is empty
+                    return 'Please enter password';
                   }
                   return null;
                 },
@@ -124,8 +123,7 @@ class _LoginDialogState extends State<LoginDialog> {
                 onPressed: () => _handleLogin(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.yellow[700],
-                  foregroundColor:
-                      Colors.black, // Corrected text color parameter
+                  foregroundColor: Colors.black,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
                 ),

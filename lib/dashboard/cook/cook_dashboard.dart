@@ -14,12 +14,14 @@ class CookDashboard extends StatefulWidget {
   final String firstName;
   final String lastName;
   final String currentUserId; // Receive the current cook user ID
+  final String currentUserUsername; // Add username field for current user
 
   const CookDashboard({
     Key? key,
     required this.firstName,
     required this.lastName,
     required this.currentUserId,
+    required this.currentUserUsername, // Add currentUserUsername to constructor
   }) : super(key: key);
 
   @override
@@ -83,7 +85,10 @@ class CookDashboardState extends State<CookDashboard> {
       onDrawerChanged: _onDrawerStateChanged,
       body: _selectedIndex == 3
           ? CookChatPage(
-              currentUserId: widget.currentUserId) // Navigate to CookChatPage
+              currentUserId: widget.currentUserId,
+              currentUserUsername:
+                  widget.currentUserUsername, // Pass username here
+            )
           : _getPage(_selectedIndex),
     );
   }

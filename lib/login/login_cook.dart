@@ -15,7 +15,6 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
   // Function to handle the login logic
   Future<void> _handleLogin(BuildContext context) async {
     if (!_formKey.currentState!.validate()) {
-      // If form is not valid, return early
       return;
     }
 
@@ -26,23 +25,24 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
       // Query the Local_Cook table to get the user by username and password
       final response = await Supabase.instance.client
           .from('Local_Cook_Approved')
-          .select()
+          .select('first_name, last_name, username')
           .eq('username', username)
           .eq('password', password)
-          .single(); // Use .single() to fetch a single record
+          .single();
 
-      // Check if a user was found
       if (response != null) {
-        // Extract firstName and lastName from the response
         final firstName = response['first_name'];
         final lastName = response['last_name'];
+        final userUsername = response['username'];
 
-        // Login successful, redirect to the Cook Dashboard and pass the name
+        // Login successful, redirect to the Cook Dashboard
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => CookDashboard(
-              firstName: firstName, // Pass firstName
-              lastName: lastName, currentUserId: '', // Pass lastName
+              firstName: firstName,
+              lastName: lastName,
+              currentUserId: '', // Provide the correct user ID if available
+              currentUserUsername: userUsername, // Pass username here
             ),
           ),
         );
@@ -75,7 +75,7 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
         borderRadius: BorderRadius.circular(10),
       ),
       content: SizedBox(
-        width: 500, // Adjust the width to make the dialog smaller
+        width: 500,
         child: Form(
           key: _formKey,
           child: Column(
@@ -87,8 +87,8 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
               ),
               const SizedBox(height: 10),
               Image.asset(
-                'assets/logo-dark.png', // Replace with your logo image path
-                height: 60, // Reduced height
+                'assets/logo-dark.png',
+                height: 60,
               ),
               const SizedBox(height: 20),
               TextFormField(
@@ -99,7 +99,7 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter username'; // Show this message if field is empty
+                    return 'Please enter username';
                   }
                   return null;
                 },
@@ -114,7 +114,7 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter password'; // Show this message if field is empty
+                    return 'Please enter password';
                   }
                   return null;
                 },
@@ -124,8 +124,7 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
                 onPressed: () => _handleLogin(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.yellow[700],
-                  foregroundColor:
-                      Colors.black, // Corrected text color parameter
+                  foregroundColor: Colors.black,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
                 ),

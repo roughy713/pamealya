@@ -3,9 +3,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../shared/private_chat.dart';
 
 class CookChatPage extends StatefulWidget {
-  final String currentUserId; // Cook's user ID
+  final String currentUserId;
+  final String currentUserUsername;
 
-  const CookChatPage({Key? key, required this.currentUserId}) : super(key: key);
+  const CookChatPage({
+    Key? key,
+    required this.currentUserId,
+    required this.currentUserUsername,
+  }) : super(key: key);
 
   @override
   _CookChatPageState createState() => _CookChatPageState();
@@ -18,14 +23,16 @@ class _CookChatPageState extends State<CookChatPage> {
   @override
   void initState() {
     super.initState();
-    _loadFamilyHeads(); // Load data once in initState
+    _loadFamilyHeads();
   }
 
-  // Load family heads data
   Future<void> _loadFamilyHeads() async {
     try {
-      final response =
-          await Supabase.instance.client.from('Family_Head').select();
+      final response = await Supabase.instance.client
+          .from('Family_Head')
+          .select(
+              'famheadid, first_name, last_name'); // Fetch first and last names
+
       if (response != null) {
         setState(() {
           _familyHeads = List<Map<String, dynamic>>.from(response as List);
@@ -38,15 +45,15 @@ class _CookChatPageState extends State<CookChatPage> {
     }
   }
 
-  // Direct navigation to PrivateChatPage
-  void _navigateToChat(String famHeadUserId, String famHeadName) {
+  void _navigateToChat(String famHeadUserId, String famHeadFullName) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => PrivateChatPage(
           currentUserId: widget.currentUserId,
+          currentUserUsername: widget.currentUserUsername,
           otherUserId: famHeadUserId,
-          otherUserName: famHeadName,
+          otherUserName: famHeadFullName,
           isCookInitiated: true,
         ),
       ),
@@ -80,11 +87,13 @@ class _CookChatPageState extends State<CookChatPage> {
                       );
                     }
 
-                    final famHeadName = '$famHeadFirstName $famHeadLastName';
+                    final famHeadFullName =
+                        '$famHeadFirstName $famHeadLastName';
 
                     return ListTile(
-                      title: Text(famHeadName),
-                      onTap: () => _navigateToChat(famHeadUserId, famHeadName),
+                      title: Text(famHeadFullName),
+                      onTap: () =>
+                          _navigateToChat(famHeadUserId, famHeadFullName),
                     );
                   },
                 ),

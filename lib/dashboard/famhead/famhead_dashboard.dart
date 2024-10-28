@@ -13,12 +13,14 @@ import 'custom_drawer.dart';
 class FamHeadDashboard extends StatefulWidget {
   final String firstName;
   final String lastName;
+  final String currentUserUsername; // Add username field for current user
   final List<Map<String, dynamic>> mealPlanData;
 
   const FamHeadDashboard({
     Key? key,
     required this.firstName,
     required this.lastName,
+    required this.currentUserUsername, // Add currentUserUsername to constructor
     this.mealPlanData = const [],
   }) : super(key: key);
 
@@ -46,7 +48,10 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
             ? MealPlanDashboard(mealPlanData: widget.mealPlanData)
             : const Center(child: Text('Dashboard Content')),
         MyFamilyPage(firstName: widget.firstName, lastName: widget.lastName),
-        FamHeadChatPage(currentUserId: widget.firstName),
+        FamHeadChatPage(
+          currentUserId: widget.firstName, // This can be the user ID if needed
+          currentUserUsername: widget.currentUserUsername, // Pass username here
+        ),
         const CookPage(),
         const NotificationsPage(),
         const BMICalculatorPage(),
