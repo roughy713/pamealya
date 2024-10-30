@@ -52,7 +52,11 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           currentUserId: widget.firstName, // This can be the user ID if needed
           currentUserUsername: widget.currentUserUsername, // Pass username here
         ),
-        const CookPage(),
+        // Pass the first name and last name to CookPage
+        CookPage(
+          userFirstName: widget.firstName,
+          userLastName: widget.lastName,
+        ),
         const NotificationsPage(),
         const BMICalculatorPage(),
         const TransactionPage(),
