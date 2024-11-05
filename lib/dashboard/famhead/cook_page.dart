@@ -16,7 +16,6 @@ void main() async {
 class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // Replace with actual logged-in user data
     final String loggedInUserFirstName = 'LoggedInUserFirstName';
     final String loggedInUserLastName = 'LoggedInUserLastName';
 
@@ -52,55 +51,39 @@ class _CookPageState extends State<CookPage> {
   @override
   void initState() {
     super.initState();
-    print(
-        "Initializing Cook Page with user: ${widget.userFirstName} ${widget.userLastName}");
     fetchCooks();
   }
 
-  // Fetch the list of cooks from the Local_Cook_Approved table
   Future<void> fetchCooks() async {
     try {
       final response = await supabase.from('Local_Cook_Approved').select(
           'localcookid, first_name, last_name, email, username, age, gender, dateofbirth, phone, address_line1, barangay, city, province, postal_code, availability_days, time_available_from, time_available_to, certifications');
 
-      if (response == null) {
-        print("No data returned from Supabase");
-      } else if (response.isEmpty) {
-        print("Empty list returned from Supabase");
-      } else {
+      if (response != null && response.isNotEmpty) {
         setState(() {
           cooks = response as List<Map<String, dynamic>>;
         });
-        print("Data fetched successfully: $cooks");
       }
     } catch (e) {
       print('Error fetching cooks: $e');
     }
   }
 
-  // Function to book a cook and add an entry in the bookingrequest table
   Future<void> bookCook(String cookId, DateTime desiredDeliveryTime) async {
     try {
-      final uuid = Uuid().v4(); // Generate a new UUID for bookingrequest_id
-      final fullName =
-          '${widget.userFirstName} ${widget.userLastName}'; // Use the logged-in user's full name
-
-      print("Booking Details:");
-      print("Cook ID: $cookId");
-      print("User Name (famhead_id): $fullName");
-      print("Desired Delivery Time: $desiredDeliveryTime");
+      final uuid = Uuid().v4();
+      final fullName = '${widget.userFirstName} ${widget.userLastName}';
 
       final response = await supabase.from('bookingrequest').insert({
         'bookingrequest_id': uuid,
         'localcook_id': cookId,
-        'famhead_id': fullName, // Store user's full name
+        'famhead_id': fullName,
         'is_cook_booking': true,
         'request_date': DateTime.now().toIso8601String(),
         'desired_delivery_time': desiredDeliveryTime.toIso8601String(),
-        'meal_price': 0.0 // Placeholder or default value, update as needed
+        'meal_price': 0.0
       }).select();
 
-      // Show success dialog if response is not empty, indicating success
       if (response != null && response.isNotEmpty) {
         showDialog(
           context: context,
@@ -116,12 +99,8 @@ class _CookPageState extends State<CookPage> {
             ],
           ),
         );
-      } else {
-        throw Exception("No response returned from the booking request");
       }
     } catch (e) {
-      print("Error Details: $e");
-      // Error handling
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -148,58 +127,57 @@ class _CookPageState extends State<CookPage> {
           builder: (context, setState) {
             return AlertDialog(
               title: Text('${cook['first_name']} ${cook['last_name']}'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Email: ${cook['email']}'),
-                  Text('Username: ${cook['username']}'),
-                  Text('Age: ${cook['age']}'),
-                  Text('Gender: ${cook['gender']}'),
-                  Text('Date of Birth: ${cook['dateofbirth']}'),
-                  Text('Phone: ${cook['phone']}'),
-                  Text(
-                      'Address: ${cook['address_line1']}, ${cook['barangay']}, ${cook['city']}, ${cook['province']}, ${cook['postal_code']}'),
-                  Text('Availability Days: ${cook['availability_days']}'),
-                  Text('Available From: ${cook['time_available_from']}'),
-                  Text('Available To: ${cook['time_available_to']}'),
-                  Text('Certifications: ${cook['certifications']}'),
-                  const SizedBox(height: 10),
-                  TextButton(
-                    onPressed: () async {
-                      // Show Date Picker
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 30)),
-                      );
-                      if (date != null) {
-                        // Show Time Picker
-                        final time = await showTimePicker(
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Email: ${cook['email']}'),
+                    Text('Username: ${cook['username']}'),
+                    Text('Age: ${cook['age']}'),
+                    Text('Gender: ${cook['gender']}'),
+                    Text('Date of Birth: ${cook['dateofbirth']}'),
+                    Text('Phone: ${cook['phone']}'),
+                    Text(
+                        'Address: ${cook['address_line1']}, ${cook['barangay']}, ${cook['city']}, ${cook['province']}, ${cook['postal_code']}'),
+                    Text('Availability Days: ${cook['availability_days']}'),
+                    Text('Available From: ${cook['time_available_from']}'),
+                    Text('Available To: ${cook['time_available_to']}'),
+                    Text('Certifications: ${cook['certifications']}'),
+                    const SizedBox(height: 10),
+                    TextButton(
+                      onPressed: () async {
+                        final date = await showDatePicker(
                           context: context,
-                          initialTime: TimeOfDay.now(),
+                          initialDate: DateTime.now(),
+                          firstDate: DateTime.now(),
+                          lastDate:
+                              DateTime.now().add(const Duration(days: 30)),
                         );
-                        if (time != null) {
-                          // Combine Date and Time
-                          final combinedDateTime = DateTime(
-                            date.year,
-                            date.month,
-                            date.day,
-                            time.hour,
-                            time.minute,
+                        if (date != null) {
+                          final time = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay.now(),
                           );
-                          setState(() {
-                            selectedDateTime = combinedDateTime;
-                          });
+                          if (time != null) {
+                            final combinedDateTime = DateTime(
+                              date.year,
+                              date.month,
+                              date.day,
+                              time.hour,
+                              time.minute,
+                            );
+                            setState(() {
+                              selectedDateTime = combinedDateTime;
+                            });
+                          }
                         }
-                      }
-                    },
-                    child: Text(selectedDateTime == null
-                        ? 'Select Delivery Date and Time'
-                        : 'Delivery: ${DateFormat('yyyy-MM-dd – kk:mm').format(selectedDateTime!)}'),
-                  ),
-                ],
+                      },
+                      child: Text(selectedDateTime == null
+                          ? 'Select Delivery Date and Time'
+                          : 'Delivery: ${DateFormat('yyyy-MM-dd – kk:mm').format(selectedDateTime!)}'),
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -241,18 +219,51 @@ class _CookPageState extends State<CookPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cooks List'),
-      ),
       body: cooks.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : ListView.builder(
+              padding: const EdgeInsets.all(16),
               itemCount: cooks.length,
               itemBuilder: (context, index) {
                 final cook = cooks[index];
-                return ListTile(
-                  title: Text('${cook['first_name']} ${cook['last_name']}'),
-                  onTap: () => showCookDetails(cook),
+                return Card(
+                  elevation: 3,
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${cook['first_name']} ${cook['last_name']}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Location: ${cook['city']}, ${cook['province']}'),
+                        Text('Available Days: ${cook['availability_days']}'),
+                        Text('Available from: ${cook['time_available_from']}'),
+                        Text('Available to: ${cook['time_available_to']}'),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: ElevatedButton(
+                            onPressed: () => showCookDetails(cook),
+                            child: const Text('Book Cook',
+                                style: TextStyle(color: Colors.black)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.yellow,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               },
             ),

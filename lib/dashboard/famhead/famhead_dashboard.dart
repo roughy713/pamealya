@@ -47,7 +47,10 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         widget.mealPlanData.isNotEmpty
             ? MealPlanDashboard(mealPlanData: widget.mealPlanData)
             : const Center(child: Text('Dashboard Content')),
-        MyFamilyPage(firstName: widget.firstName, lastName: widget.lastName),
+        MyFamilyPage(
+          initialFirstName: widget.firstName,
+          initialLastName: widget.lastName,
+        ),
         FamHeadChatPage(
           currentUserId: widget.firstName, // This can be the user ID if needed
           currentUserUsername: widget.currentUserUsername, // Pass username here

@@ -1,45 +1,64 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-class AddFamilyMemberDialog extends StatefulWidget {
-  final Function(Map<String, String>) onAdd;
+class EditFamilyMemberDialog extends StatefulWidget {
+  final Map<String, String?> memberData;
+  final Function(Map<String, String?>) onEdit;
 
-  const AddFamilyMemberDialog({Key? key, required this.onAdd})
-      : super(key: key);
+  const EditFamilyMemberDialog({
+    Key? key,
+    required this.memberData,
+    required this.onEdit,
+  }) : super(key: key);
 
   @override
-  AddFamilyMemberDialogState createState() => AddFamilyMemberDialogState();
+  _EditFamilyMemberDialogState createState() => _EditFamilyMemberDialogState();
 }
 
-class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
+class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  final TextEditingController _firstNameController = TextEditingController();
-  final TextEditingController _lastNameController = TextEditingController();
-  final TextEditingController _ageController = TextEditingController();
-  final TextEditingController _dateOfBirthController = TextEditingController();
+  late TextEditingController _firstNameController;
+  late TextEditingController _lastNameController;
+  late TextEditingController _dateOfBirthController;
   String? _selectedPosition;
-  String? _selectedGender;
   String? _selectedDietaryRestriction;
+  String? _selectedGender;
+  DateTime? _dob;
 
-  final List<String> _positions = ['Father', 'Mother', 'Son', 'Daughter'];
+  final List<String> _positions = ['Family Head'];
   final List<String> _dietaryRestrictions = [
     'None',
     'Halal',
     'Seafoods',
     'Nuts',
-    'Milk'
+    'Milk',
   ];
   final List<String> _genders = ['Male', 'Female', 'Other'];
+
+  @override
+  void initState() {
+    super.initState();
+    _firstNameController =
+        TextEditingController(text: widget.memberData['firstName']);
+    _lastNameController =
+        TextEditingController(text: widget.memberData['lastName']);
+    _dateOfBirthController =
+        TextEditingController(text: widget.memberData['dob'] ?? '');
+    _selectedPosition = widget.memberData['position'] ?? 'Family Head';
+    _selectedDietaryRestriction = widget.memberData['dietaryRestriction'];
+    _selectedGender = widget.memberData['gender'];
+  }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(1900),
-      lastDate: DateTime(2100),
+      lastDate: DateTime.now(),
     );
     if (picked != null) {
       setState(() {
+        _dob = picked;
         _dateOfBirthController.text = DateFormat('MM/dd/yyyy').format(picked);
       });
     }
@@ -48,7 +67,7 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Add Family Member'),
+      title: const Text('Edit Family Head'),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -76,17 +95,6 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                 },
               ),
               TextFormField(
-                controller: _ageController,
-                decoration: const InputDecoration(labelText: 'Age'),
-                keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter the age';
-                  }
-                  return null;
-                },
-              ),
-              TextFormField(
                 controller: _dateOfBirthController,
                 decoration: const InputDecoration(
                   labelText: 'Date of Birth',
@@ -94,17 +102,14 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                 ),
                 readOnly: true,
                 onTap: () => _selectDate(context),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please select the date of birth';
-                  }
-                  return null;
-                },
               ),
               DropdownButtonFormField<String>(
                 value: _selectedGender,
                 items: _genders.map((gender) {
-                  return DropdownMenuItem(value: gender, child: Text(gender));
+                  return DropdownMenuItem(
+                    value: gender,
+                    child: Text(gender),
+                  );
                 }).toList(),
                 onChanged: (value) {
                   setState(() {
@@ -117,20 +122,20 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                 value: _selectedPosition,
                 items: _positions.map((position) {
                   return DropdownMenuItem(
-                      value: position, child: Text(position));
+                    value: position,
+                    child: Text(position),
+                  );
                 }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedPosition = value;
-                  });
-                },
+                onChanged: null, // Disable changing position for Family Head
                 decoration: const InputDecoration(labelText: 'Position'),
               ),
               DropdownButtonFormField<String>(
                 value: _selectedDietaryRestriction,
                 items: _dietaryRestrictions.map((restriction) {
                   return DropdownMenuItem(
-                      value: restriction, child: Text(restriction));
+                    value: restriction,
+                    child: Text(restriction),
+                  );
                 }).toList(),
                 onChanged: (value) {
                   setState(() {
@@ -148,14 +153,13 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
         ElevatedButton(
           onPressed: () {
             if (_formKey.currentState?.validate() ?? false) {
-              widget.onAdd({
+              widget.onEdit({
                 'firstName': _firstNameController.text,
                 'lastName': _lastNameController.text,
-                'age': _ageController.text,
-                'gender': _selectedGender ?? '',
                 'dob': _dateOfBirthController.text,
-                'position': _selectedPosition ?? '',
-                'dietaryRestriction': _selectedDietaryRestriction ?? 'None',
+                'gender': _selectedGender,
+                'position': _selectedPosition,
+                'dietaryRestriction': _selectedDietaryRestriction,
               });
               Navigator.of(context).pop();
             }

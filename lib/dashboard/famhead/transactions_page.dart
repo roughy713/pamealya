@@ -38,15 +38,12 @@ class _TransactionPageState extends State<TransactionPage> {
     final body = jsonEncode({
       'data': {
         'attributes': {
-          'amount':
-              (double.parse(amount) * 100).toInt(), // Convert PHP to centavos
+          'amount': (double.parse(amount) * 100).toInt(),
           'currency': 'PHP',
           'type': 'gcash',
           'redirect': {
-            'success':
-                'https://your-success-url.com', // Replace with your success URL
-            'failed':
-                'https://your-failure-url.com' // Replace with your failure URL
+            'success': 'https://your-success-url.com',
+            'failed': 'https://your-failure-url.com'
           }
         }
       }
@@ -101,10 +98,6 @@ class _TransactionPageState extends State<TransactionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transaction Page'),
-        backgroundColor: const Color(0xFF1CBB80),
-      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

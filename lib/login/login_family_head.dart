@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../dashboard/famhead/famhead_dashboard.dart'; // Redirect to this page after successful login
+import 'package:pamealya/signup/signup_famhead_dialog.dart';
 
 class LoginDialog extends StatefulWidget {
   @override
@@ -57,6 +58,62 @@ class _LoginDialogState extends State<LoginDialog> {
   void _showWarning(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
+    );
+  }
+
+  // Function to send password reset email
+  Future<void> _sendPasswordResetEmail(String email) async {
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(email);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password reset email sent!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  // Function to show the Forgot Password dialog
+  void _showForgotPasswordDialog(BuildContext context) {
+    final TextEditingController emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Reset Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Enter your email to receive a password reset link.'),
+              const SizedBox(height: 10),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final email = emailController.text;
+                await _sendPasswordResetEmail(email);
+                Navigator.of(context).pop();
+              },
+              child: const Text('Send Link'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -132,14 +189,21 @@ class _LoginDialogState extends State<LoginDialog> {
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () {
-                  // Implement forgot password logic here
+                  // Open the Forgot Password dialog
+                  _showForgotPasswordDialog(context);
                 },
                 child: const Text('Forgot Password?'),
               ),
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () {
-                  // Implement sign-up logic here
+                  // Redirect to the Family Head Sign-Up dialog
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return const SignUpFormDialog(); // Use the correct class name for the dialog
+                    },
+                  );
                 },
                 child: const Text("Don't Have An Account?"),
               ),

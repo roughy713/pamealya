@@ -15,8 +15,7 @@ class FamHeadChatPage extends StatelessWidget {
   Future<List<Map<String, dynamic>>> _fetchCooks() async {
     final response = await Supabase.instance.client
         .from('Local_Cook_Approved')
-        .select(
-            'localcookid, first_name, last_name'); // Fetch first and last names
+        .select('localcookid, first_name, last_name');
     print("Fetched cooks: $response");
 
     if (response != null) {
@@ -29,9 +28,6 @@ class FamHeadChatPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Chat with Cooks'),
-      ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _fetchCooks(),
         builder: (context, snapshot) {
