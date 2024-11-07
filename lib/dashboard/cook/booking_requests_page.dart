@@ -26,18 +26,19 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
           .select()
           .order('request_date', ascending: false);
 
-      if (response != null && response.isNotEmpty) {
+      if (response != null) {
         setState(() {
-          bookingRequests = response as List<Map<String, dynamic>>;
+          bookingRequests = List<Map<String, dynamic>>.from(response);
           isLoading = false;
         });
       } else {
+        showErrorDialog('Error fetching booking requests');
         setState(() {
           isLoading = false;
         });
       }
     } catch (e) {
-      print('Error fetching booking requests: $e');
+      showErrorDialog('Error fetching booking requests: $e');
       setState(() {
         isLoading = false;
       });
@@ -46,43 +47,54 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
 
   Future<void> updateBookingStatus(String bookingId, bool isApproved) async {
     try {
-      final response = await supabase.from('bookingrequest').update(
-          {'is_approved': isApproved}).eq('bookingrequest_id', bookingId);
+      final response = await supabase.from('bookingrequest').update({
+        'status': isApproved ? 'accepted' : 'declined',
+        '_isBookingAccepted': isApproved,
+      }).eq('bookingrequest_id', bookingId);
 
-      if (response != null && response.isNotEmpty) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Success'),
-            content: Text(isApproved
-                ? 'Booking request successfully accepted.'
-                : 'Booking request successfully declined.'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('OK'),
-              ),
-            ],
-          ),
-        );
+      if (response != null) {
         fetchBookingRequests(); // Refresh the booking requests list
+        showSuccessDialog(isApproved
+            ? 'Booking request successfully accepted.'
+            : 'Booking request successfully declined.');
+      } else {
+        showErrorDialog('Failed to update booking status');
       }
     } catch (e) {
-      print('Error updating booking status: $e');
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Error'),
-          content: const Text('Failed to update booking status.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
+      showErrorDialog('Error updating booking status: $e');
     }
+  }
+
+  void showErrorDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void showSuccessDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Success'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

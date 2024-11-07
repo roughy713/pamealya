@@ -12,16 +12,17 @@ class FamHeadChatPage extends StatelessWidget {
     required this.currentUserUsername,
   }) : super(key: key);
 
-  Future<List<Map<String, dynamic>>> _fetchCooks() async {
+  Future<List<Map<String, dynamic>>> _fetchAcceptedCooks() async {
     final response = await Supabase.instance.client
-        .from('Local_Cook_Approved')
-        .select('localcookid, first_name, last_name');
-    print("Fetched cooks: $response");
+        .from('bookingrequest')
+        .select('localcook_id, famhead_id')
+        .eq('_isBookingAccepted', true)
+        .eq('famhead_id', currentUserId);
 
     if (response != null) {
       return List<Map<String, dynamic>>.from(response as List);
     } else {
-      throw Exception('Error fetching cooks.');
+      throw Exception('Error fetching accepted bookings.');
     }
   }
 
@@ -29,7 +30,7 @@ class FamHeadChatPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _fetchCooks(),
+        future: _fetchAcceptedCooks(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -37,7 +38,7 @@ class FamHeadChatPage extends StatelessWidget {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(
-                child: Text('No cooks available to chat with.'));
+                child: Text('No accepted bookings available to chat.'));
           }
 
           final cooks = snapshot.data!;
@@ -45,26 +46,17 @@ class FamHeadChatPage extends StatelessWidget {
             itemCount: cooks.length,
             itemBuilder: (context, index) {
               final cook = cooks[index];
-              final cookUserId = cook['localcookid'];
-              final cookFirstName = cook['first_name'];
-              final cookLastName = cook['last_name'];
+              final cookUserId = cook['localcook_id'];
 
-              print('Cook #$index ID: $cookUserId');
-              print('Cook #$index First Name: $cookFirstName');
-              print('Cook #$index Last Name: $cookLastName');
-
-              if (cookUserId == null ||
-                  cookFirstName == null ||
-                  cookLastName == null) {
+              if (cookUserId == null) {
                 return const ListTile(
                   title: Text('Error: Missing cook information'),
-                  subtitle:
-                      Text('One or more fields are missing for this cook.'),
                 );
               }
 
               return ListTile(
-                title: Text('$cookFirstName $cookLastName'),
+                title: Text(
+                    'Cook $cookUserId'), // Replace with actual cook name if available
                 onTap: () {
                   Navigator.push(
                     context,
@@ -73,7 +65,8 @@ class FamHeadChatPage extends StatelessWidget {
                         currentUserId: currentUserId,
                         currentUserUsername: currentUserUsername,
                         otherUserId: cookUserId,
-                        otherUserName: '$cookFirstName $cookLastName',
+                        otherUserName:
+                            'Cook $cookUserId', // Replace with cook name if available
                         isCookInitiated: false,
                       ),
                     ),

@@ -59,8 +59,9 @@ class CookDashboardState extends State<CookDashboard> {
   Future<void> _handleLogout(BuildContext context) async {
     try {
       await Supabase.instance.client.auth.signOut();
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const HomePage()),
+        (route) => false, // This removes all previous routes
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
