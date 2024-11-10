@@ -1,3 +1,4 @@
+// lib/fam_head_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '/home_page.dart';
@@ -9,19 +10,18 @@ import 'notifications_page.dart';
 import 'bmi_calculator_page.dart';
 import 'transactions_page.dart';
 import 'custom_drawer.dart';
+import 'dart:math';
 
 class FamHeadDashboard extends StatefulWidget {
   final String firstName;
   final String lastName;
-  final String currentUserUsername; // Add username field for current user
-  final List<Map<String, dynamic>> mealPlanData;
+  final String currentUserUsername;
 
   const FamHeadDashboard({
     Key? key,
     required this.firstName,
     required this.lastName,
-    required this.currentUserUsername, // Add currentUserUsername to constructor
-    this.mealPlanData = const [],
+    required this.currentUserUsername,
   }) : super(key: key);
 
   @override
@@ -33,6 +33,9 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
   int _selectedIndex = 0;
   bool _isDrawerOpen = false;
 
+  // State variable to hold the generated meal plan data
+  List<List<Map<String, dynamic>>> mealPlanData = [];
+
   final List<String> _titles = [
     'Dashboard',
     'My Family',
@@ -43,19 +46,19 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     'Transactions',
   ];
 
+  // Define pages in the navigation
   List<Widget> get _pageDetails => [
-        widget.mealPlanData.isNotEmpty
-            ? MealPlanDashboard(mealPlanData: widget.mealPlanData)
+        mealPlanData.isNotEmpty
+            ? MealPlanDashboard(mealPlanData: mealPlanData)
             : const Center(child: Text('Dashboard Content')),
         MyFamilyPage(
           initialFirstName: widget.firstName,
           initialLastName: widget.lastName,
         ),
         FamHeadChatPage(
-          currentUserId: widget.firstName, // This can be the user ID if needed
-          currentUserUsername: widget.currentUserUsername, // Pass username here
+          currentUserId: widget.firstName,
+          currentUserUsername: widget.currentUserUsername,
         ),
-        // Pass the first name and last name to CookPage
         CookPage(
           userFirstName: widget.firstName,
           userLastName: widget.lastName,
@@ -83,11 +86,68 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
       await Supabase.instance.client.auth.signOut();
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const HomePage()),
-        (route) => false, // This removes all previous routes
+        (route) => false,
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error during logout: $e')),
+      );
+    }
+  }
+
+  // Function to generate meal plan
+  Future<void> generateMealPlan() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('meal')
+          .select()
+          .then((data) => data as List<dynamic>);
+
+      if (response.isEmpty) {
+        throw 'Error fetching meals or no meals found.';
+      }
+
+      List<Map<String, dynamic>> allMeals =
+          response.cast<Map<String, dynamic>>();
+      List<Map<String, dynamic>> breakfasts = allMeals
+          .where((meal) =>
+              meal['meal_category_id'] == 1 || meal['meal_category_id'] == '1')
+          .toList();
+      List<Map<String, dynamic>> lunches = allMeals
+          .where((meal) =>
+              meal['meal_category_id'] == 2 || meal['meal_category_id'] == '2')
+          .toList();
+      List<Map<String, dynamic>> dinners = allMeals
+          .where((meal) =>
+              meal['meal_category_id'] == 3 || meal['meal_category_id'] == '3')
+          .toList();
+
+      if (breakfasts.isEmpty || lunches.isEmpty || dinners.isEmpty) {
+        throw 'Not enough meals in each category to generate a meal plan.';
+      }
+
+      List<List<Map<String, dynamic>>> newMealPlan = List.generate(7, (_) {
+        final random = Random();
+        return [
+          breakfasts[random.nextInt(breakfasts.length)],
+          lunches[random.nextInt(lunches.length)],
+          dinners[random.nextInt(dinners.length)],
+        ];
+      });
+
+      // Update the state to reflect the new meal plan
+      setState(() {
+        mealPlanData = newMealPlan;
+        _selectedIndex =
+            0; // Navigate to the Dashboard page to view the meal plan
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Meal plan generated successfully!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating meal plan: $e')),
       );
     }
   }
@@ -142,6 +202,14 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           margin: EdgeInsets.only(left: _isDrawerOpen ? 200 : 0),
           child: _pageDetails[_selectedIndex],
         ),
+        // Only show FloatingActionButton on the "My Family" page (index 1)
+        floatingActionButton: _selectedIndex == 1
+            ? FloatingActionButton.extended(
+                onPressed: generateMealPlan,
+                label: const Text('Generate Meal Plan'),
+                backgroundColor: Colors.yellow,
+              )
+            : null,
       ),
     );
   }

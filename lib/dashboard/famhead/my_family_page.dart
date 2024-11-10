@@ -1,3 +1,4 @@
+// lib/my_family_page.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'add_family_member_dialog.dart';
@@ -172,11 +173,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {}, // Add your meal plan generation logic here
-        label: const Text('Generate Meal Plans'),
-        backgroundColor: Colors.yellow,
-      ),
+      // Removed floatingActionButton completely
     );
   }
 
