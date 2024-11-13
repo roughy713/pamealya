@@ -13,8 +13,7 @@ class MealPlanDashboard extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: Table(
-          defaultColumnWidth:
-              FixedColumnWidth(150.0), // Set fixed width for columns
+          defaultColumnWidth: FixedColumnWidth(150.0),
           border: TableBorder.all(color: Colors.grey),
           children: [
             // Header Row
@@ -70,21 +69,21 @@ class MealPlanDashboard extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
-                      mealPlanData[i][0]['name'],
+                      mealPlanData[i][0]['meal_name'] ?? '',
                       textAlign: TextAlign.center,
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
-                      mealPlanData[i][1]['name'],
+                      mealPlanData[i][1]['meal_name'] ?? '',
                       textAlign: TextAlign.center,
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
-                      mealPlanData[i][2]['name'],
+                      mealPlanData[i][2]['meal_name'] ?? '',
                       textAlign: TextAlign.center,
                     ),
                   ),

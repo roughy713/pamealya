@@ -3,21 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'add_family_member_dialog.dart';
 import 'edit_family_member_dialog.dart';
+import 'meal_plan_generator.dart';
 
 class MyFamilyPage extends StatefulWidget {
   final String initialFirstName;
   final String initialLastName;
 
-  const MyFamilyPage(
-      {Key? key, required this.initialFirstName, required this.initialLastName})
-      : super(key: key);
+  const MyFamilyPage({
+    Key? key,
+    required this.initialFirstName,
+    required this.initialLastName,
+  }) : super(key: key);
 
   @override
   _MyFamilyPageState createState() => _MyFamilyPageState();
 }
 
 class _MyFamilyPageState extends State<MyFamilyPage> {
-  List<Map<String, String?>> familyMembers = [];
+  List<Map<String, dynamic>> familyMembers = [];
   late String firstName;
   late String lastName;
 
@@ -51,7 +54,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error adding family head: $e')),
+        SnackBar(content: Text('Error adding family head: ${e.toString()}')),
       );
     }
   }
@@ -62,64 +65,80 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
           .from('familymember')
           .select()
           .eq('family_head', '$firstName $lastName');
+
       setState(() {
         familyMembers =
-            (response as List<dynamic>).map<Map<String, String?>>((member) {
-          return {
-            'firstName': member['first_name'] as String?,
-            'lastName': member['last_name'] as String?,
-            'position': member['position'] as String?,
-          };
-        }).toList();
+            (response as List<dynamic>).cast<Map<String, dynamic>>();
+
+        // Sort the list to keep "Family Head" at the top
+        familyMembers.sort((a, b) {
+          if (a['position'] == 'Family Head') return -1;
+          if (b['position'] == 'Family Head') return 1;
+          return 0;
+        });
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching family members: $e')),
+        SnackBar(
+            content: Text('Error fetching family members: ${e.toString()}')),
       );
     }
   }
 
-  void _editFamilyHead() {
+  Future<void> _editFamilyMember(Map<String, dynamic> memberData) async {
+    print("Editing member data: $memberData"); // Add this line to debug
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return EditFamilyMemberDialog(
           memberData: {
-            'firstName': firstName,
-            'lastName': lastName,
-            'position': 'Family Head',
-            'dietaryRestriction': 'None',
+            'firstName': memberData['first_name'] ?? '',
+            'lastName': memberData['last_name'] ?? '',
+            'age': memberData['age'] ?? '',
+            'gender': memberData['gender'] ?? '',
+            'dob': memberData['dob'] ?? '',
+            'position': memberData['position'] ?? 'Member',
+            'dietaryRestriction': memberData['dietaryrestriction'] ?? 'None',
           },
           onEdit: (updatedData) async {
             try {
               await Supabase.instance.client
                   .from('familymember')
-                  .update({
-                    'first_name': updatedData['firstName'] ?? firstName,
-                    'last_name': updatedData['lastName'] ?? lastName,
-                    'position': 'Family Head',
-                    'dietaryrestriction': updatedData['dietaryRestriction'],
-                  })
-                  .eq('first_name', firstName)
-                  .eq('last_name', lastName);
-
-              setState(() {
-                firstName = updatedData['firstName'] ?? firstName;
-                lastName = updatedData['lastName'] ?? lastName;
-              });
+                  .update(updatedData)
+                  .eq('familymember_id', memberData['familymember_id']);
+              fetchFamilyMembers();
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text('Family head updated successfully.')),
+                const SnackBar(content: Text('Family member updated.')),
               );
             } catch (e) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error updating family head: $e')),
+                SnackBar(
+                    content:
+                        Text('Error updating family member: ${e.toString()}')),
               );
             }
           },
         );
       },
     );
+  }
+
+  Future<void> _deleteFamilyMember(Map<String, dynamic> memberData) async {
+    try {
+      await Supabase.instance.client
+          .from('familymember')
+          .delete()
+          .eq('familymember_id', memberData['familymember_id']);
+      fetchFamilyMembers();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Family member deleted.')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Error deleting family member: ${e.toString()}')),
+      );
+    }
   }
 
   @override
@@ -130,7 +149,6 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
         child: Column(
           children: [
             ListTile(
-              onTap: _editFamilyHead,
               leading: const Icon(Icons.person, size: 50),
               title: Text(
                 '$firstName $lastName (Family Head)',
@@ -144,7 +162,26 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                 showDialog(
                   context: context,
                   builder: (BuildContext context) {
-                    return AddFamilyMemberDialog(onAdd: _addFamilyMember);
+                    return AddFamilyMemberDialog(onAdd: (data) async {
+                      await Supabase.instance.client
+                          .from('familymember')
+                          .insert({
+                        'first_name': data['firstName'] ?? '',
+                        'last_name': data['lastName'] ?? '',
+                        'age': data['age'] ?? '',
+                        'gender': data['gender'] ?? '',
+                        'dob': data['dob'] ?? '',
+                        'position': data['position'] ?? 'Member',
+                        'dietaryrestriction':
+                            data['dietaryRestriction'] ?? 'None',
+                        'family_head': '$firstName $lastName',
+                      });
+                      fetchFamilyMembers();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Family member added successfully.')),
+                      );
+                    });
                   },
                 );
               },
@@ -157,15 +194,20 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                 itemCount: familyMembers.length,
                 itemBuilder: (context, index) {
                   final member = familyMembers[index];
+                  bool isFamilyHead = member['position'] == 'Family Head';
                   return ListTile(
                     title: Text(
-                        '${member['firstName'] ?? ''} ${member['lastName'] ?? ''}',
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                      '${member['first_name'] ?? ''} ${member['last_name'] ?? ''}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     subtitle: Text(member['position'] ?? ''),
                     leading: const CircleAvatar(
                       backgroundColor: Colors.grey,
                       child: Icon(Icons.person),
                     ),
+                    onTap: isFamilyHead
+                        ? () => _editFamilyMember(member)
+                        : () => _showEditDeleteDialog(member),
                   );
                 },
               ),
@@ -173,32 +215,42 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
           ],
         ),
       ),
-      // Removed floatingActionButton completely
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => generateMealPlan(
+            context, '$firstName $lastName'), // Call meal plan generator
+        backgroundColor: Colors.yellow,
+        label: const Text(
+          'Generate Meal Plan',
+          style: TextStyle(color: Colors.black),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
-  Future<void> _addFamilyMember(Map<String, String> data) async {
-    try {
-      await Supabase.instance.client.from('familymember').insert({
-        'first_name': data['firstName'],
-        'last_name': data['lastName'],
-        'age': data['age'],
-        'gender': data['gender'],
-        'dob': data['dob'],
-        'position': data['position'],
-        'dietaryrestriction': data['dietaryRestriction'],
-        'family_head': '$firstName $lastName',
-      });
-      setState(() {
-        familyMembers.add(data);
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Family member added successfully.')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error adding family member: $e')),
-      );
-    }
+  void _showEditDeleteDialog(Map<String, dynamic> member) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Edit or Delete Member"),
+        content: const Text("Do you want to edit or delete this member?"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _editFamilyMember(member);
+            },
+            child: const Text("Edit"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteFamilyMember(member);
+            },
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
   }
 }
