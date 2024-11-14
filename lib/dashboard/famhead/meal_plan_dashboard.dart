@@ -9,11 +9,26 @@ class MealPlanDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check if the meal plan is empty
+    bool isEmpty = mealPlanData.every((day) => day.isEmpty);
+
+    if (isEmpty) {
+      // If no meal plan data, display a message
+      return const Center(
+        child: Text(
+          'No meal plan generated',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+      );
+    }
+
+    // Otherwise, display the table
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: Table(
-          defaultColumnWidth: FixedColumnWidth(150.0),
+          defaultColumnWidth:
+              FixedColumnWidth(150.0), // Set fixed width for columns
           border: TableBorder.all(color: Colors.grey),
           children: [
             // Header Row
@@ -69,21 +84,30 @@ class MealPlanDashboard extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
-                      mealPlanData[i][0]['meal_name'] ?? '',
+                      mealPlanData[i].isNotEmpty &&
+                              mealPlanData[i][0]['meal_name'] != null
+                          ? mealPlanData[i][0]['meal_name']
+                          : '',
                       textAlign: TextAlign.center,
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
-                      mealPlanData[i][1]['meal_name'] ?? '',
+                      mealPlanData[i].isNotEmpty &&
+                              mealPlanData[i][1]['meal_name'] != null
+                          ? mealPlanData[i][1]['meal_name']
+                          : '',
                       textAlign: TextAlign.center,
                     ),
                   ),
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Text(
-                      mealPlanData[i][2]['meal_name'] ?? '',
+                      mealPlanData[i].isNotEmpty &&
+                              mealPlanData[i][2]['meal_name'] != null
+                          ? mealPlanData[i][2]['meal_name']
+                          : '',
                       textAlign: TextAlign.center,
                     ),
                   ),

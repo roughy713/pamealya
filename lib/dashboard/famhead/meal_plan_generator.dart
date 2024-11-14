@@ -44,24 +44,31 @@ Future<void> generateMealPlan(
 
     for (int day = 0; day < newMealPlan.length; day++) {
       final dailyMeals = newMealPlan[day];
-      await _saveMealToDatabase(day + 1, 'breakfast', dailyMeals[0], context);
-      await _saveMealToDatabase(day + 1, 'lunch', dailyMeals[1], context);
-      await _saveMealToDatabase(day + 1, 'dinner', dailyMeals[2], context);
+      await _saveMealToDatabase(
+          day + 1, 'breakfast', dailyMeals[0], familyHeadName);
+      await _saveMealToDatabase(
+          day + 1, 'lunch', dailyMeals[1], familyHeadName);
+      await _saveMealToDatabase(
+          day + 1, 'dinner', dailyMeals[2], familyHeadName);
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-          content: Text('Meal plan generated and saved successfully!')),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Meal plan generated and saved successfully!')),
+      );
+    }
   } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error generating meal plan: ${e.toString()}')),
-    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating meal plan: ${e.toString()}')),
+      );
+    }
   }
 }
 
 Future<void> _saveMealToDatabase(int day, String mealType,
-    Map<String, dynamic> meal, BuildContext context) async {
+    Map<String, dynamic> meal, String familyHeadName) async {
   try {
     if (meal['recipe_id'] == null) {
       throw 'Meal ID is null for $mealType on Day $day: $meal';
@@ -72,10 +79,9 @@ Future<void> _saveMealToDatabase(int day, String mealType,
       'meal_type': mealType,
       'meal_id': meal['recipe_id'],
       'meal_name': meal['name'] ?? 'Unknown',
+      'family_head': familyHeadName, // Add family head name here
     });
   } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error saving meal to database: ${e.toString()}')),
-    );
+    print('Error saving meal to database: $e'); // Log the error if needed
   }
 }

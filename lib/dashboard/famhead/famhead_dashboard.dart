@@ -49,8 +49,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
   List<Widget> get _pageDetails => [
         mealPlanData.isNotEmpty
             ? MealPlanDashboard(mealPlanData: mealPlanData)
-            : Center(
-                child: Text('No meal plan available. Please generate one.')),
+            : const Center(child: Text('No meal plan generated')),
         MyFamilyPage(
           initialFirstName: widget.firstName,
           initialLastName: widget.lastName,
@@ -101,25 +100,20 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
       final response = await Supabase.instance.client
           .from('mealplan')
           .select()
+          .eq('family_head',
+              '${widget.firstName} ${widget.lastName}') // Filter by family head's name
           .order('day', ascending: true)
           .then((data) => data as List<dynamic>);
-
-      if (response.isEmpty) {
-        setState(() {
-          mealPlanData =
-              []; // Set mealPlanData to an empty list if no data is found
-        });
-        return;
-      }
 
       List<List<Map<String, dynamic>>> fetchedMealPlan =
           List.generate(7, (_) => []); // Initialize 7 days of meal plans
 
       for (var meal in response) {
         int day = meal['day'] - 1; // Convert day to 0-based index
+        String mealType = meal['meal_type'];
         fetchedMealPlan[day].add({
-          'meal_type': meal['meal_type'],
-          'meal_name': meal['meal_name'] ?? '',
+          'meal_type': mealType,
+          'meal_name': meal['meal_name'],
           'meal_id': meal['meal_id'],
         });
       }
