@@ -1,4 +1,3 @@
-// lib/meal_plan_generator.dart
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -6,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 Future<void> generateMealPlan(
     BuildContext context, String familyHeadName) async {
   try {
+    // Fetch all meals from the database
     final response = await Supabase.instance.client
         .from('meal')
         .select()
@@ -15,33 +15,39 @@ Future<void> generateMealPlan(
       throw 'Error fetching meals or no meals found.';
     }
 
-    List<Map<String, dynamic>> allMeals = response.cast<Map<String, dynamic>>();
-    List<Map<String, dynamic>> breakfasts = allMeals
-        .where((meal) =>
-            meal['meal_category_id'] == 1 || meal['meal_category_id'] == '1')
+    // Separate meals by category (1 = Breakfast, 2 = Lunch, 3 = Dinner)
+    List<Map<String, dynamic>> breakfasts = response
+        .where((meal) => meal['meal_category_id'] == 1)
+        .cast<Map<String, dynamic>>()
         .toList();
-    List<Map<String, dynamic>> lunches = allMeals
-        .where((meal) =>
-            meal['meal_category_id'] == 2 || meal['meal_category_id'] == '2')
+    List<Map<String, dynamic>> lunches = response
+        .where((meal) => meal['meal_category_id'] == 2)
+        .cast<Map<String, dynamic>>()
         .toList();
-    List<Map<String, dynamic>> dinners = allMeals
-        .where((meal) =>
-            meal['meal_category_id'] == 3 || meal['meal_category_id'] == '3')
+    List<Map<String, dynamic>> dinners = response
+        .where((meal) => meal['meal_category_id'] == 3)
+        .cast<Map<String, dynamic>>()
         .toList();
 
-    if (breakfasts.isEmpty || lunches.isEmpty || dinners.isEmpty) {
-      throw 'Not enough meals in each category to generate a meal plan.';
+    // Ensure there are at least 7 unique meals in each category
+    if (breakfasts.length < 7 || lunches.length < 7 || dinners.length < 7) {
+      throw 'Not enough unique meals in each category to generate a meal plan without repetition.';
     }
 
-    List<List<Map<String, dynamic>>> newMealPlan = List.generate(7, (_) {
-      final random = Random();
-      return [
-        breakfasts[random.nextInt(breakfasts.length)],
-        lunches[random.nextInt(lunches.length)],
-        dinners[random.nextInt(dinners.length)],
-      ];
-    });
+    // Shuffle and select 7 unique meals from each category
+    breakfasts.shuffle();
+    lunches.shuffle();
+    dinners.shuffle();
 
+    List<List<Map<String, dynamic>>> newMealPlan = List.generate(
+        7,
+        (index) => [
+              breakfasts[index],
+              lunches[index],
+              dinners[index],
+            ]);
+
+    // Save each day's meals to the database
     for (int day = 0; day < newMealPlan.length; day++) {
       final dailyMeals = newMealPlan[day];
       await _saveMealToDatabase(
@@ -52,18 +58,14 @@ Future<void> generateMealPlan(
           day + 1, 'dinner', dailyMeals[2], familyHeadName);
     }
 
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Meal plan generated and saved successfully!')),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('Meal plan generated and saved successfully!')),
+    );
   } catch (e) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error generating meal plan: ${e.toString()}')),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error generating meal plan: ${e.toString()}')),
+    );
   }
 }
 
@@ -82,6 +84,6 @@ Future<void> _saveMealToDatabase(int day, String mealType,
       'family_head': familyHeadName, // Add family head name here
     });
   } catch (e) {
-    print('Error saving meal to database: $e'); // Log the error if needed
+    print('Error saving meal to database: $e');
   }
 }

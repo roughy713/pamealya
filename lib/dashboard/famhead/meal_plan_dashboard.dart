@@ -9,11 +9,9 @@ class MealPlanDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Check if the meal plan is empty
     bool isEmpty = mealPlanData.every((day) => day.isEmpty);
 
     if (isEmpty) {
-      // If no meal plan data, display a message
       return const Center(
         child: Text(
           'No meal plan generated',
@@ -22,13 +20,11 @@ class MealPlanDashboard extends StatelessWidget {
       );
     }
 
-    // Otherwise, display the table
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: Table(
-          defaultColumnWidth:
-              FixedColumnWidth(150.0), // Set fixed width for columns
+          defaultColumnWidth: FixedColumnWidth(150.0),
           border: TableBorder.all(color: Colors.grey),
           children: [
             // Header Row
@@ -81,41 +77,69 @@ class MealPlanDashboard extends StatelessWidget {
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      mealPlanData[i].isNotEmpty &&
-                              mealPlanData[i][0]['meal_name'] != null
-                          ? mealPlanData[i][0]['meal_name']
-                          : '',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      mealPlanData[i].isNotEmpty &&
-                              mealPlanData[i][1]['meal_name'] != null
-                          ? mealPlanData[i][1]['meal_name']
-                          : '',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      mealPlanData[i].isNotEmpty &&
-                              mealPlanData[i][2]['meal_name'] != null
-                          ? mealPlanData[i][2]['meal_name']
-                          : '',
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+                  _buildMealCell(context,
+                      mealPlanData[i].isNotEmpty ? mealPlanData[i][0] : null),
+                  _buildMealCell(context,
+                      mealPlanData[i].length > 1 ? mealPlanData[i][1] : null),
+                  _buildMealCell(context,
+                      mealPlanData[i].length > 2 ? mealPlanData[i][2] : null),
                 ],
               ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMealCell(BuildContext context, Map<String, dynamic>? meal) {
+    if (meal == null) {
+      return const Padding(
+        padding: EdgeInsets.all(8.0),
+        child: Text('', textAlign: TextAlign.center),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () {
+        _showMealDetailsDialog(context, meal);
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Text(
+          meal['meal_name'] ?? 'Unknown',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.blue,
+            decoration: TextDecoration.underline,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMealDetailsDialog(BuildContext context, Map<String, dynamic> meal) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(meal['meal_name'] ?? 'Meal Details'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Meal Type: ${meal['meal_type'] ?? 'Unknown'}'),
+              Text('Meal ID: ${meal['meal_id'] ?? 'N/A'}'),
+              // Add more meal details here if available in the data
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
