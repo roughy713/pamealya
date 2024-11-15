@@ -5,10 +5,10 @@ class EditFamilyMemberDialog extends StatefulWidget {
   final Function(Map<String, dynamic>) onEdit;
 
   const EditFamilyMemberDialog({
-    Key? key,
+    super.key,
     required this.memberData,
     required this.onEdit,
-  }) : super(key: key);
+  });
 
   @override
   _EditFamilyMemberDialogState createState() => _EditFamilyMemberDialogState();

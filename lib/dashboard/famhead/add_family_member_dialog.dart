@@ -4,8 +4,7 @@ import 'package:intl/intl.dart';
 class AddFamilyMemberDialog extends StatefulWidget {
   final Function(Map<String, String>) onAdd;
 
-  const AddFamilyMemberDialog({Key? key, required this.onAdd})
-      : super(key: key);
+  const AddFamilyMemberDialog({super.key, required this.onAdd});
 
   @override
   AddFamilyMemberDialogState createState() => AddFamilyMemberDialogState();

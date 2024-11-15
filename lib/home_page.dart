@@ -182,7 +182,7 @@ class HomePage extends StatelessWidget {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return SignUpCookDialog();
+        return const SignUpCookDialog();
       },
     );
   }

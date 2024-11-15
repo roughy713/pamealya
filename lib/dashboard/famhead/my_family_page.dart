@@ -10,10 +10,10 @@ class MyFamilyPage extends StatefulWidget {
   final String initialLastName;
 
   const MyFamilyPage({
-    Key? key,
+    super.key,
     required this.initialFirstName,
     required this.initialLastName,
-  }) : super(key: key);
+  });
 
   @override
   _MyFamilyPageState createState() => _MyFamilyPageState();

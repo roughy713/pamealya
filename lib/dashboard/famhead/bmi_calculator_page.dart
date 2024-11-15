@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class BMICalculatorPage extends StatefulWidget {
-  const BMICalculatorPage({Key? key}) : super(key: key);
+  const BMICalculatorPage({super.key});
 
   @override
   BMICalculatorPageState createState() => BMICalculatorPageState();

@@ -3,9 +3,13 @@ import 'package:flutter/material.dart';
 
 class MealPlanDashboard extends StatelessWidget {
   final List<List<Map<String, dynamic>>> mealPlanData;
+  final List<Map<String, dynamic>> familyMembers;
 
-  const MealPlanDashboard({Key? key, required this.mealPlanData})
-      : super(key: key);
+  const MealPlanDashboard({
+    Key? key,
+    required this.mealPlanData,
+    required this.familyMembers,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -24,69 +28,74 @@ class MealPlanDashboard extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: SingleChildScrollView(
         child: Table(
-          defaultColumnWidth: FixedColumnWidth(150.0),
+          defaultColumnWidth: FixedColumnWidth(100.0),
           border: TableBorder.all(color: Colors.grey),
           children: [
             // Header Row
             TableRow(
               decoration: const BoxDecoration(color: Colors.greenAccent),
               children: [
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Text(
-                    'Day',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Text(
-                    'Breakfast',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Text(
-                    'Lunch',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Text(
-                    'Dinner',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
+                _buildHeaderCell('Day'),
+                _buildHeaderCell('Breakfast'),
+                _buildHeaderCell('1-3'),
+                _buildHeaderCell('4-6'),
+                _buildHeaderCell('7-9'),
+                _buildHeaderCell('Lunch'),
+                _buildHeaderCell('1-3'),
+                _buildHeaderCell('4-6'),
+                _buildHeaderCell('7-9'),
+                _buildHeaderCell('Dinner'),
+                _buildHeaderCell('1-3'),
+                _buildHeaderCell('4-6'),
+                _buildHeaderCell('7-9'),
               ],
             ),
             // Meal Plan Rows
             for (int i = 0; i < mealPlanData.length; i++)
               TableRow(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Text(
-                      'Day ${i + 1}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
+                  _buildDataCell('Day ${i + 1}'),
                   _buildMealCell(context,
                       mealPlanData[i].isNotEmpty ? mealPlanData[i][0] : null),
+                  _buildPortionCell('1/2'),
+                  _buildPortionCell('1'),
+                  _buildPortionCell('1 1/2'),
                   _buildMealCell(context,
                       mealPlanData[i].length > 1 ? mealPlanData[i][1] : null),
+                  _buildPortionCell('1/2'),
+                  _buildPortionCell('1'),
+                  _buildPortionCell('1 1/2'),
                   _buildMealCell(context,
                       mealPlanData[i].length > 2 ? mealPlanData[i][2] : null),
+                  _buildPortionCell('1/2'),
+                  _buildPortionCell('1'),
+                  _buildPortionCell('1 1/2'),
                 ],
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeaderCell(String text) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Text(
+        text,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildDataCell(String text) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Text(
+        text,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+        textAlign: TextAlign.center,
       ),
     );
   }
@@ -113,6 +122,16 @@ class MealPlanDashboard extends StatelessWidget {
             decoration: TextDecoration.underline,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPortionCell(String portion) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Text(
+        portion,
+        textAlign: TextAlign.center,
       ),
     );
   }

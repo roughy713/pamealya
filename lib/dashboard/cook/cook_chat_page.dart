@@ -7,10 +7,10 @@ class CookChatPage extends StatefulWidget {
   final String currentUserUsername;
 
   const CookChatPage({
-    Key? key,
+    super.key,
     required this.currentUserId,
     required this.currentUserUsername,
-  }) : super(key: key);
+  });
 
   @override
   _CookChatPageState createState() => _CookChatPageState();
@@ -24,11 +24,7 @@ class _CookChatPageState extends State<CookChatPage> {
         .eq('_isBookingAccepted', true)
         .eq('localcook_id', widget.currentUserId);
 
-    if (response != null) {
-      return List<Map<String, dynamic>>.from(response as List);
-    } else {
-      throw Exception('Error fetching accepted family heads.');
-    }
+    return List<Map<String, dynamic>>.from(response as List);
   }
 
   @override

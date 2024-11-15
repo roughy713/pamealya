@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 
 class TransactionPage extends StatefulWidget {
-  const TransactionPage({Key? key}) : super(key: key);
+  const TransactionPage({super.key});
 
   @override
   _TransactionPageState createState() => _TransactionPageState();
@@ -30,8 +30,8 @@ class _TransactionPageState extends State<TransactionPage> {
 
     const url = 'https://api.paymongo.com/v1/sources';
     final headers = {
-      'Authorization': 'Basic ' +
-          base64Encode(utf8.encode('sk_test_TTwEdeQ8myrEc4yuoK2LgeBg')),
+      'Authorization':
+          'Basic ${base64Encode(utf8.encode('sk_test_TTwEdeQ8myrEc4yuoK2LgeBg'))}',
       'Content-Type': 'application/json'
     };
 

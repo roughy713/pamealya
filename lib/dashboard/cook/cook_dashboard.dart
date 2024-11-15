@@ -17,12 +17,12 @@ class CookDashboard extends StatefulWidget {
   final String currentUserUsername; // Add username field for current user
 
   const CookDashboard({
-    Key? key,
+    super.key,
     required this.firstName,
     required this.lastName,
     required this.currentUserId,
     required this.currentUserUsername, // Add currentUserUsername to constructor
-  }) : super(key: key);
+  });
 
   @override
   CookDashboardState createState() => CookDashboardState();

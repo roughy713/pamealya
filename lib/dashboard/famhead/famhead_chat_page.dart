@@ -7,10 +7,10 @@ class FamHeadChatPage extends StatelessWidget {
   final String currentUserUsername;
 
   const FamHeadChatPage({
-    Key? key,
+    super.key,
     required this.currentUserId,
     required this.currentUserUsername,
-  }) : super(key: key);
+  });
 
   Future<List<Map<String, dynamic>>> _fetchAcceptedCooks() async {
     final response = await Supabase.instance.client
@@ -19,11 +19,7 @@ class FamHeadChatPage extends StatelessWidget {
         .eq('_isBookingAccepted', true)
         .eq('famhead_id', currentUserId);
 
-    if (response != null) {
-      return List<Map<String, dynamic>>.from(response as List);
-    } else {
-      throw Exception('Error fetching accepted bookings.');
-    }
+    return List<Map<String, dynamic>>.from(response as List);
   }
 
   @override

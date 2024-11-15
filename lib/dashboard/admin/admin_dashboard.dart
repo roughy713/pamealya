@@ -574,7 +574,7 @@ class _ViewFamilyHeadsPageState extends State<ViewFamilyHeadsPage> {
       final response =
           await Supabase.instance.client.from('Family_Head').select();
 
-      if (response != null && response.isNotEmpty) {
+      if (response.isNotEmpty) {
         setState(() {
           familyHeads = response;
           isLoading = false;
@@ -667,7 +667,7 @@ class _ApprovalPageState extends State<ApprovalPage> {
       final response =
           await Supabase.instance.client.from('Local_Cook').select();
 
-      if (response != null && response.isNotEmpty) {
+      if (response.isNotEmpty) {
         setState(() {
           cooks = response;
           isLoading = false;

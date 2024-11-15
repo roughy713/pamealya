@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart'; // Supabase package for
 import '../dashboard/admin/admin_dashboard.dart'; // Import the AdminDashboard
 
 class LoginAdmin extends StatefulWidget {
+  const LoginAdmin({super.key});
+
   @override
   _LoginAdminState createState() => _LoginAdminState();
 }
@@ -25,7 +27,7 @@ class _LoginAdminState extends State<LoginAdmin> {
     // Check if fields are empty
     if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Username and Password cannot be empty')),
+        const SnackBar(content: Text('Username and Password cannot be empty')),
       );
       setState(() {
         isLoading = false;
@@ -44,7 +46,7 @@ class _LoginAdminState extends State<LoginAdmin> {
       if (response == null) {
         // If the response is null, show a message
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('User not found')),
+          const SnackBar(content: Text('User not found')),
         );
       } else {
         // Compare the provided password with the password stored in the database
@@ -61,7 +63,7 @@ class _LoginAdminState extends State<LoginAdmin> {
         } else {
           // Show an error if the password is incorrect
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Incorrect password')),
+            const SnackBar(content: Text('Incorrect password')),
           );
         }
       }

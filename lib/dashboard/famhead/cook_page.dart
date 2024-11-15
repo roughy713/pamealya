@@ -14,10 +14,12 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    final String loggedInUserFirstName = 'LoggedInUserFirstName';
-    final String loggedInUserLastName = 'LoggedInUserLastName';
+    const String loggedInUserFirstName = 'LoggedInUserFirstName';
+    const String loggedInUserLastName = 'LoggedInUserLastName';
 
     return MaterialApp(
       title: 'Cook Booking',
@@ -37,8 +39,7 @@ class CookPage extends StatefulWidget {
   final String userLastName;
 
   const CookPage(
-      {Key? key, required this.userFirstName, required this.userLastName})
-      : super(key: key);
+      {super.key, required this.userFirstName, required this.userLastName});
 
   @override
   _CookPageState createState() => _CookPageState();
@@ -59,9 +60,9 @@ class _CookPageState extends State<CookPage> {
       final response = await supabase.from('Local_Cook_Approved').select(
           'localcookid, first_name, last_name, email, username, age, gender, dateofbirth, phone, address_line1, barangay, city, province, postal_code, availability_days, time_available_from, time_available_to, certifications');
 
-      if (response != null && response.isNotEmpty) {
+      if (response.isNotEmpty) {
         setState(() {
-          cooks = response as List<Map<String, dynamic>>;
+          cooks = response;
         });
       }
     } catch (e) {
@@ -71,7 +72,7 @@ class _CookPageState extends State<CookPage> {
 
   Future<void> bookCook(String cookId, DateTime desiredDeliveryTime) async {
     try {
-      final uuid = Uuid().v4();
+      final uuid = const Uuid().v4();
       final fullName = '${widget.userFirstName} ${widget.userLastName}';
 
       final response = await supabase.from('bookingrequest').insert({
@@ -84,7 +85,7 @@ class _CookPageState extends State<CookPage> {
         'meal_price': 0.0
       }).select();
 
-      if (response != null && response.isNotEmpty) {
+      if (response.isNotEmpty) {
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
@@ -254,11 +255,11 @@ class _CookPageState extends State<CookPage> {
                           alignment: Alignment.centerRight,
                           child: ElevatedButton(
                             onPressed: () => showCookDetails(cook),
-                            child: const Text('Book Cook',
-                                style: TextStyle(color: Colors.black)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.yellow,
                             ),
+                            child: const Text('Book Cook',
+                                style: TextStyle(color: Colors.black)),
                           ),
                         ),
                       ],

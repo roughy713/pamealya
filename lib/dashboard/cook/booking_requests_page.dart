@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class BookingRequestsPage extends StatefulWidget {
-  const BookingRequestsPage({Key? key}) : super(key: key);
+  const BookingRequestsPage({super.key});
 
   @override
   _BookingRequestsPageState createState() => _BookingRequestsPageState();
@@ -26,17 +26,10 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
           .select()
           .order('request_date', ascending: false);
 
-      if (response != null) {
-        setState(() {
-          bookingRequests = List<Map<String, dynamic>>.from(response);
-          isLoading = false;
-        });
-      } else {
-        showErrorDialog('Error fetching booking requests');
-        setState(() {
-          isLoading = false;
-        });
-      }
+      setState(() {
+        bookingRequests = List<Map<String, dynamic>>.from(response);
+        isLoading = false;
+      });
     } catch (e) {
       showErrorDialog('Error fetching booking requests: $e');
       setState(() {
@@ -147,7 +140,8 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
                             Text('Date: ${booking['request_date'] ?? 'N/A'}'),
                             Text(
                                 'Time: ${booking['desired_delivery_time'] ?? 'N/A'}'),
-                            Text('Location: Service Location or Home Address'),
+                            const Text(
+                                'Location: Service Location or Home Address'),
                             const SizedBox(height: 16),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,

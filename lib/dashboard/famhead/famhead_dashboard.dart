@@ -17,11 +17,11 @@ class FamHeadDashboard extends StatefulWidget {
   final String currentUserUsername;
 
   const FamHeadDashboard({
-    Key? key,
+    super.key,
     required this.firstName,
     required this.lastName,
     required this.currentUserUsername,
-  }) : super(key: key);
+  });
 
   @override
   FamHeadDashboardState createState() => FamHeadDashboardState();
@@ -32,8 +32,9 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
   int _selectedIndex = 0;
   bool _isDrawerOpen = false;
 
-  // State variable to hold the retrieved meal plan data
+  // State variables to hold the retrieved meal plan data and family members data
   List<List<Map<String, dynamic>>> mealPlanData = [];
+  List<Map<String, dynamic>> familyMembers = []; // Added familyMembers variable
 
   final List<String> _titles = [
     'Dashboard',
@@ -47,8 +48,11 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
 
   // Define pages in the navigation
   List<Widget> get _pageDetails => [
-        mealPlanData.isNotEmpty
-            ? MealPlanDashboard(mealPlanData: mealPlanData)
+        mealPlanData.isNotEmpty && familyMembers.isNotEmpty
+            ? MealPlanDashboard(
+                mealPlanData: mealPlanData,
+                familyMembers: familyMembers, // Pass familyMembers here
+              )
             : const Center(child: Text('No meal plan generated')),
         MyFamilyPage(
           initialFirstName: widget.firstName,
@@ -128,10 +132,57 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     }
   }
 
+  // Fetch family members' data with age groups and portion sizes
+  Future<void> fetchFamilyMembers() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('familymember')
+          .select('first_name, age, family_head') // Include fields you need
+          .eq('family_head',
+              '${widget.firstName} ${widget.lastName}') // Filter by family head's name
+          .then((data) => data as List<dynamic>);
+
+      final portionSizes = {
+        'Kids 3-5': {'Carbohydrates': '1 cup', 'Proteins': '50 grams'},
+        'Kids 6-9': {'Carbohydrates': '1.5 cups', 'Proteins': '75 grams'},
+        'Adults': {'Carbohydrates': '2 cups', 'Proteins': '100 grams'},
+      };
+
+      final members = response.map((member) {
+        final ageField = member['age'];
+        final age = ageField is int
+            ? ageField
+            : int.tryParse(ageField ?? '0') ?? 0; // Convert age safely
+        final ageGroup = determineAgeGroup(age); // Determine the age group
+        return {
+          'name': member['first_name'],
+          'ageGroup': ageGroup,
+          'portions': portionSizes[ageGroup],
+        };
+      }).toList();
+
+      setState(() {
+        familyMembers = members;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching family members: $e')),
+      );
+    }
+  }
+
+// Helper function to determine age group
+  String determineAgeGroup(int age) {
+    if (age >= 3 && age <= 5) return 'Kids 3-5';
+    if (age >= 6 && age <= 9) return 'Kids 6-9';
+    return 'Adults';
+  }
+
   @override
   void initState() {
     super.initState();
     fetchMealPlan(); // Fetch the meal plan when the dashboard initializes
+    fetchFamilyMembers(); // Fetch family members when the dashboard initializes
   }
 
   @override

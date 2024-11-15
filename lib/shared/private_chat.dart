@@ -9,13 +9,13 @@ class PrivateChatPage extends StatefulWidget {
   final bool isCookInitiated;
 
   const PrivateChatPage({
-    Key? key,
+    super.key,
     required this.currentUserId,
     required this.currentUserUsername,
     required this.otherUserId,
     required this.otherUserName,
     required this.isCookInitiated,
-  }) : super(key: key);
+  });
 
   @override
   _PrivateChatPageState createState() => _PrivateChatPageState();
@@ -120,14 +120,14 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
                       color:
                           isCurrentUser ? Colors.blue[300] : Colors.grey[300],
                       borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(10),
-                        topRight: Radius.circular(10),
+                        topLeft: const Radius.circular(10),
+                        topRight: const Radius.circular(10),
                         bottomLeft: isCurrentUser
-                            ? Radius.circular(10)
-                            : Radius.circular(0),
+                            ? const Radius.circular(10)
+                            : const Radius.circular(0),
                         bottomRight: isCurrentUser
-                            ? Radius.circular(0)
-                            : Radius.circular(10),
+                            ? const Radius.circular(0)
+                            : const Radius.circular(10),
                       ),
                     ),
                     child: Text(

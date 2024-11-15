@@ -4,6 +4,8 @@ import '../dashboard/famhead/famhead_dashboard.dart'; // Redirect to this page a
 import 'package:pamealya/signup/signup_famhead_dialog.dart';
 
 class LoginDialog extends StatefulWidget {
+  const LoginDialog({super.key});
+
   @override
   _LoginDialogState createState() => _LoginDialogState();
 }
@@ -31,24 +33,20 @@ class _LoginDialogState extends State<LoginDialog> {
           .eq('password', password)
           .single();
 
-      if (response != null) {
-        final firstName = response['first_name'];
-        final lastName = response['last_name'];
-        final userUsername = response['username'];
+      final firstName = response['first_name'];
+      final lastName = response['last_name'];
+      final userUsername = response['username'];
 
-        // Login successful, redirect to the Family Head Dashboard
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => FamHeadDashboard(
-              firstName: firstName,
-              lastName: lastName,
-              currentUserUsername: userUsername, // Pass username here
-            ),
+      // Login successful, redirect to the Family Head Dashboard
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => FamHeadDashboard(
+            firstName: firstName,
+            lastName: lastName,
+            currentUserUsername: userUsername, // Pass username here
           ),
-        );
-      } else {
-        _showWarning('Invalid username or password');
-      }
+        ),
+      );
     } catch (e) {
       _showWarning('Error occurred while logging in: $e');
     }
