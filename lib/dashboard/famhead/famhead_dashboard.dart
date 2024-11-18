@@ -31,7 +31,6 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
   int _selectedIndex = 0;
   bool _isDrawerOpen = false;
 
-  // State variables for meal plan and family members
   List<List<Map<String, dynamic>>> mealPlanData = [];
   List<Map<String, dynamic>> familyMembers = [];
 
@@ -45,65 +44,11 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     'Transactions',
   ];
 
-  // Define pages in the navigation
-  List<Widget> get _pageDetails => [
-        mealPlanData.isNotEmpty && familyMembers.isNotEmpty
-            ? MealPlanDashboard(
-                mealPlanData: mealPlanData,
-                familyMembers: familyMembers,
-              )
-            : const Center(
-                child: Text(
-                  'No meal plan generated',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-              ),
-        MyFamilyPage(
-          initialFirstName: widget.firstName,
-          initialLastName: widget.lastName,
-        ),
-        FamHeadChatPage(
-          currentUserId: widget.firstName,
-          currentUserUsername: widget.currentUserUsername,
-        ),
-        CookPage(
-          userFirstName: widget.firstName, // Pass the required argument
-          userLastName: widget.lastName, // Pass the required argument
-        ),
-        const NotificationsPage(),
-        const BMICalculatorPage(),
-        const TransactionPage(),
-      ];
-
-  void _onSelectItem(int index) {
-    setState(() {
-      _selectedIndex = index;
-      _scaffoldKey.currentState?.closeDrawer();
-    });
-  }
-
-  void _onDrawerStateChanged(bool isOpen) {
-    setState(() {
-      _isDrawerOpen = isOpen;
-    });
-  }
-
-  Future<void> _handleLogout(BuildContext context) async {
-    try {
-      await Supabase.instance.client.auth.signOut();
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const HomePage()),
-        (route) => false,
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error during logout: $e')),
-      );
-    }
+  @override
+  void initState() {
+    super.initState();
+    fetchMealPlan();
+    fetchFamilyMembers();
   }
 
   // Fetch the saved meal plan from the database
@@ -140,12 +85,12 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     }
   }
 
-  // Fetch family members' data with age groups
+  // Fetch family members' data
   Future<void> fetchFamilyMembers() async {
     try {
       final response = await Supabase.instance.client
           .from('familymember')
-          .select('first_name, age, family_head')
+          .select('first_name, last_name, age')
           .eq('family_head', '${widget.firstName} ${widget.lastName}')
           .then((data) => data as List<dynamic>);
 
@@ -153,8 +98,8 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         final age = member['age'] ?? 0;
         return {
           'first_name': member['first_name'],
+          'last_name': member['last_name'],
           'age': age,
-          'age_group': determineAgeGroup(age),
         };
       }).toList();
 
@@ -168,21 +113,54 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     }
   }
 
-  // Helper function to determine age group
-  String determineAgeGroup(int age) {
-    if (age >= 3 && age <= 5) return 'Kids 3-5';
-    if (age >= 6 && age <= 9) return 'Kids 6-9';
-    if (age >= 10 && age <= 12) return 'Kids 10-12';
-    if (age >= 13 && age <= 18) return 'Teens 13-18';
-    if (age >= 19 && age <= 59) return 'Adults';
-    return 'Elderly';
+  // Define pages in the navigation
+  List<Widget> get _pageDetails => [
+        MealPlanDashboard(
+          mealPlanData: mealPlanData,
+          familyMembers: familyMembers,
+        ),
+        MyFamilyPage(
+          initialFirstName: widget.firstName,
+          initialLastName: widget.lastName,
+        ),
+        FamHeadChatPage(
+          currentUserId: widget.firstName,
+          currentUserUsername: widget.currentUserUsername,
+        ),
+        CookPage(
+          userFirstName: widget.firstName,
+          userLastName: widget.lastName,
+        ),
+        const NotificationsPage(),
+        const BMICalculatorPage(),
+        const TransactionPage(),
+      ];
+
+  void _onSelectItem(int index) {
+    setState(() {
+      _selectedIndex = index;
+      _scaffoldKey.currentState?.closeDrawer();
+    });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    fetchMealPlan();
-    fetchFamilyMembers();
+  void _onDrawerStateChanged(bool isOpen) {
+    setState(() {
+      _isDrawerOpen = isOpen;
+    });
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    try {
+      await Supabase.instance.client.auth.signOut();
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const HomePage()),
+        (route) => false,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error during logout: $e')),
+      );
+    }
   }
 
   @override
