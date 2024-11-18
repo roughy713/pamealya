@@ -1,4 +1,3 @@
-// lib/fam_head_dashboard.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '/home_page.dart';
@@ -32,9 +31,9 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
   int _selectedIndex = 0;
   bool _isDrawerOpen = false;
 
-  // State variables to hold the retrieved meal plan data and family members data
+  // State variables for meal plan and family members
   List<List<Map<String, dynamic>>> mealPlanData = [];
-  List<Map<String, dynamic>> familyMembers = []; // Added familyMembers variable
+  List<Map<String, dynamic>> familyMembers = [];
 
   final List<String> _titles = [
     'Dashboard',
@@ -51,9 +50,18 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         mealPlanData.isNotEmpty && familyMembers.isNotEmpty
             ? MealPlanDashboard(
                 mealPlanData: mealPlanData,
-                familyMembers: familyMembers, // Pass familyMembers here
+                familyMembers: familyMembers,
               )
-            : const Center(child: Text('No meal plan generated')),
+            : const Center(
+                child: Text(
+                  'No meal plan generated',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              ),
         MyFamilyPage(
           initialFirstName: widget.firstName,
           initialLastName: widget.lastName,
@@ -63,8 +71,8 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           currentUserUsername: widget.currentUserUsername,
         ),
         CookPage(
-          userFirstName: widget.firstName,
-          userLastName: widget.lastName,
+          userFirstName: widget.firstName, // Pass the required argument
+          userLastName: widget.lastName, // Pass the required argument
         ),
         const NotificationsPage(),
         const BMICalculatorPage(),
@@ -132,32 +140,21 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     }
   }
 
-  // Fetch family members' data with age groups and portion sizes
+  // Fetch family members' data with age groups
   Future<void> fetchFamilyMembers() async {
     try {
       final response = await Supabase.instance.client
           .from('familymember')
-          .select('first_name, age, family_head') // Include fields you need
-          .eq('family_head',
-              '${widget.firstName} ${widget.lastName}') // Filter by family head's name
+          .select('first_name, age, family_head')
+          .eq('family_head', '${widget.firstName} ${widget.lastName}')
           .then((data) => data as List<dynamic>);
 
-      final portionSizes = {
-        'Kids 3-5': {'Carbohydrates': '1 cup', 'Proteins': '50 grams'},
-        'Kids 6-9': {'Carbohydrates': '1.5 cups', 'Proteins': '75 grams'},
-        'Adults': {'Carbohydrates': '2 cups', 'Proteins': '100 grams'},
-      };
-
       final members = response.map((member) {
-        final ageField = member['age'];
-        final age = ageField is int
-            ? ageField
-            : int.tryParse(ageField ?? '0') ?? 0; // Convert age safely
-        final ageGroup = determineAgeGroup(age); // Determine the age group
+        final age = member['age'] ?? 0;
         return {
-          'name': member['first_name'],
-          'ageGroup': ageGroup,
-          'portions': portionSizes[ageGroup],
+          'first_name': member['first_name'],
+          'age': age,
+          'age_group': determineAgeGroup(age),
         };
       }).toList();
 
@@ -171,18 +168,21 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     }
   }
 
-// Helper function to determine age group
+  // Helper function to determine age group
   String determineAgeGroup(int age) {
     if (age >= 3 && age <= 5) return 'Kids 3-5';
     if (age >= 6 && age <= 9) return 'Kids 6-9';
-    return 'Adults';
+    if (age >= 10 && age <= 12) return 'Kids 10-12';
+    if (age >= 13 && age <= 18) return 'Teens 13-18';
+    if (age >= 19 && age <= 59) return 'Adults';
+    return 'Elderly';
   }
 
   @override
   void initState() {
     super.initState();
-    fetchMealPlan(); // Fetch the meal plan when the dashboard initializes
-    fetchFamilyMembers(); // Fetch family members when the dashboard initializes
+    fetchMealPlan();
+    fetchFamilyMembers();
   }
 
   @override
@@ -201,25 +201,20 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         key: _scaffoldKey,
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(56.0),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            transform: Matrix4.translationValues(
-                _isDrawerOpen ? 300.0 : 0.0, 0.0, 0.0),
-            child: AppBar(
-              backgroundColor: Colors.white,
-              iconTheme: const IconThemeData(color: Color(0xFF1CBB80)),
-              elevation: 0,
-              title: Text(
-                _titles[_selectedIndex],
-                style: const TextStyle(
-                    color: Colors.black, fontWeight: FontWeight.bold),
-              ),
-              leading: IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-              ),
+          child: AppBar(
+            backgroundColor: Colors.white,
+            iconTheme: const IconThemeData(color: Color(0xFF1CBB80)),
+            elevation: 0,
+            title: Text(
+              _titles[_selectedIndex],
+              style: const TextStyle(
+                  color: Colors.black, fontWeight: FontWeight.bold),
+            ),
+            leading: IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                _scaffoldKey.currentState?.openDrawer();
+              },
             ),
           ),
         ),

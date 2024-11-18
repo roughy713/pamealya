@@ -1,4 +1,3 @@
-// lib/meal_plan_dashboard.dart
 import 'package:flutter/material.dart';
 
 class MealPlanDashboard extends StatelessWidget {
@@ -13,115 +12,90 @@ class MealPlanDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool isEmpty = mealPlanData.every((day) => day.isEmpty);
-
-    if (isEmpty) {
-      return const Center(
+    // Check if mealPlanData is empty
+    if (mealPlanData.isEmpty || familyMembers.isEmpty) {
+      return Center(
         child: Text(
           'No meal plan generated',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
         ),
       );
     }
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return Padding(
+      padding: const EdgeInsets.only(top: 20.0),
       child: SingleChildScrollView(
-        child: Table(
-          defaultColumnWidth: FixedColumnWidth(100.0),
-          border: TableBorder.all(color: Colors.grey),
-          children: [
-            // Header Row
-            TableRow(
-              decoration: const BoxDecoration(color: Colors.greenAccent),
-              children: [
-                _buildHeaderCell('Day'),
-                _buildHeaderCell('Breakfast'),
-                _buildHeaderCell('1-3'),
-                _buildHeaderCell('4-6'),
-                _buildHeaderCell('7-9'),
-                _buildHeaderCell('Lunch'),
-                _buildHeaderCell('1-3'),
-                _buildHeaderCell('4-6'),
-                _buildHeaderCell('7-9'),
-                _buildHeaderCell('Dinner'),
-                _buildHeaderCell('1-3'),
-                _buildHeaderCell('4-6'),
-                _buildHeaderCell('7-9'),
+        scrollDirection: Axis.horizontal,
+        child: SingleChildScrollView(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16.0),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.3),
+                  blurRadius: 10.0,
+                  offset: const Offset(0, 4),
+                ),
               ],
             ),
-            // Meal Plan Rows
-            for (int i = 0; i < mealPlanData.length; i++)
-              TableRow(
-                children: [
-                  _buildDataCell('Day ${i + 1}'),
-                  _buildMealCell(context,
-                      mealPlanData[i].isNotEmpty ? mealPlanData[i][0] : null),
-                  _buildPortionCell('1/2'),
-                  _buildPortionCell('1'),
-                  _buildPortionCell('1 1/2'),
-                  _buildMealCell(context,
-                      mealPlanData[i].length > 1 ? mealPlanData[i][1] : null),
-                  _buildPortionCell('1/2'),
-                  _buildPortionCell('1'),
-                  _buildPortionCell('1 1/2'),
-                  _buildMealCell(context,
-                      mealPlanData[i].length > 2 ? mealPlanData[i][2] : null),
-                  _buildPortionCell('1/2'),
-                  _buildPortionCell('1'),
-                  _buildPortionCell('1 1/2'),
-                ],
+            padding: const EdgeInsets.all(16.0),
+            child: Table(
+              defaultColumnWidth: FixedColumnWidth(100.0),
+              border: TableBorder.all(
+                color: Colors.grey.withOpacity(0.5),
+                width: 1,
+                borderRadius: const BorderRadius.all(Radius.circular(10.0)),
               ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeaderCell(String text) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-
-  Widget _buildDataCell(String text) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-        textAlign: TextAlign.center,
-      ),
-    );
-  }
-
-  Widget _buildMealCell(BuildContext context, Map<String, dynamic>? meal) {
-    if (meal == null) {
-      return const Padding(
-        padding: EdgeInsets.all(8.0),
-        child: Text('', textAlign: TextAlign.center),
-      );
-    }
-
-    return GestureDetector(
-      onTap: () {
-        _showMealDetailsDialog(context, meal);
-      },
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Text(
-          meal['meal_name'] ?? 'Unknown',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: Colors.blue,
-            decoration: TextDecoration.underline,
+              children: [
+                // Header Row
+                TableRow(
+                  decoration: const BoxDecoration(
+                    color: Colors.greenAccent,
+                  ),
+                  children: [
+                    _buildHeader('Day'),
+                    _buildHeader('Breakfast'),
+                    for (var member in familyMembers)
+                      _buildHeader(member['first_name'] ?? 'Unknown'),
+                    _buildHeader('Lunch'),
+                    for (var member in familyMembers)
+                      _buildHeader(member['first_name'] ?? 'Unknown'),
+                    _buildHeader('Dinner'),
+                    for (var member in familyMembers)
+                      _buildHeader(member['first_name'] ?? 'Unknown'),
+                  ],
+                ),
+                // Rows for each day
+                for (int i = 0; i < mealPlanData.length; i++)
+                  _buildTableRow(i, mealPlanData[i]),
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(String text) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Text(
+        text,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        textAlign: TextAlign.center,
+      ),
+    );
+  }
+
+  Widget _buildMealCell(String? mealName) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Text(
+        mealName ?? 'N/A',
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 13),
       ),
     );
   }
@@ -132,33 +106,36 @@ class MealPlanDashboard extends StatelessWidget {
       child: Text(
         portion,
         textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 13),
       ),
     );
   }
 
-  void _showMealDetailsDialog(BuildContext context, Map<String, dynamic> meal) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(meal['meal_name'] ?? 'Meal Details'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Meal Type: ${meal['meal_type'] ?? 'Unknown'}'),
-              Text('Meal ID: ${meal['meal_id'] ?? 'N/A'}'),
-              // Add more meal details here if available in the data
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
+  TableRow _buildTableRow(int dayIndex, List<Map<String, dynamic>> meals) {
+    return TableRow(
+      decoration: BoxDecoration(
+        color: dayIndex % 2 == 0 ? Colors.white : Colors.grey.withOpacity(0.1),
+      ),
+      children: [
+        _buildMealCell('Day ${dayIndex + 1}'),
+        _buildMealCell(meals.isNotEmpty ? meals[0]['meal_name'] : 'N/A'),
+        for (var member in familyMembers)
+          _buildPortionCell(determinePortionForAge(member['age'] ?? 0)),
+        _buildMealCell(meals.length > 1 ? meals[1]['meal_name'] : 'N/A'),
+        for (var member in familyMembers)
+          _buildPortionCell(determinePortionForAge(member['age'] ?? 0)),
+        _buildMealCell(meals.length > 2 ? meals[2]['meal_name'] : 'N/A'),
+        for (var member in familyMembers)
+          _buildPortionCell(determinePortionForAge(member['age'] ?? 0)),
+      ],
     );
+  }
+
+  String determinePortionForAge(int age) {
+    if (age <= 3) return '1/2';
+    if (age <= 6) return '1';
+    if (age <= 9) return '1 1/2';
+    if (age <= 12) return '2';
+    return '2 1/2';
   }
 }

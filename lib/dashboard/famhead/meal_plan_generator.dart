@@ -15,9 +15,6 @@ Future<void> generateMealPlan(
       throw 'Error fetching meals or no meals found.';
     }
 
-    // Print the fetched meals for debugging
-    print('Fetched meals: $response');
-
     // Separate meals by category (1 = Breakfast, 2 = Lunch, 3 = Dinner)
     List<Map<String, dynamic>> breakfasts = response
         .where((meal) => meal['meal_category_id'] == 1)
@@ -50,9 +47,6 @@ Future<void> generateMealPlan(
               dinners[index],
             ]);
 
-    // Print the generated meal plan for debugging
-    print('Generated Meal Plan: $newMealPlan');
-
     // Save each day's meals to the database
     for (int day = 0; day < newMealPlan.length; day++) {
       final dailyMeals = newMealPlan[day];
@@ -81,9 +75,6 @@ Future<void> _saveMealToDatabase(int day, String mealType,
     if (meal['recipe_id'] == null) {
       throw 'Meal ID is null for $mealType on Day $day: $meal';
     }
-
-    // Print the meal data being saved for debugging
-    print('Saving meal for Day $day ($mealType): ${meal['name']}');
 
     await Supabase.instance.client.from('mealplan').insert({
       'day': day,
