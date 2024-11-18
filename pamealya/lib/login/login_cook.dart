@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../dashboard/cook/cook_dashboard.dart'; // Redirect to this page after successful login
+import 'package:pamealya/signup/signup_cook_dialog.dart';
 
 class CookLoginDialog extends StatefulWidget {
+  const CookLoginDialog({super.key});
+
   @override
   _CookLoginDialogState createState() => _CookLoginDialogState();
 }
@@ -30,25 +33,21 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
           .eq('password', password)
           .single();
 
-      if (response != null) {
-        final firstName = response['first_name'];
-        final lastName = response['last_name'];
-        final userUsername = response['username'];
+      final firstName = response['first_name'];
+      final lastName = response['last_name'];
+      final userUsername = response['username'];
 
-        // Login successful, redirect to the Cook Dashboard
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => CookDashboard(
-              firstName: firstName,
-              lastName: lastName,
-              currentUserId: '', // Provide the correct user ID if available
-              currentUserUsername: userUsername, // Pass username here
-            ),
+      // Login successful, redirect to the Cook Dashboard
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => CookDashboard(
+            firstName: firstName,
+            lastName: lastName,
+            currentUserId: '', // Provide the correct user ID if available
+            currentUserUsername: userUsername, // Pass username here
           ),
-        );
-      } else {
-        _showWarning('Invalid username or password');
-      }
+        ),
+      );
     } catch (e) {
       _showWarning('Error occurred while logging in: $e');
     }
@@ -140,7 +139,13 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () {
-                  // Implement sign-up logic here
+                  // Redirect to the Cook Sign-Up dialog
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return const SignUpCookDialog(); // Ensure this matches the class name in signup_cook_dialog.dart
+                    },
+                  );
                 },
                 child: const Text("Don't Have An Account?"),
               ),

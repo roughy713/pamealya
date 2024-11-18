@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:url_launcher/url_launcher.dart';
 
 class TransactionPage extends StatefulWidget {
-  const TransactionPage({Key? key}) : super(key: key);
+  const TransactionPage({super.key});
 
   @override
   _TransactionPageState createState() => _TransactionPageState();
@@ -30,23 +30,20 @@ class _TransactionPageState extends State<TransactionPage> {
 
     const url = 'https://api.paymongo.com/v1/sources';
     final headers = {
-      'Authorization': 'Basic ' +
-          base64Encode(utf8.encode('sk_test_TTwEdeQ8myrEc4yuoK2LgeBg')),
+      'Authorization':
+          'Basic ${base64Encode(utf8.encode('sk_test_TTwEdeQ8myrEc4yuoK2LgeBg'))}',
       'Content-Type': 'application/json'
     };
 
     final body = jsonEncode({
       'data': {
         'attributes': {
-          'amount':
-              (double.parse(amount) * 100).toInt(), // Convert PHP to centavos
+          'amount': (double.parse(amount) * 100).toInt(),
           'currency': 'PHP',
           'type': 'gcash',
           'redirect': {
-            'success':
-                'https://your-success-url.com', // Replace with your success URL
-            'failed':
-                'https://your-failure-url.com' // Replace with your failure URL
+            'success': 'https://your-success-url.com',
+            'failed': 'https://your-failure-url.com'
           }
         }
       }
@@ -101,10 +98,6 @@ class _TransactionPageState extends State<TransactionPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Transaction Page'),
-        backgroundColor: const Color(0xFF1CBB80),
-      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

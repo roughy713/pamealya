@@ -8,8 +8,8 @@ class SidebarMenuItem extends StatelessWidget {
   const SidebarMenuItem({
     super.key,
     required this.title,
-    required this.isSelected,
     required this.onTap,
+    this.isSelected = false,
   });
 
   @override

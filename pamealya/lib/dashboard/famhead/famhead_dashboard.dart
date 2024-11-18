@@ -13,16 +13,14 @@ import 'custom_drawer.dart';
 class FamHeadDashboard extends StatefulWidget {
   final String firstName;
   final String lastName;
-  final String currentUserUsername; // Add username field for current user
-  final List<Map<String, dynamic>> mealPlanData;
+  final String currentUserUsername;
 
   const FamHeadDashboard({
-    Key? key,
+    super.key,
     required this.firstName,
     required this.lastName,
-    required this.currentUserUsername, // Add currentUserUsername to constructor
-    this.mealPlanData = const [],
-  }) : super(key: key);
+    required this.currentUserUsername,
+  });
 
   @override
   FamHeadDashboardState createState() => FamHeadDashboardState();
@@ -32,6 +30,9 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _selectedIndex = 0;
   bool _isDrawerOpen = false;
+
+  List<List<Map<String, dynamic>>> mealPlanData = [];
+  List<Map<String, dynamic>> familyMembers = [];
 
   final List<String> _titles = [
     'Dashboard',
@@ -43,16 +44,93 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     'Transactions',
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    fetchMealPlan();
+    fetchFamilyMembers();
+  }
+
+  // Fetch the saved meal plan from the database
+  Future<void> fetchMealPlan() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('mealplan')
+          .select()
+          .eq('family_head',
+              '${widget.firstName} ${widget.lastName}') // Filter by family head's name
+          .order('day', ascending: true)
+          .then((data) => data as List<dynamic>);
+
+      List<List<Map<String, dynamic>>> fetchedMealPlan =
+          List.generate(7, (_) => []); // Initialize 7 days of meal plans
+
+      for (var meal in response) {
+        int day = meal['day'] - 1; // Convert day to 0-based index
+        String mealType = meal['meal_type'];
+        fetchedMealPlan[day].add({
+          'meal_type': mealType,
+          'meal_name': meal['meal_name'],
+          'meal_id': meal['meal_id'],
+        });
+      }
+
+      setState(() {
+        mealPlanData = fetchedMealPlan;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching meal plan: $e')),
+      );
+    }
+  }
+
+  // Fetch family members' data
+  Future<void> fetchFamilyMembers() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('familymember')
+          .select('first_name, last_name, age')
+          .eq('family_head', '${widget.firstName} ${widget.lastName}')
+          .then((data) => data as List<dynamic>);
+
+      final members = response.map((member) {
+        final age = member['age'] ?? 0;
+        return {
+          'first_name': member['first_name'],
+          'last_name': member['last_name'],
+          'age': age,
+        };
+      }).toList();
+
+      setState(() {
+        familyMembers = members;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching family members: $e')),
+      );
+    }
+  }
+
+  // Define pages in the navigation
   List<Widget> get _pageDetails => [
-        widget.mealPlanData.isNotEmpty
-            ? MealPlanDashboard(mealPlanData: widget.mealPlanData)
-            : const Center(child: Text('Dashboard Content')),
-        MyFamilyPage(firstName: widget.firstName, lastName: widget.lastName),
-        FamHeadChatPage(
-          currentUserId: widget.firstName, // This can be the user ID if needed
-          currentUserUsername: widget.currentUserUsername, // Pass username here
+        MealPlanDashboard(
+          mealPlanData: mealPlanData,
+          familyMembers: familyMembers,
         ),
-        const CookPage(),
+        MyFamilyPage(
+          initialFirstName: widget.firstName,
+          initialLastName: widget.lastName,
+        ),
+        FamHeadChatPage(
+          currentUserId: widget.firstName,
+          currentUserUsername: widget.currentUserUsername,
+        ),
+        CookPage(
+          userFirstName: widget.firstName,
+          userLastName: widget.lastName,
+        ),
         const NotificationsPage(),
         const BMICalculatorPage(),
         const TransactionPage(),
@@ -74,8 +152,9 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
   Future<void> _handleLogout(BuildContext context) async {
     try {
       await Supabase.instance.client.auth.signOut();
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const HomePage()),
+        (route) => false,
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -100,25 +179,20 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         key: _scaffoldKey,
         appBar: PreferredSize(
           preferredSize: const Size.fromHeight(56.0),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            transform: Matrix4.translationValues(
-                _isDrawerOpen ? 300.0 : 0.0, 0.0, 0.0),
-            child: AppBar(
-              backgroundColor: Colors.white,
-              iconTheme: const IconThemeData(color: Color(0xFF1CBB80)),
-              elevation: 0,
-              title: Text(
-                _titles[_selectedIndex],
-                style: const TextStyle(
-                    color: Colors.black, fontWeight: FontWeight.bold),
-              ),
-              leading: IconButton(
-                icon: const Icon(Icons.menu),
-                onPressed: () {
-                  _scaffoldKey.currentState?.openDrawer();
-                },
-              ),
+          child: AppBar(
+            backgroundColor: Colors.white,
+            iconTheme: const IconThemeData(color: Color(0xFF1CBB80)),
+            elevation: 0,
+            title: Text(
+              _titles[_selectedIndex],
+              style: const TextStyle(
+                  color: Colors.black, fontWeight: FontWeight.bold),
+            ),
+            leading: IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () {
+                _scaffoldKey.currentState?.openDrawer();
+              },
             ),
           ),
         ),

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class BMICalculatorPage extends StatefulWidget {
-  const BMICalculatorPage({Key? key}) : super(key: key);
+  const BMICalculatorPage({super.key});
 
   @override
   BMICalculatorPageState createState() => BMICalculatorPageState();
@@ -52,46 +52,91 @@ class BMICalculatorPageState extends State<BMICalculatorPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('BMI Calculator'),
-        backgroundColor: const Color(0xFF1CBB80),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-              controller: _weightController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Weight (kg)',
-                border: OutlineInputBorder(),
-              ),
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: Center(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Text(
+                  'BMI Calculator',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1CBB80),
+                  ),
+                ),
+                const SizedBox(height: 40),
+                TextField(
+                  controller: _weightController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Weight (kg)',
+                    labelStyle: const TextStyle(color: Color(0xFF1CBB80)),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                      borderSide: const BorderSide(color: Color(0xFF1CBB80)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _heightController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Height (cm)',
+                    labelStyle: const TextStyle(color: Color(0xFF1CBB80)),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                      borderSide: const BorderSide(color: Color(0xFF1CBB80)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                ElevatedButton(
+                  onPressed: _calculateBMI,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1CBB80),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 50,
+                      vertical: 15,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                  ),
+                  child: const Text(
+                    'Calculate BMI',
+                    style: TextStyle(
+                        fontSize: 18,
+                        color: Colors.black), // Button text color set to black
+                  ),
+                ),
+                const SizedBox(height: 30),
+                Text(
+                  'Your BMI is: ${_bmi.toStringAsFixed(2)} ($_bmiCategory)',
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF333333),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _heightController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Height (cm)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _calculateBMI,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1CBB80),
-              ),
-              child: const Text('Calculate BMI'),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Your BMI is: ${_bmi.toStringAsFixed(2)} ($_bmiCategory)',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -4,8 +4,7 @@ import 'package:intl/intl.dart';
 class AddFamilyMemberDialog extends StatefulWidget {
   final Function(Map<String, String>) onAdd;
 
-  const AddFamilyMemberDialog({Key? key, required this.onAdd})
-      : super(key: key);
+  const AddFamilyMemberDialog({super.key, required this.onAdd});
 
   @override
   AddFamilyMemberDialogState createState() => AddFamilyMemberDialogState();
@@ -25,11 +24,11 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
   final List<String> _dietaryRestrictions = [
     'None',
     'Halal',
-    'Vegetarian',
-    'Gluten-Free',
-    'Dairy-Free',
-    'Nut-Free',
+    'Seafoods',
+    'Nuts',
+    'Milk'
   ];
+  final List<String> _genders = ['Male', 'Female', 'Other'];
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -55,7 +54,91 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // TextFormField controllers and DropdownButtonFormFields
+              TextFormField(
+                controller: _firstNameController,
+                decoration: const InputDecoration(labelText: 'First Name'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter the first name';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _lastNameController,
+                decoration: const InputDecoration(labelText: 'Last Name'),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter the last name';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _ageController,
+                decoration: const InputDecoration(labelText: 'Age'),
+                keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter the age';
+                  }
+                  return null;
+                },
+              ),
+              TextFormField(
+                controller: _dateOfBirthController,
+                decoration: const InputDecoration(
+                  labelText: 'Date of Birth',
+                  suffixIcon: Icon(Icons.calendar_today),
+                ),
+                readOnly: true,
+                onTap: () => _selectDate(context),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select the date of birth';
+                  }
+                  return null;
+                },
+              ),
+              DropdownButtonFormField<String>(
+                value: _selectedGender,
+                items: _genders.map((gender) {
+                  return DropdownMenuItem(value: gender, child: Text(gender));
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedGender = value;
+                  });
+                },
+                decoration: const InputDecoration(labelText: 'Gender'),
+              ),
+              DropdownButtonFormField<String>(
+                value: _selectedPosition,
+                items: _positions.map((position) {
+                  return DropdownMenuItem(
+                      value: position, child: Text(position));
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedPosition = value;
+                  });
+                },
+                decoration: const InputDecoration(labelText: 'Position'),
+              ),
+              DropdownButtonFormField<String>(
+                value: _selectedDietaryRestriction,
+                items: _dietaryRestrictions.map((restriction) {
+                  return DropdownMenuItem(
+                      value: restriction, child: Text(restriction));
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _selectedDietaryRestriction = value;
+                  });
+                },
+                decoration:
+                    const InputDecoration(labelText: 'Dietary Restriction'),
+              ),
             ],
           ),
         ),

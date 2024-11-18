@@ -17,12 +17,12 @@ class CookDashboard extends StatefulWidget {
   final String currentUserUsername; // Add username field for current user
 
   const CookDashboard({
-    Key? key,
+    super.key,
     required this.firstName,
     required this.lastName,
     required this.currentUserId,
     required this.currentUserUsername, // Add currentUserUsername to constructor
-  }) : super(key: key);
+  });
 
   @override
   CookDashboardState createState() => CookDashboardState();
@@ -59,8 +59,9 @@ class CookDashboardState extends State<CookDashboard> {
   Future<void> _handleLogout(BuildContext context) async {
     try {
       await Supabase.instance.client.auth.signOut();
-      Navigator.of(context).pushReplacement(
+      Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const HomePage()),
+        (route) => false, // This removes all previous routes
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(

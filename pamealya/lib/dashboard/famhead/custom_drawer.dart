@@ -8,12 +8,12 @@ class CustomDrawer extends StatelessWidget {
   final VoidCallback onLogoutTap;
 
   const CustomDrawer({
-    Key? key,
+    super.key,
     required this.selectedIndex,
     required this.onItemTap,
     required this.userName,
     required this.onLogoutTap,
-  }) : super(key: key);
+  });
 
   Future<void> _showLogoutConfirmation(BuildContext context) async {
     final shouldLogout = await showDialog<bool>(

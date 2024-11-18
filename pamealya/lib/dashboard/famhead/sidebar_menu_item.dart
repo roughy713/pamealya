@@ -6,11 +6,11 @@ class SidebarMenuItem extends StatelessWidget {
   final VoidCallback onTap;
 
   const SidebarMenuItem({
-    Key? key,
+    super.key,
     required this.title,
     required this.onTap,
     this.isSelected = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

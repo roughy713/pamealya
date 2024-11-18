@@ -7,96 +7,77 @@ class CookChatPage extends StatefulWidget {
   final String currentUserUsername;
 
   const CookChatPage({
-    Key? key,
+    super.key,
     required this.currentUserId,
     required this.currentUserUsername,
-  }) : super(key: key);
+  });
 
   @override
   _CookChatPageState createState() => _CookChatPageState();
 }
 
 class _CookChatPageState extends State<CookChatPage> {
-  List<Map<String, dynamic>>? _familyHeads;
-  bool _isLoading = true;
+  Future<List<Map<String, dynamic>>> _fetchAcceptedFamilyHeads() async {
+    final response = await Supabase.instance.client
+        .from('bookingrequest')
+        .select('famhead_id, localcook_id')
+        .eq('_isBookingAccepted', true)
+        .eq('localcook_id', widget.currentUserId);
 
-  @override
-  void initState() {
-    super.initState();
-    _loadFamilyHeads();
-  }
-
-  Future<void> _loadFamilyHeads() async {
-    try {
-      final response = await Supabase.instance.client
-          .from('Family_Head')
-          .select(
-              'famheadid, first_name, last_name'); // Fetch first and last names
-
-      if (response != null) {
-        setState(() {
-          _familyHeads = List<Map<String, dynamic>>.from(response as List);
-          _isLoading = false;
-        });
-      }
-    } catch (error) {
-      print('Error fetching family heads: $error');
-      setState(() => _isLoading = false);
-    }
-  }
-
-  void _navigateToChat(String famHeadUserId, String famHeadFullName) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PrivateChatPage(
-          currentUserId: widget.currentUserId,
-          currentUserUsername: widget.currentUserUsername,
-          otherUserId: famHeadUserId,
-          otherUserName: famHeadFullName,
-          isCookInitiated: true,
-        ),
-      ),
-    );
+    return List<Map<String, dynamic>>.from(response as List);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Select Family Head'),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+        future: _fetchAcceptedFamilyHeads(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(
+                child: Text('No family heads available to chat with.'));
+          }
+
+          final familyHeads = snapshot.data!;
+          return ListView.builder(
+            itemCount: familyHeads.length,
+            itemBuilder: (context, index) {
+              final famHead = familyHeads[index];
+              final famHeadUserId = famHead['famhead_id'];
+
+              if (famHeadUserId == null) {
+                return const ListTile(
+                  title: Text('Error: Missing family head information'),
+                );
+              }
+
+              return ListTile(
+                title: Text(
+                    'Family Head $famHeadUserId'), // Replace with actual family head name if available
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PrivateChatPage(
+                        currentUserId: widget.currentUserId,
+                        currentUserUsername: widget.currentUserUsername,
+                        otherUserId: famHeadUserId,
+                        otherUserName:
+                            'Family Head $famHeadUserId', // Replace with actual name if available
+                        isCookInitiated: true,
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _familyHeads == null || _familyHeads!.isEmpty
-              ? const Center(
-                  child: Text('No family heads available to chat with.'))
-              : ListView.builder(
-                  itemCount: _familyHeads!.length,
-                  itemBuilder: (context, index) {
-                    final famHead = _familyHeads![index];
-                    final famHeadUserId = famHead['famheadid'];
-                    final famHeadFirstName = famHead['first_name'];
-                    final famHeadLastName = famHead['last_name'];
-
-                    if (famHeadUserId == null ||
-                        famHeadFirstName == null ||
-                        famHeadLastName == null) {
-                      return const ListTile(
-                        title: Text('Error: Missing family head information'),
-                      );
-                    }
-
-                    final famHeadFullName =
-                        '$famHeadFirstName $famHeadLastName';
-
-                    return ListTile(
-                      title: Text(famHeadFullName),
-                      onTap: () =>
-                          _navigateToChat(famHeadUserId, famHeadFullName),
-                    );
-                  },
-                ),
     );
   }
 }

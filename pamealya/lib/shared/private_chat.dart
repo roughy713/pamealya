@@ -3,19 +3,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PrivateChatPage extends StatefulWidget {
   final String currentUserId;
-  final String currentUserUsername; // Username of the current user
-  final String otherUserId; // ID of the user being chatted with
-  final String otherUserName; // Full name of the user being chatted with
+  final String currentUserUsername;
+  final String otherUserId;
+  final String otherUserName;
   final bool isCookInitiated;
 
   const PrivateChatPage({
-    Key? key,
+    super.key,
     required this.currentUserId,
     required this.currentUserUsername,
     required this.otherUserId,
-    required this.otherUserName, // Use otherUserName instead of otherUserUsername
+    required this.otherUserName,
     required this.isCookInitiated,
-  }) : super(key: key);
+  });
 
   @override
   _PrivateChatPageState createState() => _PrivateChatPageState();
@@ -32,7 +32,6 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
     _listenToMessages();
   }
 
-  // Listen to real-time messages
   void _listenToMessages() {
     final stream = Supabase.instance.client
         .from('messages')
@@ -59,17 +58,12 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
     });
   }
 
-  // Send a message with currentUserUsername as sender_id and otherUserName as receiver_id
   Future<void> _sendMessage() async {
     final messageText = _messageController.text.trim();
     if (messageText.isEmpty) return;
 
-    final senderId =
-        widget.currentUserUsername; // Use currentUserUsername as sender_id
-    final receiverId = widget.otherUserName; // Use otherUserName as receiver_id
-
-    print(
-        "Sending message: '$messageText' from sender_id: $senderId to receiver_id: $receiverId");
+    final senderId = widget.currentUserUsername;
+    final receiverId = widget.otherUserName;
 
     final response = await Supabase.instance.client.from('messages').insert({
       'sender_id': senderId,
@@ -81,13 +75,11 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
     if (response.error == null) {
       _messageController.clear();
       _scrollToBottom();
-      print("Message sent successfully");
     } else {
       print('Error sending message: ${response.error?.message}');
     }
   }
 
-  // Scroll to the latest message
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -102,7 +94,7 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.otherUserName), // Display the other user's full name
+        title: Text(widget.otherUserName),
       ),
       body: Column(
         children: [
@@ -128,14 +120,14 @@ class _PrivateChatPageState extends State<PrivateChatPage> {
                       color:
                           isCurrentUser ? Colors.blue[300] : Colors.grey[300],
                       borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(10),
-                        topRight: Radius.circular(10),
+                        topLeft: const Radius.circular(10),
+                        topRight: const Radius.circular(10),
                         bottomLeft: isCurrentUser
-                            ? Radius.circular(10)
-                            : Radius.circular(0),
+                            ? const Radius.circular(10)
+                            : const Radius.circular(0),
                         bottomRight: isCurrentUser
-                            ? Radius.circular(0)
-                            : Radius.circular(10),
+                            ? const Radius.circular(0)
+                            : const Radius.circular(10),
                       ),
                     ),
                     child: Text(
