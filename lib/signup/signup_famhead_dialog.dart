@@ -20,7 +20,8 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -57,8 +58,8 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
         // emailRedirectTo: 'your_redirect_url', // Optional redirect URL
         data: {'user_type': 'family_head'}, // Optional user data
       );
-      
-      if (authResponse.user != null) {
+
+      if (authResponse.user == null) {
         // Handle error during sign-up
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Sign-up failed: ${authResponse.user}')),
@@ -69,11 +70,10 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
       final user = authResponse.user;
 
       if (user != null) {
-        
         // Attempt to insert data into Supabase //
         final response =
-            await Supabase.instance.client.from('Family_Head').insert({
-          'famheadid': famheadId, // Use the generated UUID here
+            await Supabase.instance.client.from('familymember').insert({
+          // 'famheadid': famheadId, // Use the generated UUID here
           'first_name': _firstNameController.text,
           'last_name': _lastNameController.text,
           // 'username': _usernameController.text,
@@ -81,14 +81,14 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
           // 'email': _emailController.text,
           'age': int.tryParse(_ageController.text),
           'gender': _selectedGender,
-          'phone': _phoneController.text,
-          'address_line1': _addressLine1Controller.text,
-          'barangay': _barangayController.text,
-          'city': _cityController.text,
-          'province': _provinceController.text,
-          'postal_code': _postalCodeController.text,
+          // 'phone': _phoneController.text,
+          // 'address_line1': _addressLine1Controller.text,
+          // 'barangay': _barangayController.text,
+          // 'city': _cityController.text,
+          // 'province': _provinceController.text,
+          // 'postal_code': _postalCodeController.text,
           'dob': _dobController.text,
-          'user_id' : user.id,
+          'user_id': user.id,
         }).select();
 
         // Check if data was inserted successfully
@@ -104,10 +104,10 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
         // Proceed with the rest of the logic (e.g., saving user data)
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User sign-up failed, please try again later.')),
+          const SnackBar(
+              content: Text('User sign-up failed, please try again later.')),
         );
       }
-
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
