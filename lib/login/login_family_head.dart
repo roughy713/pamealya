@@ -25,28 +25,46 @@ class _LoginDialogState extends State<LoginDialog> {
     final password = _passwordController.text;
 
     try {
-      // Query the Family_Head table to get the user by username and password
-      final response = await Supabase.instance.client
-          .from('Family_Head')
-          .select('first_name, last_name, username')
-          .eq('username', username)
-          .eq('password', password)
-          .single();
+      // Use Supabase Auth to sign in with username (email) and password
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: username,  // Use username as the email field
+        password: password,
+      );
 
-      final firstName = response['first_name'];
-      final lastName = response['last_name'];
-      final userUsername = response['username'];
+      // Check if the user is successfully authenticated
+    if (response.user == null) {
+      // If there's no user returned, handle error
+      _showWarning('Error: Authentication failed, please check your credentials');
+      return;
+    }
 
       // Login successful, redirect to the Family Head Dashboard
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => FamHeadDashboard(
-            firstName: firstName,
-            lastName: lastName,
-            currentUserUsername: userUsername, // Pass username here
+      final user = response.user;
+
+      if (user != null) {
+        // final userUsername = user.email; // Get username from email (or any other identifier)
+
+        // Fetch the user's details from the "Family_Head" table (optional)
+        final familyHeadResponse = await Supabase.instance.client
+            .from('familymember')
+            .select('first_name, last_name, user_id')
+            .eq('user_id', user.id)  // Assuming username is stored in 'username'
+            .single();
+
+        final firstName = familyHeadResponse['first_name'];
+        final lastName = familyHeadResponse['last_name'];
+
+        // Redirect to the Family Head Dashboard
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => FamHeadDashboard(
+              firstName: firstName,
+              lastName: lastName,
+              currentUserUsername: lastName + ', ' + firstName // Pass username here
+            ),
           ),
-        ),
-      );
+        );
+      }
     } catch (e) {
       _showWarning('Error occurred while logging in: $e');
     }
@@ -148,12 +166,12 @@ class _LoginDialogState extends State<LoginDialog> {
               TextFormField(
                 controller: _usernameController,
                 decoration: const InputDecoration(
-                  labelText: 'Username',
+                  labelText: 'Username (Email)',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter username';
+                    return 'Please enter username (email)';
                   }
                   return null;
                 },
