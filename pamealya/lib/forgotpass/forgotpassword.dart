@@ -87,7 +87,7 @@ void showForgotPasswordDialog(BuildContext context) {
   showDialog(
     context: context,
     builder: (BuildContext context) {
-      return ForgotPasswordDialog();
+      return const ForgotPasswordDialog();
     },
   );
 }

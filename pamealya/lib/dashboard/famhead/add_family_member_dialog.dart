@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AddFamilyMemberDialog extends StatefulWidget {
-  final Function(Map<String, String>) onAdd;
+  final Function(Map<String, dynamic>) onAdd;
 
   const AddFamilyMemberDialog({super.key, required this.onAdd});
 
@@ -16,19 +16,16 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
   final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _dateOfBirthController = TextEditingController();
-  String? _selectedPosition;
+  final TextEditingController _religionController = TextEditingController();
   String? _selectedGender;
-  String? _selectedDietaryRestriction;
+  String? _selectedPosition;
 
+  bool _seafoodAllergy = false;
+  bool _nutsAllergy = false;
+  bool _dairyAllergy = false;
+
+  final List<String> _genders = ['Male', 'Female'];
   final List<String> _positions = ['Father', 'Mother', 'Son', 'Daughter'];
-  final List<String> _dietaryRestrictions = [
-    'None',
-    'Halal',
-    'Seafoods',
-    'Nuts',
-    'Milk'
-  ];
-  final List<String> _genders = ['Male', 'Female', 'Other'];
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -39,8 +36,50 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
     );
     if (picked != null) {
       setState(() {
-        _dateOfBirthController.text = DateFormat('MM/dd/yyyy').format(picked);
+        _dateOfBirthController.text =
+            "${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}";
       });
+    }
+  }
+
+  Future<int> saveToSupabase(Map<String, dynamic> memberData) async {
+    final supabase = Supabase.instance.client;
+
+    try {
+      final response = await supabase
+          .from('familymember')
+          .insert({
+            'first_name': memberData['first_name'],
+            'last_name': memberData['last_name'],
+            'age': memberData['age'],
+            'dob': memberData['dob'],
+            'religion': memberData['religion'],
+            'gender': memberData['gender'],
+            'position': memberData['position'],
+          })
+          .select('id')
+          .single();
+      return response['id']; // Returns the ID of the new family member
+    } catch (e) {
+      print('Error saving family member: $e');
+      throw Exception('Failed to save family member');
+    }
+  }
+
+  Future<void> saveAllergens(int familyMemberId) async {
+    final supabase = Supabase.instance.client;
+
+    try {
+      await supabase.from('familymember_allergens').upsert({
+        'familymember_id': familyMemberId,
+        'is_seafood': _seafoodAllergy,
+        'is_nuts': _nutsAllergy,
+        'is_dairy': _dairyAllergy,
+      });
+      print('Allergens saved successfully.');
+    } catch (e) {
+      print('Error saving allergens: $e');
+      throw Exception('Failed to save allergens');
     }
   }
 
@@ -57,33 +96,21 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
               TextFormField(
                 controller: _firstNameController,
                 decoration: const InputDecoration(labelText: 'First Name'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter the first name';
-                  }
-                  return null;
-                },
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Enter first name' : null,
               ),
               TextFormField(
                 controller: _lastNameController,
                 decoration: const InputDecoration(labelText: 'Last Name'),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter the last name';
-                  }
-                  return null;
-                },
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Enter last name' : null,
               ),
               TextFormField(
                 controller: _ageController,
                 decoration: const InputDecoration(labelText: 'Age'),
                 keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please enter the age';
-                  }
-                  return null;
-                },
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Enter age' : null,
               ),
               TextFormField(
                 controller: _dateOfBirthController,
@@ -93,23 +120,19 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                 ),
                 readOnly: true,
                 onTap: () => _selectDate(context),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please select the date of birth';
-                  }
-                  return null;
-                },
+              ),
+              TextFormField(
+                controller: _religionController,
+                decoration: const InputDecoration(labelText: 'Religion'),
               ),
               DropdownButtonFormField<String>(
                 value: _selectedGender,
                 items: _genders.map((gender) {
                   return DropdownMenuItem(value: gender, child: Text(gender));
                 }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedGender = value;
-                  });
-                },
+                onChanged: (value) => setState(() {
+                  _selectedGender = value;
+                }),
                 decoration: const InputDecoration(labelText: 'Gender'),
               ),
               DropdownButtonFormField<String>(
@@ -118,26 +141,38 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                   return DropdownMenuItem(
                       value: position, child: Text(position));
                 }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedPosition = value;
-                  });
-                },
+                onChanged: (value) => setState(() {
+                  _selectedPosition = value;
+                }),
                 decoration: const InputDecoration(labelText: 'Position'),
               ),
-              DropdownButtonFormField<String>(
-                value: _selectedDietaryRestriction,
-                items: _dietaryRestrictions.map((restriction) {
-                  return DropdownMenuItem(
-                      value: restriction, child: Text(restriction));
-                }).toList(),
+              const Text('Allergens'),
+              CheckboxListTile(
+                title: const Text('Seafood'),
+                value: _seafoodAllergy,
                 onChanged: (value) {
                   setState(() {
-                    _selectedDietaryRestriction = value;
+                    _seafoodAllergy = value ?? false;
                   });
                 },
-                decoration:
-                    const InputDecoration(labelText: 'Dietary Restriction'),
+              ),
+              CheckboxListTile(
+                title: const Text('Nuts'),
+                value: _nutsAllergy,
+                onChanged: (value) {
+                  setState(() {
+                    _nutsAllergy = value ?? false;
+                  });
+                },
+              ),
+              CheckboxListTile(
+                title: const Text('Dairy'),
+                value: _dairyAllergy,
+                onChanged: (value) {
+                  setState(() {
+                    _dairyAllergy = value ?? false;
+                  });
+                },
               ),
             ],
           ),
@@ -145,18 +180,26 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
       ),
       actions: [
         ElevatedButton(
-          onPressed: () {
+          onPressed: () async {
             if (_formKey.currentState?.validate() ?? false) {
-              widget.onAdd({
-                'firstName': _firstNameController.text,
-                'lastName': _lastNameController.text,
-                'age': _ageController.text,
-                'gender': _selectedGender ?? '',
+              final newMember = {
+                'first_name': _firstNameController.text,
+                'last_name': _lastNameController.text,
+                'age': int.tryParse(_ageController.text) ?? 0,
                 'dob': _dateOfBirthController.text,
-                'position': _selectedPosition ?? '',
-                'dietaryRestriction': _selectedDietaryRestriction ?? 'None',
-              });
-              Navigator.of(context).pop();
+                'religion': _religionController.text,
+                'gender': _selectedGender,
+                'position': _selectedPosition,
+              };
+
+              try {
+                final familyMemberId = await saveToSupabase(newMember);
+                await saveAllergens(familyMemberId);
+                widget.onAdd(newMember);
+                Navigator.of(context).pop();
+              } catch (e) {
+                print('Error: $e');
+              }
             }
           },
           child: const Text('Submit'),

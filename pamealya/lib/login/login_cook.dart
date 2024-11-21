@@ -162,7 +162,7 @@ void showCookLoginDialog(BuildContext context) {
   showDialog(
     context: context,
     builder: (BuildContext context) {
-      return CookLoginDialog();
+      return const CookLoginDialog();
     },
   );
 }

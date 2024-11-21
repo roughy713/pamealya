@@ -21,9 +21,11 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
 
   Future<void> fetchBookingRequests() async {
     try {
+      // Fetch only requests that are not yet accepted or declined (status is NULL)
       final response = await supabase
           .from('bookingrequest')
           .select()
+          .filter('status', 'is', null) // Use `.filter()` for null checks
           .order('request_date', ascending: false);
 
       setState(() {
@@ -31,7 +33,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
         isLoading = false;
       });
     } catch (e) {
-      showErrorDialog('Error fetching booking requests: $e');
+      await showErrorDialog('Error fetching booking requests: $e');
       setState(() {
         isLoading = false;
       });
@@ -40,26 +42,35 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
 
   Future<void> updateBookingStatus(String bookingId, bool isApproved) async {
     try {
-      final response = await supabase.from('bookingrequest').update({
-        'status': isApproved ? 'accepted' : 'declined',
-        '_isBookingAccepted': isApproved,
-      }).eq('bookingrequest_id', bookingId);
+      final updatedData = await supabase
+          .from('bookingrequest')
+          .update({
+            'status': isApproved ? 'accepted' : 'declined',
+            '_isBookingAccepted': isApproved,
+          })
+          .eq('bookingrequest_id', bookingId)
+          .select();
 
-      if (response != null) {
-        fetchBookingRequests(); // Refresh the booking requests list
-        showSuccessDialog(isApproved
+      if (updatedData.isNotEmpty) {
+        // Remove the booking from the list immediately
+        setState(() {
+          bookingRequests.removeWhere(
+              (booking) => booking['bookingrequest_id'] == bookingId);
+        });
+        await showSuccessDialog(isApproved
             ? 'Booking request successfully accepted.'
             : 'Booking request successfully declined.');
       } else {
-        showErrorDialog('Failed to update booking status');
+        await showErrorDialog(
+            'No booking request was updated. Please try again.');
       }
     } catch (e) {
-      showErrorDialog('Error updating booking status: $e');
+      await showErrorDialog('Error updating booking status: $e');
     }
   }
 
-  void showErrorDialog(String message) {
-    showDialog(
+  Future<void> showErrorDialog(String message) async {
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Error'),
@@ -74,8 +85,8 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
     );
   }
 
-  void showSuccessDialog(String message) {
-    showDialog(
+  Future<void> showSuccessDialog(String message) async {
+    await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Success'),
@@ -162,8 +173,31 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
                                 const SizedBox(width: 8),
                                 ElevatedButton(
                                   onPressed: () {
-                                    updateBookingStatus(
-                                        booking['bookingrequest_id'], false);
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: const Text('Decline Booking'),
+                                        content: const Text(
+                                            'Are you sure you want to decline this booking request?'),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () => Navigator.pop(
+                                                context), // Close the dialog
+                                            child: const Text('Cancel'),
+                                          ),
+                                          TextButton(
+                                            onPressed: () {
+                                              Navigator.pop(
+                                                  context); // Close the dialog
+                                              updateBookingStatus(
+                                                  booking['bookingrequest_id'],
+                                                  false);
+                                            },
+                                            child: const Text('Decline'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.red,

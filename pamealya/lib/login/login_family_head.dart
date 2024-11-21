@@ -218,7 +218,7 @@ void showFamilyHeadLoginDialog(BuildContext context) {
   showDialog(
     context: context,
     builder: (BuildContext context) {
-      return LoginDialog();
+      return const LoginDialog();
     },
   );
 }

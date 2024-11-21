@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../shared/private_chat.dart';
+import '../../shared/private_chat.dart'; // Ensure this is the correct import path for PrivateChatPage
 
 class CookChatPage extends StatefulWidget {
   final String currentUserId;
@@ -17,29 +17,59 @@ class CookChatPage extends StatefulWidget {
 }
 
 class _CookChatPageState extends State<CookChatPage> {
-  Future<List<Map<String, dynamic>>> _fetchAcceptedFamilyHeads() async {
-    final response = await Supabase.instance.client
-        .from('bookingrequest')
-        .select('famhead_id, localcook_id')
-        .eq('_isBookingAccepted', true)
-        .eq('localcook_id', widget.currentUserId);
+  final supabase = Supabase.instance.client;
 
-    return List<Map<String, dynamic>>.from(response as List);
+  Future<List<Map<String, dynamic>>> _fetchAcceptedFamilyHeads() async {
+    try {
+      final response = await supabase
+          .from('bookingrequest')
+          .select('famhead_id, localcook_id')
+          .eq('_isBookingAccepted', true)
+          .eq('localcook_id', widget.currentUserId);
+
+      return List<Map<String, dynamic>>.from(response as List);
+    } catch (e) {
+      debugPrint('Error fetching family heads: $e');
+      rethrow;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Chats'),
+        backgroundColor: Colors.green[600],
+      ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _fetchAcceptedFamilyHeads(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('Failed to load chats.'),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: () => setState(() {}),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green[600],
+                    ),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(
-                child: Text('No family heads available to chat with.'));
+              child: Text(
+                'No family heads available to chat with.',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+            );
           }
 
           final familyHeads = snapshot.data!;
@@ -56,8 +86,16 @@ class _CookChatPageState extends State<CookChatPage> {
               }
 
               return ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Colors.green,
+                  child: Icon(Icons.person, color: Colors.white),
+                ),
                 title: Text(
-                    'Family Head $famHeadUserId'), // Replace with actual family head name if available
+                  'Family Head: $famHeadUserId', // Replace with actual name if available
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                subtitle: const Text('Tap to start chatting'),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -67,7 +105,7 @@ class _CookChatPageState extends State<CookChatPage> {
                         currentUserUsername: widget.currentUserUsername,
                         otherUserId: famHeadUserId,
                         otherUserName:
-                            'Family Head $famHeadUserId', // Replace with actual name if available
+                            'Family Head: $famHeadUserId', // Replace with actual name if available
                         isCookInitiated: true,
                       ),
                     ),
