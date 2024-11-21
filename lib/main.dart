@@ -1,4 +1,4 @@
-//mao ni sya and para sa homepage
+//mao ni sya and para sa homepage //
 import 'package:flutter/material.dart';
 import 'home_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,8 +8,9 @@ void main() async {
 
   await Supabase.initialize(
     url: 'https://mtwwfagurgkeggzicslj.supabase.co',
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10d3dmYWd1cmdrZWdnemljc2xqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyNjE5NTEwMCwiZXhwIjoyMDQxNzcxMTAwfQ.K9EqsdYtd4wSHgIX4JySQOIEVu_WB-jmheqRs7UIvNI',
+    // anonKey:
+    //     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10d3dmYWd1cmdrZWdnemljc2xqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjYxOTUxMDAsImV4cCI6MjA0MTc3MTEwMH0.czvacjIwvIcLYPmKD3NrFpg75H6DCkOrhg48Q0KwPXI',  
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10d3dmYWd1cmdrZWdnemljc2xqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcyNjE5NTEwMCwiZXhwIjoyMDQxNzcxMTAwfQ.K9EqsdYtd4wSHgIX4JySQOIEVu_WB-jmheqRs7UIvNI', 
   );
 
   runApp(const MyApp());

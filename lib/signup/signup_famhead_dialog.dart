@@ -20,8 +20,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController =
-      TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
   final TextEditingController _dobController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
@@ -49,35 +48,66 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
       const uuid = Uuid(); // Create an instance of the Uuid class
       final famheadId = uuid.v4(); // Generate a unique UUID for famheadid
 
-      // Attempt to insert data into Supabase
-      final response =
-          await Supabase.instance.client.from('Family_Head').insert({
-        'famheadid': famheadId, // Use the generated UUID here
-        'first_name': _firstNameController.text,
-        'last_name': _lastNameController.text,
-        'username': _usernameController.text,
-        'password': _passwordController.text,
-        'email': _emailController.text,
-        'age': int.tryParse(_ageController.text),
-        'gender': _selectedGender,
-        'phone': _phoneController.text,
-        'address_line1': _addressLine1Controller.text,
-        'barangay': _barangayController.text,
-        'city': _cityController.text,
-        'province': _provinceController.text,
-        'postal_code': _postalCodeController.text,
-        'dob': _dobController.text,
-      }).select();
+      // Step 1: Create user in Supabase Auth
+      final authResponse = await Supabase.instance.client.auth.signUp(
+        email: _emailController.text,
+        password: _passwordController.text,
+        // If you need additional parameters, include them:
+        // phone: _phoneController.text, // Optional phone number
+        // emailRedirectTo: 'your_redirect_url', // Optional redirect URL
+        data: {'user_type': 'family_head'}, // Optional user data
+      );
+      
+      if (authResponse.user != null) {
+        // Handle error during sign-up
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sign-up failed: ${authResponse.user}')),
+        );
+        return;
+      }
 
-      // Check if data was inserted successfully
-      if (response.isNotEmpty) {
-        // Show success dialog and redirect
-        await _showSuccessDialog();
+      final user = authResponse.user;
+
+      if (user != null) {
+        
+        // Attempt to insert data into Supabase //
+        final response =
+            await Supabase.instance.client.from('Family_Head').insert({
+          'famheadid': famheadId, // Use the generated UUID here
+          'first_name': _firstNameController.text,
+          'last_name': _lastNameController.text,
+          // 'username': _usernameController.text,
+          // 'password': _passwordController.text,
+          // 'email': _emailController.text,
+          'age': int.tryParse(_ageController.text),
+          'gender': _selectedGender,
+          'phone': _phoneController.text,
+          'address_line1': _addressLine1Controller.text,
+          'barangay': _barangayController.text,
+          'city': _cityController.text,
+          'province': _provinceController.text,
+          'postal_code': _postalCodeController.text,
+          'dob': _dobController.text,
+          'user_id' : user.id,
+        }).select();
+
+        // Check if data was inserted successfully
+        if (response.isNotEmpty) {
+          // Show success dialog and redirect
+          await _showSuccessDialog();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Insert Error: No data returned')),
+          );
+        }
+
+        // Proceed with the rest of the logic (e.g., saving user data)
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Insert Error: No data returned')),
+          const SnackBar(content: Text('User sign-up failed, please try again later.')),
         );
       }
+
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
@@ -474,6 +504,12 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           TextFormField(
                             controller: _passwordController,
                             obscureText: true,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your password';
+                              }
+                              return null;
+                            },
                             decoration: const InputDecoration(
                               labelText: 'Password',
                               border: OutlineInputBorder(),
@@ -483,6 +519,12 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           TextFormField(
                             controller: _confirmPasswordController,
                             obscureText: true,
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please confirm your password';
+                              }
+                              return null;
+                            },
                             decoration: const InputDecoration(
                               labelText: 'Confirm Password',
                               border: OutlineInputBorder(),
