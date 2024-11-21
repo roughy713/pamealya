@@ -58,10 +58,10 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
         data: {'user_type': 'family_head'}, // Optional user data
       );
       
-      if (authResponse.user != null) {
+      if (authResponse.user == null) {
         // Handle error during sign-up
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sign-up failed: ${authResponse.user}')),
+          SnackBar(content: Text('Sign-up failed')),
         );
         return;
       }
@@ -72,8 +72,8 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
         
         // Attempt to insert data into Supabase //
         final response =
-            await Supabase.instance.client.from('Family_Head').insert({
-          'famheadid': famheadId, // Use the generated UUID here
+            await Supabase.instance.client.from('familymember').insert({
+          // 'famheadid': famheadId, // Use the generated UUID here
           'first_name': _firstNameController.text,
           'last_name': _lastNameController.text,
           // 'username': _usernameController.text,
@@ -81,12 +81,12 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
           // 'email': _emailController.text,
           'age': int.tryParse(_ageController.text),
           'gender': _selectedGender,
-          'phone': _phoneController.text,
-          'address_line1': _addressLine1Controller.text,
-          'barangay': _barangayController.text,
-          'city': _cityController.text,
-          'province': _provinceController.text,
-          'postal_code': _postalCodeController.text,
+          // 'phone': _phoneController.text,
+          // 'address_line1': _addressLine1Controller.text,
+          // 'barangay': _barangayController.text,
+          // 'city': _cityController.text,
+          // 'province': _provinceController.text,
+          // 'postal_code': _postalCodeController.text,
           'dob': _dobController.text,
           'user_id' : user.id,
         }).select();
@@ -491,14 +491,14 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          TextFormField(
-                            controller: _usernameController,
-                            decoration: const InputDecoration(
-                              labelText: 'Username',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
+                          // TextFormField(
+                          //   controller: _usernameController,
+                          //   decoration: const InputDecoration(
+                          //     labelText: 'Username',
+                          //     border: OutlineInputBorder(),
+                          //   ),
+                          // ),
+                          // const SizedBox(height: 10),
 
                           // Password and Confirm Password
                           TextFormField(
