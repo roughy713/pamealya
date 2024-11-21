@@ -67,36 +67,47 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
       }
 
       final user = authResponse.user;
-    
-      // Attempt to insert data into Supabase
-      final response =
-          await Supabase.instance.client.from('Family_Head').insert({
-        'famheadid': famheadId, // Use the generated UUID here
-        'first_name': _firstNameController.text,
-        'last_name': _lastNameController.text,
-        // 'username': _usernameController.text,
-        // 'password': _passwordController.text,
-        // 'email': _emailController.text,
-        'age': int.tryParse(_ageController.text),
-        'gender': _selectedGender,
-        'phone': _phoneController.text,
-        'address_line1': _addressLine1Controller.text,
-        'barangay': _barangayController.text,
-        'city': _cityController.text,
-        'province': _provinceController.text,
-        'postal_code': _postalCodeController.text,
-        'dob': _dobController.text,
-      }).select();
 
-      // Check if data was inserted successfully
-      if (response.isNotEmpty) {
-        // Show success dialog and redirect
-        await _showSuccessDialog();
+      if (user != null) {
+        
+        // Attempt to insert data into Supabase
+        final response =
+            await Supabase.instance.client.from('Family_Head').insert({
+          'famheadid': famheadId, // Use the generated UUID here
+          'first_name': _firstNameController.text,
+          'last_name': _lastNameController.text,
+          // 'username': _usernameController.text,
+          // 'password': _passwordController.text,
+          // 'email': _emailController.text,
+          'age': int.tryParse(_ageController.text),
+          'gender': _selectedGender,
+          'phone': _phoneController.text,
+          'address_line1': _addressLine1Controller.text,
+          'barangay': _barangayController.text,
+          'city': _cityController.text,
+          'province': _provinceController.text,
+          'postal_code': _postalCodeController.text,
+          'dob': _dobController.text,
+          'user_id' : user.id,
+        }).select();
+
+        // Check if data was inserted successfully
+        if (response.isNotEmpty) {
+          // Show success dialog and redirect
+          await _showSuccessDialog();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Insert Error: No data returned')),
+          );
+        }
+
+        // Proceed with the rest of the logic (e.g., saving user data)
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Insert Error: No data returned')),
+          const SnackBar(content: Text('User sign-up failed, please try again later.')),
         );
       }
+         
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
