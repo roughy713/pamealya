@@ -26,8 +26,11 @@ class _ApprovalPageState extends State<ApprovalPage> {
     });
 
     try {
-      final response =
-          await Supabase.instance.client.from('Local_Cook').select();
+      // Fetch cooks where is_accepted is FALSE
+      final response = await Supabase.instance.client
+          .from('Local_Cook')
+          .select()
+          .eq('is_accepted', false);
 
       setState(() {
         cooks = response;
@@ -38,18 +41,19 @@ class _ApprovalPageState extends State<ApprovalPage> {
         isLoading = false;
         hasError = true;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching cooks: $e')),
+      );
     }
   }
 
   Future<void> _approveCook(Map<String, dynamic> cook) async {
     try {
-      await Supabase.instance.client.from('Local_Cook_Approved').insert({
-        ...cook,
-      });
+      // Update is_accepted to TRUE
       await Supabase.instance.client
           .from('Local_Cook')
-          .delete()
-          .eq('localcookid', cook['localcookid']);
+          .update({'is_accepted': true}).eq('localcookid', cook['localcookid']);
+      await _showDialog('Success', 'Cook successfully approved!');
       _fetchCooks();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,16 +64,39 @@ class _ApprovalPageState extends State<ApprovalPage> {
 
   Future<void> _rejectCook(Map<String, dynamic> cook) async {
     try {
+      // Delete the cook from the table
       await Supabase.instance.client
           .from('Local_Cook')
           .delete()
           .eq('localcookid', cook['localcookid']);
+      await _showDialog('Success', 'Cook successfully rejected!');
       _fetchCooks();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error rejecting cook: $e')),
       );
     }
+  }
+
+  Future<void> _showDialog(String title, String message) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -86,7 +113,7 @@ class _ApprovalPageState extends State<ApprovalPage> {
                     final cook = cooks[index];
                     return ListTile(
                       title: Text('${cook['first_name']} ${cook['last_name']}'),
-                      subtitle: Text('Email: ${cook['email']}'),
+                      subtitle: Text('Phone: ${cook['phone']}'),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [

@@ -45,14 +45,11 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
     }
 
     try {
-      const uuid = Uuid(); // Create an instance of the Uuid class
-      final famheadId = uuid.v4(); // Generate a unique UUID for famheadid
-
       // Step 1: Create user in Supabase Auth
       final authResponse = await Supabase.instance.client.auth.signUp(
         email: _emailController.text,
         password: _passwordController.text,
-        data: {'user_type': 'family_head'}, // Optional user data
+        data: {'user_type': 'family_head'}, // Optional user metadata
       );
 
       if (authResponse.user == null) {
@@ -66,13 +63,11 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
       final user = authResponse.user;
 
       if (user != null) {
-        // Concatenate first_name and last_name for the family_head column
+        // Prepare data for the database
         final familyHeadName =
             '${_firstNameController.text} ${_lastNameController.text}';
 
-        // Attempt to insert data into Supabase
-        final response =
-            await Supabase.instance.client.from('familymember').insert({
+        final data = {
           'first_name': _firstNameController.text,
           'last_name': _lastNameController.text,
           'age': int.tryParse(_ageController.text),
@@ -84,13 +79,19 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
           'province': _provinceController.text,
           'postal_code': _postalCodeController.text,
           'dob': _dobController.text,
-          'user_id': user.id,
+          'user_id': user.id, // Link with Supabase Auth user ID
           'is_family_head': true, // Automatically set as family head
-          'family_head':
-              familyHeadName, // Add the full name to the family_head column
-        }).select();
+          'position': 'Family Head', // Automatically set position
+          'family_head': familyHeadName, // Full name in family_head column
+        };
 
-        if (response.isNotEmpty) {
+        // Step 2: Insert into the `familymember` table and retrieve the inserted row
+        final insertResponse = await Supabase.instance.client
+            .from('familymember')
+            .insert(data)
+            .select();
+
+        if (insertResponse != null && insertResponse.isNotEmpty) {
           // Show success dialog and redirect
           await _showSuccessDialog();
         } else {

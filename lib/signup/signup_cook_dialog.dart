@@ -413,54 +413,54 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
   // Handle form submission
   Future<void> handleFormSubmission() async {
     if (formKey.currentState?.validate() == true && _isChecked) {
-      debugPrint("Form validation successful");
-
-      const uuid = Uuid();
-
       try {
-        // Insert form details including the file URL into Supabase
-        final response =
-            await Supabase.instance.client.from('Local_Cook').insert({
-          'localcookid': uuid.v4(),
-          'first_name': firstNameController.text,
-          'last_name': lastNameController.text,
-          'email': emailController.text,
-          'username': usernameController.text,
-          'password': passwordController.text,
-          'age': int.tryParse(ageController.text),
-          'gender': _selectedGender,
-          'dateofbirth': dateOfBirth != null
-              ? DateFormat('yyyy-MM-dd').format(dateOfBirth!)
-              : null,
-          'phone': phoneController.text,
-          'address_line1': locationController.text,
-          'barangay': barangayController.text,
-          'city': cityController.text,
-          'province': provinceController.text,
-          'postal_code': postalCodeController.text,
-          'availability_days': availabilityDays.join(','),
-          'time_available_from': timeFrom?.format(context),
-          'time_available_to': timeTo?.format(context),
-          'certifications': certificationUrl ?? '',
-        });
+        // Step 1: Create user in Supabase Auth
+        final authResponse = await Supabase.instance.client.auth.signUp(
+          email: emailController.text,
+          password: passwordController.text,
+          data: {'user_type': 'cook'}, // Metadata for the user
+        );
 
-        // Check if the insertion was successful
-        if (response != null && response.error == null) {
-          debugPrint("Insert successful, showing success dialog");
+        if (authResponse.user != null) {
+          // Step 2: Insert details into the Local_Cook table
+          final userId =
+              authResponse.user!.id; // Retrieve the user's ID from Auth
 
-          // Success: Show the success dialog
+          // Prepare data for the table
+          final insertData = {
+            'user_id': userId, // Link to Supabase Auth user ID
+            'first_name': firstNameController.text,
+            'last_name': lastNameController.text,
+            'age': int.tryParse(ageController.text),
+            'gender': _selectedGender,
+            'dateofbirth': dateOfBirth != null
+                ? DateFormat('yyyy-MM-dd').format(dateOfBirth!)
+                : null,
+            'phone': phoneController.text,
+            'address_line1': locationController.text,
+            'barangay': barangayController.text,
+            'city': cityController.text,
+            'province': provinceController.text,
+            'postal_code': int.tryParse(postalCodeController.text),
+            'availability_days': availabilityDays.join(','), // Join as a string
+            'time_available_from': timeFrom?.format(context),
+            'time_available_to': timeTo?.format(context),
+            'certifications': certificationUrl ?? '',
+            'is_accepted': false, // Default value
+          };
+
+          await Supabase.instance.client.from('Local_Cook').insert(insertData);
+
+          // Show success dialog
           await _showSuccessDialog();
-        } else if (response?.error != null) {
-          debugPrint("Supabase error: ${response.error!.message}");
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${response.error!.message}')),
-          );
+        } else {
+          // Handle if auth signup failed
+          throw Exception('User registration failed in Supabase Auth.');
         }
       } catch (e) {
-        // Handle any exceptions
-        debugPrint("An error occurred during form submission: $e");
+        debugPrint('Error during sign-up: $e');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('An error occurred: $e')),
+          SnackBar(content: Text('Error during sign-up: $e')),
         );
       }
     } else {
@@ -468,7 +468,6 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
         const SnackBar(
             content: Text('Please agree to the Terms and Conditions')),
       );
-      debugPrint("Form validation failed or terms not accepted");
     }
   }
 
@@ -571,20 +570,6 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                             validator: (value) {
                               if (value == null || value.isEmpty) {
                                 return 'Please enter your email';
-                              }
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 10),
-                          TextFormField(
-                            controller: usernameController,
-                            decoration: const InputDecoration(
-                              labelText: 'Username',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your username';
                               }
                               return null;
                             },

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../dashboard/cook/cook_dashboard.dart'; // Redirect to this page after successful login
+import '../dashboard/cook/cook_dashboard.dart';
 import 'package:pamealya/signup/signup_cook_dialog.dart';
 
 class CookLoginDialog extends StatefulWidget {
@@ -11,58 +11,148 @@ class CookLoginDialog extends StatefulWidget {
 }
 
 class _CookLoginDialogState extends State<CookLoginDialog> {
-  final TextEditingController _usernameController = TextEditingController();
+  final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  // Function to handle the login logic
-  Future<void> _handleLogin(BuildContext context) async {
-    if (!_formKey.currentState!.validate()) {
-      return;
+  @override
+  void initState() {
+    super.initState();
+    _checkSessionOnStartup(); // Check session when the app initializes
+    Supabase.instance.client.auth.onAuthStateChange.listen((event) {
+      if (event.session != null) {
+        _redirectToDashboard(event.session!.user);
+      }
+    });
+  }
+
+  Future<void> _checkSessionOnStartup() async {
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session != null) {
+      _redirectToDashboard(session.user!); // Redirect if session is valid
     }
+  }
 
-    final username = _usernameController.text;
-    final password = _passwordController.text;
-
+  Future<void> _redirectToDashboard(User user) async {
     try {
-      // Query the Local_Cook table to get the user by username and password
-      final response = await Supabase.instance.client
-          .from('Local_Cook_Approved')
-          .select('first_name, last_name, username')
-          .eq('username', username)
-          .eq('password', password)
+      // Check if the cook is approved (is_accepted == true)
+      final cookResponse = await Supabase.instance.client
+          .from('Local_Cook')
+          .select('first_name, last_name, is_accepted')
+          .eq('user_id', user.id)
           .single();
 
-      final firstName = response['first_name'];
-      final lastName = response['last_name'];
-      final userUsername = response['username'];
+      if (cookResponse == null || cookResponse['is_accepted'] != true) {
+        _showWarning('Your account is not yet approved by the admin.');
+        return;
+      }
 
-      // Login successful, redirect to the Cook Dashboard
+      final firstName = cookResponse['first_name'];
+      final lastName = cookResponse['last_name'];
+
+      // Redirect to the Cook Dashboard
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
           builder: (context) => CookDashboard(
             firstName: firstName,
             lastName: lastName,
-            currentUserId: '', // Provide the correct user ID if available
-            currentUserUsername: userUsername, // Pass username here
+            currentUserId: user.id,
+            currentUserUsername: user.email ?? '',
           ),
         ),
       );
     } catch (e) {
-      _showWarning('Error occurred while logging in: $e');
+      _showWarning('Error loading user data: $e');
     }
   }
 
-  // Function to show warning messages
+  Future<void> _handleLogin(BuildContext context) async {
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final email = _emailController.text;
+    final password = _passwordController.text;
+
+    try {
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      if (response.user == null) {
+        _showWarning(
+            'Error: Authentication failed. Please check your credentials.');
+        return;
+      }
+
+      _redirectToDashboard(response.user!);
+    } catch (e) {
+      _showWarning('Error during login: $e');
+    }
+  }
+
   void _showWarning(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
   }
 
+  Future<void> _sendPasswordResetEmail(String email) async {
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(email);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password reset email sent!')),
+      );
+    } catch (e) {
+      _showWarning('Error: $e');
+    }
+  }
+
+  void _showForgotPasswordDialog(BuildContext context) {
+    final TextEditingController emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Reset Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Enter your email to receive a password reset link.'),
+              const SizedBox(height: 10),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final email = emailController.text;
+                await _sendPasswordResetEmail(email);
+                Navigator.of(context).pop();
+              },
+              child: const Text('Send Link'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -91,14 +181,14 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
               ),
               const SizedBox(height: 20),
               TextFormField(
-                controller: _usernameController,
+                controller: _emailController,
                 decoration: const InputDecoration(
-                  labelText: 'Username',
+                  labelText: 'Username (Email)',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter username';
+                    return 'Please enter username (email)';
                   }
                   return null;
                 },
@@ -131,19 +221,16 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
               ),
               const SizedBox(height: 10),
               TextButton(
-                onPressed: () {
-                  // Implement forgot password logic here
-                },
+                onPressed: () => _showForgotPasswordDialog(context),
                 child: const Text('Forgot Password?'),
               ),
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () {
-                  // Redirect to the Cook Sign-Up dialog
                   showDialog(
                     context: context,
                     builder: (BuildContext context) {
-                      return const SignUpCookDialog(); // Ensure this matches the class name in signup_cook_dialog.dart
+                      return const SignUpCookDialog();
                     },
                   );
                 },

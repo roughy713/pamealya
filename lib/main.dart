@@ -121,10 +121,9 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-
 //mao ni sya and para sa admin login
 // import 'package:flutter/material.dart';
-// import 'login_admin.dart';
+// import 'package:pamealya/login/login_admin.dart';
 // import 'package:supabase_flutter/supabase_flutter.dart';
 
 // void main() async {
@@ -155,7 +154,7 @@ class _MyAppState extends State<MyApp> {
 //       theme: ThemeData(
 //         primarySwatch: Colors.blue,
 //       ),
-//       home: LoginAdmin(),
+//       home: const LoginAdmin(),
 //     );
 //   }
 // }
