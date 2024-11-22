@@ -24,7 +24,7 @@ void showLoginDialog(BuildContext context) {
               ),
               Image.asset(
                 'assets/logo-dark.png', // Replace with your logo image path
-                height: 60, // Reduced height
+                height: 60, // Adjust height as needed
               ),
               const SizedBox(height: 10),
               Row(
@@ -35,7 +35,7 @@ void showLoginDialog(BuildContext context) {
                     children: [
                       Image.asset(
                         'assets/family-head.png', // Replace with your logo image path
-                        height: 150, // Reduced height
+                        height: 150, // Adjust height as needed
                       ),
                       const SizedBox(height: 8),
                       ElevatedButton.icon(
@@ -51,6 +51,7 @@ void showLoginDialog(BuildContext context) {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
+                        icon: const Icon(Icons.family_restroom),
                       ),
                     ],
                   ),
@@ -59,7 +60,7 @@ void showLoginDialog(BuildContext context) {
                     children: [
                       Image.asset(
                         'assets/cook.png', // Replace with your logo image path
-                        height: 150, // Reduced height
+                        height: 150, // Adjust height as needed
                       ),
                       const SizedBox(height: 8),
                       ElevatedButton.icon(
@@ -74,6 +75,7 @@ void showLoginDialog(BuildContext context) {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
+                        icon: const Icon(Icons.restaurant),
                       ),
                     ],
                   ),

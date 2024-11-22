@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../dashboard/cook/cook_dashboard.dart';
-import 'package:pamealya/signup/signup_cook_dialog.dart';
+import '../dashboard/cook/cook_dashboard.dart'; // Redirect to this page after successful login
 
 class CookLoginDialog extends StatefulWidget {
   const CookLoginDialog({super.key});
@@ -14,62 +13,16 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-
-  @override
-  void initState() {
-    super.initState();
-    _checkSessionOnStartup(); // Check session when the app initializes
-    Supabase.instance.client.auth.onAuthStateChange.listen((event) {
-      if (event.session != null) {
-        _redirectToDashboard(event.session!.user);
-      }
-    });
-  }
-
-  Future<void> _checkSessionOnStartup() async {
-    final session = Supabase.instance.client.auth.currentSession;
-    if (session != null) {
-      _redirectToDashboard(session.user!); // Redirect if session is valid
-    }
-  }
-
-  Future<void> _redirectToDashboard(User user) async {
-    try {
-      // Check if the cook is approved (is_accepted == true)
-      final cookResponse = await Supabase.instance.client
-          .from('Local_Cook')
-          .select('first_name, last_name, is_accepted')
-          .eq('user_id', user.id)
-          .single();
-
-      if (cookResponse == null || cookResponse['is_accepted'] != true) {
-        _showWarning('Your account is not yet approved by the admin.');
-        return;
-      }
-
-      final firstName = cookResponse['first_name'];
-      final lastName = cookResponse['last_name'];
-
-      // Redirect to the Cook Dashboard
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => CookDashboard(
-            firstName: firstName,
-            lastName: lastName,
-            currentUserId: user.id,
-            currentUserUsername: user.email ?? '',
-          ),
-        ),
-      );
-    } catch (e) {
-      _showWarning('Error loading user data: $e');
-    }
-  }
+  bool _isLoading = false;
 
   Future<void> _handleLogin(BuildContext context) async {
     if (!_formKey.currentState!.validate()) {
-      return;
+      return; // Form validation failed
     }
+
+    setState(() {
+      _isLoading = true; // Show loading indicator
+    });
 
     final email = _emailController.text;
     final password = _passwordController.text;
@@ -89,6 +42,38 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
       _redirectToDashboard(response.user!);
     } catch (e) {
       _showWarning('Error during login: $e');
+    } finally {
+      setState(() {
+        _isLoading = false; // Hide loading indicator
+      });
+    }
+  }
+
+  Future<void> _redirectToDashboard(User user) async {
+    try {
+      final cookResponse = await Supabase.instance.client
+          .from('Local_Cook')
+          .select('first_name, last_name, is_accepted')
+          .eq('user_id', user.id)
+          .single();
+
+      if (cookResponse['is_accepted'] != true) {
+        _showWarning('Your account has not been approved by the admin.');
+        return;
+      }
+
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => CookDashboard(
+            firstName: cookResponse['first_name'],
+            lastName: cookResponse['last_name'],
+            currentUserId: user.id,
+            currentUserUsername: user.email ?? '',
+          ),
+        ),
+      );
+    } catch (e) {
+      _showWarning('Error loading cook details: $e');
     }
   }
 
@@ -96,65 +81,6 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
-  }
-
-  Future<void> _sendPasswordResetEmail(String email) async {
-    try {
-      await Supabase.instance.client.auth.resetPasswordForEmail(email);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password reset email sent!')),
-      );
-    } catch (e) {
-      _showWarning('Error: $e');
-    }
-  }
-
-  void _showForgotPasswordDialog(BuildContext context) {
-    final TextEditingController emailController = TextEditingController();
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Reset Password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Enter your email to receive a password reset link.'),
-              const SizedBox(height: 10),
-              TextField(
-                controller: emailController,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final email = emailController.text;
-                await _sendPasswordResetEmail(email);
-                Navigator.of(context).pop();
-              },
-              child: const Text('Send Link'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 
   @override
@@ -183,12 +109,12 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(
-                  labelText: 'Username (Email)',
+                  labelText: 'Email',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter username (email)';
+                    return 'Please enter email';
                   }
                   return null;
                 },
@@ -209,30 +135,34 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
                 },
               ),
               const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => _handleLogin(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.yellow[700],
-                  foregroundColor: Colors.black,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
-                ),
-                child: const Text('Login'),
-              ),
+              _isLoading
+                  ? const CircularProgressIndicator()
+                  : ElevatedButton(
+                      onPressed: () => _handleLogin(context),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.yellow[700],
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 40,
+                          vertical: 10,
+                        ),
+                      ),
+                      child: const Text('Login'),
+                    ),
               const SizedBox(height: 10),
               TextButton(
-                onPressed: () => _showForgotPasswordDialog(context),
+                onPressed: () {
+                  // Forgot Password logic
+                  _showWarning(
+                      'Forgot Password functionality not implemented.');
+                },
                 child: const Text('Forgot Password?'),
               ),
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (BuildContext context) {
-                      return const SignUpCookDialog();
-                    },
-                  );
+                  // Redirect to signup
+                  _showWarning('Signup functionality not implemented.');
                 },
                 child: const Text("Don't Have An Account?"),
               ),
@@ -244,7 +174,6 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
   }
 }
 
-// Function to show the login dialog
 void showCookLoginDialog(BuildContext context) {
   showDialog(
     context: context,

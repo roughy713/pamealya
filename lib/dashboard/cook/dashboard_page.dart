@@ -50,7 +50,9 @@ class _DashboardPageState extends State<DashboardPage> {
         upcomingBookings = List<Map<String, dynamic>>.from(upcomingResponse);
       });
     } catch (e) {
-      print('Error fetching data: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching data: $e')),
+      );
     }
   }
 

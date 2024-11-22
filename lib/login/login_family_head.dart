@@ -27,16 +27,17 @@ class _LoginDialogState extends State<LoginDialog> {
     try {
       // Use Supabase Auth to sign in with username (email) and password
       final response = await Supabase.instance.client.auth.signInWithPassword(
-        email: username,  // Use username as the email field
+        email: username, // Use username as the email field
         password: password,
       );
 
       // Check if the user is successfully authenticated
-    if (response.user == null) {
-      // If there's no user returned, handle error
-      _showWarning('Error: Authentication failed, please check your credentials');
-      return;
-    }
+      if (response.user == null) {
+        // If there's no user returned, handle error
+        _showWarning(
+            'Error: Authentication failed, please check your credentials');
+        return;
+      }
 
       // Login successful, redirect to the Family Head Dashboard
       final user = response.user;
@@ -48,7 +49,7 @@ class _LoginDialogState extends State<LoginDialog> {
         final familyHeadResponse = await Supabase.instance.client
             .from('familymember')
             .select('first_name, last_name, user_id')
-            .eq('user_id', user.id)  // Assuming username is stored in 'username'
+            .eq('user_id', user.id) // Assuming username is stored in 'username'
             .single();
 
         final firstName = familyHeadResponse['first_name'];
@@ -58,10 +59,11 @@ class _LoginDialogState extends State<LoginDialog> {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => FamHeadDashboard(
-              firstName: firstName,
-              lastName: lastName,
-              currentUserUsername: lastName + ', ' + firstName // Pass username here
-            ),
+                firstName: firstName,
+                lastName: lastName,
+                currentUserUsername:
+                    lastName + ', ' + firstName // Pass username here
+                ),
           ),
         );
       }
@@ -166,12 +168,12 @@ class _LoginDialogState extends State<LoginDialog> {
               TextFormField(
                 controller: _usernameController,
                 decoration: const InputDecoration(
-                  labelText: 'Username (Email)',
+                  labelText: 'Email',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter username (email)';
+                    return 'Please enter email';
                   }
                   return null;
                 },

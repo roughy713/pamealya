@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:pamealya/dashboard/famhead/famhead_dashboard.dart'; // <-- Import FamHeadDashboard
+import 'package:pamealya/dashboard/famhead/famhead_dashboard.dart'; // Import FamHeadDashboard
+import 'package:pamealya/dashboard/cook/cook_dashboard.dart'; // Import CookDashboard
 import 'home_page.dart'; // Your login page
 import 'dart:async'; // Import for StreamSubscription
 
@@ -27,10 +28,20 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   bool isAuthenticated = false;
+  bool isLoading = true;
+  String? errorMessage;
+
+  // Family Head details
+  String? famFirstName;
+  String? famLastName;
+  String? famUserId;
+
+  // Cook details
+  String? cookFirstName;
+  String? cookLastName;
+  String? cookUserId;
+
   late StreamSubscription<AuthState> _authStateSubscription;
-  String? firstName;
-  String? lastName;
-  String? currentUserUsername;
 
   @override
   void initState() {
@@ -41,60 +52,106 @@ class _MyAppState extends State<MyApp> {
         Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final session = data.session;
 
-      // Update the isAuthenticated flag based on the session
-      setState(() {
-        isAuthenticated = session != null;
-      });
-
-      // If user is authenticated, fetch user details from 'familymember' table
-      if (session != null) {
-        _fetchFamilyHeadDetails(session.user!.id);
+      if (session == null) {
+        // Handle logout
+        setState(() {
+          isAuthenticated = false;
+          isLoading = false;
+        });
+        return;
       }
+
+      // If session exists, fetch user details
+      _fetchUserDetails(session.user!.id);
     });
 
     // Check if the user is already authenticated when the app starts
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
+      _fetchUserDetails(user.id);
+    } else {
       setState(() {
-        isAuthenticated = true;
+        isAuthenticated = false;
+        isLoading = false;
       });
-      _fetchFamilyHeadDetails(user.id); // Fetch the family details
     }
   }
 
   @override
   void dispose() {
-    // Cancel the auth state change listener when the app is disposed
     _authStateSubscription.cancel();
     super.dispose();
   }
 
-  // Fetch family details based on the current user's ID
-  Future<void> _fetchFamilyHeadDetails(String userId) async {
+  // Fetch user details based on the current user's ID
+  Future<void> _fetchUserDetails(String userId) async {
     try {
-      final response = await Supabase.instance.client
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      // Check if the user is a Family Head
+      final famResponse = await Supabase.instance.client
           .from('familymember')
           .select('first_name, last_name, user_id')
           .eq('user_id', userId)
           .maybeSingle();
 
-      if (response == null) {
-        // No matching user found, redirect to HomePage
+      if (famResponse != null) {
+        // Family Head found
         setState(() {
-          isAuthenticated = false;
+          famFirstName = famResponse['first_name'] ?? 'Unknown';
+          famLastName = famResponse['last_name'] ?? 'User';
+          famUserId = famResponse['user_id'];
+          isAuthenticated = true;
+          isLoading = false;
         });
         return;
       }
 
+      // Check if the user is a Cook
+      final cookResponse = await Supabase.instance.client
+          .from('Local_Cook')
+          .select('first_name, last_name, user_id, is_accepted')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (cookResponse != null) {
+        if (cookResponse['is_accepted'] != true) {
+          // Cook not approved
+          setState(() {
+            errorMessage = 'Your account is not approved yet.';
+            isAuthenticated = false;
+            isLoading = false;
+          });
+          return;
+        }
+
+        // Cook found and approved
+        setState(() {
+          cookFirstName = cookResponse['first_name'];
+          cookLastName = cookResponse['last_name'];
+          cookUserId = cookResponse['user_id'];
+          isAuthenticated = true;
+          isLoading = false;
+        });
+        return;
+      }
+
+      // No matching user found
       setState(() {
-        firstName = response['first_name'] ?? 'Unknown';
-        lastName = response['last_name'] ?? 'User';
-        currentUserUsername = response['user_id'];
+        errorMessage = 'User not found in Family Head or Cook records.';
+        isAuthenticated = false;
+        isLoading = false;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching family head details: $e')),
-      );
+      // Handle errors
+      setState(() {
+        errorMessage = 'Error fetching user details: $e';
+        isAuthenticated = false;
+        isLoading = false;
+      });
     }
   }
 
@@ -105,21 +162,71 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      // If not authenticated, show the HomePage (login page)
-      home: !isAuthenticated
-          ? const HomePage()
-          : firstName == null || lastName == null || currentUserUsername == null
-              ? const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                ) // Show loading if family details are not fetched yet
-              : FamHeadDashboard(
-                  firstName: firstName!, // Pass the first name
-                  lastName: lastName!, // Pass the last name
-                  currentUserUsername: currentUserUsername!, // Pass the user id
-                ),
+      home: isLoading
+          ? const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            )
+          : errorMessage != null
+              ? _buildErrorScreen()
+              : !isAuthenticated
+                  ? const HomePage()
+                  : _buildDashboard(),
+    );
+  }
+
+  Widget _buildDashboard() {
+    if (famFirstName != null && famLastName != null && famUserId != null) {
+      // Redirect to Family Head Dashboard
+      return FamHeadDashboard(
+        firstName: famFirstName!,
+        lastName: famLastName!,
+        currentUserUsername: famUserId!,
+      );
+    } else if (cookFirstName != null &&
+        cookLastName != null &&
+        cookUserId != null) {
+      // Redirect to Cook Dashboard
+      return CookDashboard(
+        firstName: cookFirstName!,
+        lastName: cookLastName!,
+        currentUserId: cookUserId!,
+        currentUserUsername: '',
+      );
+    }
+    return const Scaffold(
+      body: Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  Widget _buildErrorScreen() {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error, color: Colors.red, size: 50),
+            const SizedBox(height: 20),
+            Text(
+              errorMessage ?? 'Unknown error occurred.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => const HomePage()),
+                );
+              },
+              child: const Text('Go to Login'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
+
 
 //mao ni sya and para sa admin login
 // import 'package:flutter/material.dart';
