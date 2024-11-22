@@ -66,6 +66,10 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
       final user = authResponse.user;
 
       if (user != null) {
+        // Concatenate first_name and last_name for the family_head column
+        final familyHeadName =
+            '${_firstNameController.text} ${_lastNameController.text}';
+
         // Attempt to insert data into Supabase
         final response =
             await Supabase.instance.client.from('familymember').insert({
@@ -81,6 +85,9 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
           'postal_code': _postalCodeController.text,
           'dob': _dobController.text,
           'user_id': user.id,
+          'is_family_head': true, // Automatically set as family head
+          'family_head':
+              familyHeadName, // Add the full name to the family_head column
         }).select();
 
         if (response.isNotEmpty) {
