@@ -30,17 +30,18 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
 
   final List<String> genderOptions = ['Male', 'Female'];
   final List<String> positionOptions = [
+    'Family Head',
     'Father',
     'Mother',
     'Son',
-    'Daughter',
-    'Family Head',
+    'Daughter'
   ];
 
   @override
   void initState() {
     super.initState();
 
+    // Initialize text controllers with existing data
     firstNameController =
         TextEditingController(text: widget.memberData['first_name'] ?? '');
     lastNameController =
@@ -53,12 +54,32 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
     gender = widget.memberData['gender'];
     position = widget.memberData['position'];
 
-    seafoodAllergy = widget.memberData['allergens']?['is_seafood'] ?? false;
-    nutsAllergy = widget.memberData['allergens']?['is_nuts'] ?? false;
-    dairyAllergy = widget.memberData['allergens']?['is_dairy'] ?? false;
+    // Fetch allergen data for the family member
+    _fetchAllergens();
   }
 
-  Future<void> saveAllergens(int familyMemberId) async {
+  Future<void> _fetchAllergens() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('familymember_allergens')
+          .select('is_seafood, is_nuts, is_dairy')
+          .eq('familymember_id', widget.memberData['familymember_id'])
+          .single();
+
+      setState(() {
+        seafoodAllergy = response['is_seafood'] ?? false;
+        nutsAllergy = response['is_nuts'] ?? false;
+        dairyAllergy = response['is_dairy'] ?? false;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching allergens: $e')),
+      );
+    }
+  }
+
+  Future<void> saveAllergens(String familyMemberId) async {
     final supabase = Supabase.instance.client;
 
     try {
@@ -68,17 +89,37 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
         'is_nuts': nutsAllergy,
         'is_dairy': dairyAllergy,
       });
-      print('Allergens updated successfully.');
     } catch (e) {
       print('Error updating allergens: $e');
       throw Exception('Failed to update allergens');
     }
   }
 
+  Future<void> _showSuccessDialog(String message) async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Success'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final bool isFamilyHead = widget.memberData['position'] == 'Family Head';
+
     return AlertDialog(
-      title: const Text("Edit Family Member"),
+      title: Text(
+        isFamilyHead ? "Edit Family Head" : "Edit Family Member",
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
       content: SingleChildScrollView(
         child: Form(
           child: Column(
@@ -146,13 +187,20 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
                     child: Text(value),
                   );
                 }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    position = value;
-                  });
-                },
-                decoration: const InputDecoration(labelText: 'Position'),
+                onChanged: isFamilyHead
+                    ? null
+                    : (value) {
+                        setState(() {
+                          position = value;
+                        });
+                      },
+                decoration: InputDecoration(
+                  labelText: 'Position',
+                  helperText:
+                      isFamilyHead ? 'Position cannot be changed.' : null,
+                ),
               ),
+              const SizedBox(height: 10),
               const Text('Allergens'),
               CheckboxListTile(
                 title: const Text('Seafood'),
@@ -201,13 +249,13 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
               'dob': dobController.text,
               'religion': religionController.text,
               'gender': gender,
-              'position': position,
             };
 
             try {
               await saveAllergens(widget.memberData['familymember_id']);
               widget.onEdit(updatedMember);
               Navigator.pop(context);
+              _showSuccessDialog('Family member updated successfully!');
             } catch (e) {
               print('Error: $e');
             }

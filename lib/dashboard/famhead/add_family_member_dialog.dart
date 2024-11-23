@@ -3,8 +3,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AddFamilyMemberDialog extends StatefulWidget {
   final Function(Map<String, dynamic>) onAdd;
+  final String familyHeadName;
 
-  const AddFamilyMemberDialog({super.key, required this.onAdd});
+  const AddFamilyMemberDialog({
+    super.key,
+    required this.onAdd,
+    required this.familyHeadName,
+  });
 
   @override
   AddFamilyMemberDialogState createState() => AddFamilyMemberDialogState();
@@ -24,8 +29,73 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
   bool _nutsAllergy = false;
   bool _dairyAllergy = false;
 
-  final List<String> _genders = ['Male', 'Female'];
-  final List<String> _positions = ['Father', 'Mother', 'Son', 'Daughter'];
+  bool _isSaving = false; // Prevent multiple submissions
+
+  Future<void> _saveFamilyMember() async {
+    if (_isSaving) return; // Prevent duplicate submissions
+    setState(() {
+      _isSaving = true;
+    });
+
+    final supabase = Supabase.instance.client;
+
+    try {
+      final newMember = {
+        'first_name': _firstNameController.text.trim(),
+        'last_name': _lastNameController.text.trim(),
+        'age': int.tryParse(_ageController.text) ?? 0,
+        'dob': _dateOfBirthController.text.trim(),
+        'religion': _religionController.text.trim(),
+        'gender': _selectedGender,
+        'position': _selectedPosition,
+        'is_family_head': false,
+        'family_head': widget.familyHeadName,
+      };
+
+      final response = await supabase
+          .from('familymember')
+          .insert(newMember)
+          .select('familymember_id')
+          .single();
+
+      final familyMemberId = response['familymember_id'];
+
+      await supabase.from('familymember_allergens').upsert({
+        'familymember_id': familyMemberId,
+        'is_seafood': _seafoodAllergy,
+        'is_nuts': _nutsAllergy,
+        'is_dairy': _dairyAllergy,
+      });
+
+      widget.onAdd(newMember);
+      Navigator.of(context).pop();
+      _showSuccessDialog('Family member added successfully!');
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error adding family member: $e')),
+      );
+    } finally {
+      setState(() {
+        _isSaving = false;
+      });
+    }
+  }
+
+  Future<void> _showSuccessDialog(String message) async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Success'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
@@ -37,49 +107,8 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
     if (picked != null) {
       setState(() {
         _dateOfBirthController.text =
-            "${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}";
+            "${picked.month}/${picked.day}/${picked.year}";
       });
-    }
-  }
-
-  Future<int> saveToSupabase(Map<String, dynamic> memberData) async {
-    final supabase = Supabase.instance.client;
-
-    try {
-      final response = await supabase
-          .from('familymember')
-          .insert({
-            'first_name': memberData['first_name'],
-            'last_name': memberData['last_name'],
-            'age': memberData['age'],
-            'dob': memberData['dob'],
-            'religion': memberData['religion'],
-            'gender': memberData['gender'],
-            'position': memberData['position'],
-          })
-          .select('id')
-          .single();
-      return response['id']; // Returns the ID of the new family member
-    } catch (e) {
-      print('Error saving family member: $e');
-      throw Exception('Failed to save family member');
-    }
-  }
-
-  Future<void> saveAllergens(int familyMemberId) async {
-    final supabase = Supabase.instance.client;
-
-    try {
-      await supabase.from('familymember_allergens').upsert({
-        'familymember_id': familyMemberId,
-        'is_seafood': _seafoodAllergy,
-        'is_nuts': _nutsAllergy,
-        'is_dairy': _dairyAllergy,
-      });
-      print('Allergens saved successfully.');
-    } catch (e) {
-      print('Error saving allergens: $e');
-      throw Exception('Failed to save allergens');
     }
   }
 
@@ -116,10 +145,11 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                 controller: _dateOfBirthController,
                 decoration: const InputDecoration(
                   labelText: 'Date of Birth',
-                  suffixIcon: Icon(Icons.calendar_today),
+                  suffixIcon:
+                      Icon(Icons.calendar_today), // Add calendar icon here
                 ),
-                readOnly: true,
                 onTap: () => _selectDate(context),
+                readOnly: true,
               ),
               TextFormField(
                 controller: _religionController,
@@ -127,26 +157,30 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
               ),
               DropdownButtonFormField<String>(
                 value: _selectedGender,
-                items: _genders.map((gender) {
-                  return DropdownMenuItem(value: gender, child: Text(gender));
-                }).toList(),
                 onChanged: (value) => setState(() {
                   _selectedGender = value;
                 }),
+                items: ['Male', 'Female']
+                    .map((gender) => DropdownMenuItem(
+                          value: gender,
+                          child: Text(gender),
+                        ))
+                    .toList(),
                 decoration: const InputDecoration(labelText: 'Gender'),
               ),
               DropdownButtonFormField<String>(
                 value: _selectedPosition,
-                items: _positions.map((position) {
-                  return DropdownMenuItem(
-                      value: position, child: Text(position));
-                }).toList(),
                 onChanged: (value) => setState(() {
                   _selectedPosition = value;
                 }),
+                items: ['Father', 'Mother', 'Son', 'Daughter']
+                    .map((position) => DropdownMenuItem(
+                          value: position,
+                          child: Text(position),
+                        ))
+                    .toList(),
                 decoration: const InputDecoration(labelText: 'Position'),
               ),
-              const Text('Allergens'),
               CheckboxListTile(
                 title: const Text('Seafood'),
                 value: _seafoodAllergy,
@@ -179,34 +213,17 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
         ),
       ),
       actions: [
-        ElevatedButton(
-          onPressed: () async {
-            if (_formKey.currentState?.validate() ?? false) {
-              final newMember = {
-                'first_name': _firstNameController.text,
-                'last_name': _lastNameController.text,
-                'age': int.tryParse(_ageController.text) ?? 0,
-                'dob': _dateOfBirthController.text,
-                'religion': _religionController.text,
-                'gender': _selectedGender,
-                'position': _selectedPosition,
-              };
-
-              try {
-                final familyMemberId = await saveToSupabase(newMember);
-                await saveAllergens(familyMemberId);
-                widget.onAdd(newMember);
-                Navigator.of(context).pop();
-              } catch (e) {
-                print('Error: $e');
-              }
-            }
-          },
-          child: const Text('Submit'),
-        ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            if (_formKey.currentState?.validate() ?? false) {
+              _saveFamilyMember();
+            }
+          },
+          child: const Text('Submit'),
         ),
       ],
     );
