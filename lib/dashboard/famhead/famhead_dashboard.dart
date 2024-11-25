@@ -6,7 +6,6 @@ import 'my_family_page.dart';
 import 'famhead_chat_page.dart';
 import 'cook_page.dart';
 import 'notifications_page.dart';
-import 'bmi_calculator_page.dart';
 import 'transactions_page.dart';
 import 'custom_drawer.dart';
 
@@ -33,6 +32,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
 
   List<List<Map<String, dynamic>>> mealPlanData = [];
   List<Map<String, dynamic>> familyMembers = [];
+  Map<String, dynamic> portionSizeData = {};
 
   final List<String> _titles = [
     'Dashboard',
@@ -40,7 +40,6 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     'Chat',
     'Cook',
     'Notifications',
-    'BMI Calculator',
     'Transactions',
   ];
 
@@ -49,29 +48,27 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     super.initState();
     fetchMealPlan();
     fetchFamilyMembers();
+    fetchPortionSizeData();
   }
 
-  // Fetch the saved meal plan from the database
   Future<void> fetchMealPlan() async {
     try {
       final response = await Supabase.instance.client
           .from('mealplan')
           .select()
-          .eq('family_head',
-              '${widget.firstName} ${widget.lastName}') // Filter by family head's name
+          .eq('family_head', '${widget.firstName} ${widget.lastName}')
           .order('day', ascending: true)
           .then((data) => data as List<dynamic>);
 
       List<List<Map<String, dynamic>>> fetchedMealPlan =
-          List.generate(7, (_) => []); // Initialize 7 days of meal plans
+          List.generate(7, (_) => []);
 
       for (var meal in response) {
-        int day = meal['day'] - 1; // Convert day to 0-based index
-        String mealType = meal['meal_type'];
+        int day = meal['day'] - 1;
         fetchedMealPlan[day].add({
-          'meal_type': mealType,
+          'meal_type': meal['meal_type'],
           'meal_name': meal['meal_name'],
-          'meal_id': meal['meal_id'],
+          'recipe_id': meal['meal_id'],
         });
       }
 
@@ -85,21 +82,20 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     }
   }
 
-  // Fetch family members' data
   Future<void> fetchFamilyMembers() async {
     try {
       final response = await Supabase.instance.client
           .from('familymember')
-          .select('first_name, last_name, age')
+          .select('first_name, last_name, age, gender')
           .eq('family_head', '${widget.firstName} ${widget.lastName}')
           .then((data) => data as List<dynamic>);
 
       final members = response.map((member) {
-        final age = member['age'] ?? 0;
         return {
           'first_name': member['first_name'],
           'last_name': member['last_name'],
-          'age': age,
+          'age': member['age'],
+          'gender': member['gender'],
         };
       }).toList();
 
@@ -113,11 +109,34 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     }
   }
 
-  // Define pages in the navigation
+  Future<void> fetchPortionSizeData() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('PortionSize')
+          .select(
+              'AgeGroup, Gender, Rice_breakfast, Rice_lunch, Rice_dinner, Proteins_per_meal, FruitsVegetables_per_meal, Water_per_meal')
+          .then((data) => data as List<dynamic>);
+
+      Map<String, dynamic> portionMap = {};
+      for (var portion in response) {
+        portionMap['${portion['AgeGroup']}_${portion['Gender']}'] = portion;
+      }
+
+      setState(() {
+        portionSizeData = portionMap;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching portion size data: $e')),
+      );
+    }
+  }
+
   List<Widget> get _pageDetails => [
         MealPlanDashboard(
           mealPlanData: mealPlanData,
           familyMembers: familyMembers,
+          portionSizeData: portionSizeData,
         ),
         MyFamilyPage(
           initialFirstName: widget.firstName,
@@ -132,7 +151,6 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           userLastName: widget.lastName,
         ),
         const NotificationsPage(),
-        const BMICalculatorPage(),
         const TransactionPage(),
       ];
 
