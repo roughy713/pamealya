@@ -23,6 +23,7 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
   late TextEditingController religionController;
   String? gender;
   String? position;
+  String? _selectedCondition; // Special condition dropdown value
 
   bool seafoodAllergy = false;
   bool nutsAllergy = false;
@@ -58,8 +59,9 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
     gender = widget.memberData['gender'];
     position = widget.memberData['position'];
 
-    // Fetch allergen data for the family member
+    // Fetch allergen and special condition data for the family member
     _fetchAllergens();
+    _fetchSpecialCondition();
   }
 
   Future<void> _fetchAllergens() async {
@@ -83,6 +85,34 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
     }
   }
 
+  Future<void> _fetchSpecialCondition() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final response = await supabase
+          .from('familymember_specialconditions')
+          .select('is_pregnant, is_lactating, is_none')
+          .eq('familymember_id', widget.memberData['familymember_id'])
+          .limit(1)
+          .maybeSingle();
+
+      if (response != null) {
+        setState(() {
+          if (response['is_pregnant'] == true) {
+            _selectedCondition = 'Pregnant';
+          } else if (response['is_lactating'] == true) {
+            _selectedCondition = 'Lactating';
+          } else if (response['is_none'] == true) {
+            _selectedCondition = 'None';
+          }
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching special conditions: $e')),
+      );
+    }
+  }
+
   Future<void> saveAllergens(String familyMemberId) async {
     final supabase = Supabase.instance.client;
 
@@ -96,6 +126,22 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
     } catch (e) {
       print('Error updating allergens: $e');
       throw Exception('Failed to update allergens');
+    }
+  }
+
+  Future<void> saveSpecialCondition(String familyMemberId) async {
+    final supabase = Supabase.instance.client;
+
+    try {
+      await supabase.from('familymember_specialconditions').upsert({
+        'familymember_id': familyMemberId,
+        'is_pregnant': _selectedCondition == 'Pregnant',
+        'is_lactating': _selectedCondition == 'Lactating',
+        'is_none': _selectedCondition == 'None',
+      });
+    } catch (e) {
+      print('Error updating special condition: $e');
+      throw Exception('Failed to update special condition');
     }
   }
 
@@ -117,13 +163,8 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final bool isFamilyHead = widget.memberData['position'] == 'Family Head';
-
     return AlertDialog(
-      title: Text(
-        isFamilyHead ? "Edit Family Head" : "Edit Family Member",
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
+      title: const Text('Edit Family Member'),
       content: SingleChildScrollView(
         child: Form(
           child: Column(
@@ -159,7 +200,7 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
                   if (picked != null) {
                     setState(() {
                       dobController.text =
-                          "${picked.month.toString().padLeft(2, '0')}/${picked.day.toString().padLeft(2, '0')}/${picked.year}";
+                          "${picked.month}/${picked.day}/${picked.year}";
                     });
                   }
                 },
@@ -191,18 +232,34 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
                     child: Text(value),
                   );
                 }).toList(),
-                onChanged: isFamilyHead
+                onChanged: (position == 'Family Head')
                     ? null
                     : (value) {
                         setState(() {
                           position = value;
                         });
                       },
-                decoration: InputDecoration(
-                  labelText: 'Position',
-                  helperText:
-                      isFamilyHead ? 'Position cannot be changed.' : null,
-                ),
+                decoration: const InputDecoration(labelText: 'Position'),
+              ),
+              DropdownButtonFormField<String>(
+                value: _selectedCondition,
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCondition = value;
+                  });
+                },
+                items: [
+                  'None',
+                  'Lactating',
+                  'Pregnant',
+                ].map((condition) {
+                  return DropdownMenuItem(
+                    value: condition,
+                    child: Text(condition),
+                  );
+                }).toList(),
+                decoration:
+                    const InputDecoration(labelText: 'Special Condition'),
               ),
               const SizedBox(height: 10),
               const Text('Allergens'),
@@ -253,10 +310,12 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
               'dob': dobController.text,
               'religion': religionController.text,
               'gender': gender,
+              'position': position,
             };
 
             try {
               await saveAllergens(widget.memberData['familymember_id']);
+              await saveSpecialCondition(widget.memberData['familymember_id']);
               widget.onEdit(updatedMember);
               Navigator.pop(context);
               _showSuccessDialog('Family member updated successfully!');

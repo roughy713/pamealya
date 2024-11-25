@@ -24,6 +24,7 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
   final TextEditingController _religionController = TextEditingController();
   String? _selectedGender;
   String? _selectedPosition;
+  String? _selectedCondition; // No default value
 
   bool _seafoodAllergy = false;
   bool _nutsAllergy = false;
@@ -60,11 +61,20 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
 
       final familyMemberId = response['familymember_id'];
 
+      // Insert allergens
       await supabase.from('familymember_allergens').upsert({
         'familymember_id': familyMemberId,
         'is_seafood': _seafoodAllergy,
         'is_nuts': _nutsAllergy,
         'is_dairy': _dairyAllergy,
+      });
+
+      // Insert special conditions (Lactating, Pregnant, None)
+      await supabase.from('familymember_specialconditions').upsert({
+        'familymember_id': familyMemberId,
+        'is_pregnant': _selectedCondition == 'Pregnant',
+        'is_lactating': _selectedCondition == 'Lactating',
+        'is_none': _selectedCondition == 'None',
       });
 
       widget.onAdd(newMember);
@@ -145,8 +155,7 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                 controller: _dateOfBirthController,
                 decoration: const InputDecoration(
                   labelText: 'Date of Birth',
-                  suffixIcon:
-                      Icon(Icons.calendar_today), // Add calendar icon here
+                  suffixIcon: Icon(Icons.calendar_today),
                 ),
                 onTap: () => _selectDate(context),
                 readOnly: true,
@@ -189,6 +198,26 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                         ))
                     .toList(),
                 decoration: const InputDecoration(labelText: 'Position'),
+              ),
+              DropdownButtonFormField<String>(
+                value: _selectedCondition,
+                onChanged: (value) {
+                  setState(() {
+                    _selectedCondition = value;
+                  });
+                },
+                items: [
+                  'None',
+                  'Lactating',
+                  'Pregnant',
+                ].map((condition) {
+                  return DropdownMenuItem(
+                    value: condition,
+                    child: Text(condition),
+                  );
+                }).toList(),
+                decoration:
+                    const InputDecoration(labelText: 'Special Condition'),
               ),
               CheckboxListTile(
                 title: const Text('Seafood'),
