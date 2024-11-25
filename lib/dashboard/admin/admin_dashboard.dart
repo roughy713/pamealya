@@ -42,7 +42,7 @@ class AdminDashboardState extends State<AdminDashboard> {
     setState(() {
       _selectedIndex = index;
     });
-    Navigator.pop(context);
+    Navigator.pop(context); // Close the drawer after selection
   }
 
   @override
@@ -95,11 +95,13 @@ class NavigationDrawer extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.all(16.0),
-            child:
-                Image(image: AssetImage('assets/logo-white.png'), height: 50),
+            child: Image(
+              image: AssetImage('assets/logo-white.png'),
+              height: 50,
+            ),
           ),
           GestureDetector(
-            onTap: () => onSelectItem(5),
+            onTap: () => onSelectItem(5), // Redirect to profile page
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -123,37 +125,44 @@ class NavigationDrawer extends StatelessWidget {
             ),
           ),
           const Divider(color: Colors.white),
-          SidebarMenuItem(
-            title: 'Dashboard',
-            isSelected: selectedIndex == 0,
-            onTap: () => onSelectItem(0),
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  SidebarMenuItem(
+                    title: 'Dashboard',
+                    isSelected: selectedIndex == 0,
+                    onTap: () => onSelectItem(0),
+                  ),
+                  SidebarMenuItem(
+                    title: 'Add Admin',
+                    isSelected: selectedIndex == 1,
+                    onTap: () => onSelectItem(1),
+                  ),
+                  SidebarMenuItem(
+                    title: 'View Cooks',
+                    isSelected: selectedIndex == 2,
+                    onTap: () => onSelectItem(2),
+                  ),
+                  SidebarMenuItem(
+                    title: 'View Family Heads',
+                    isSelected: selectedIndex == 3,
+                    onTap: () => onSelectItem(3),
+                  ),
+                  SidebarMenuItem(
+                    title: 'Cooks Approval',
+                    isSelected: selectedIndex == 4,
+                    onTap: () => onSelectItem(4),
+                  ),
+                  SidebarMenuItem(
+                    title: 'My Profile',
+                    isSelected: selectedIndex == 5,
+                    onTap: () => onSelectItem(5),
+                  ),
+                ],
+              ),
+            ),
           ),
-          SidebarMenuItem(
-            title: 'Add Admin',
-            isSelected: selectedIndex == 1,
-            onTap: () => onSelectItem(1),
-          ),
-          SidebarMenuItem(
-            title: 'View Cooks',
-            isSelected: selectedIndex == 2,
-            onTap: () => onSelectItem(2),
-          ),
-          SidebarMenuItem(
-            title: 'View Family Heads',
-            isSelected: selectedIndex == 3,
-            onTap: () => onSelectItem(3),
-          ),
-          SidebarMenuItem(
-            title: 'Cooks Approval',
-            isSelected: selectedIndex == 4,
-            onTap: () => onSelectItem(4),
-          ),
-          SidebarMenuItem(
-            title: 'My Profile',
-            isSelected: selectedIndex == 5,
-            onTap: () => onSelectItem(5),
-          ),
-          const Spacer(),
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextButton(

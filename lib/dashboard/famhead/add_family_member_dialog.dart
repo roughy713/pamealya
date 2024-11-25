@@ -173,7 +173,16 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                 onChanged: (value) => setState(() {
                   _selectedPosition = value;
                 }),
-                items: ['Father', 'Mother', 'Son', 'Daughter']
+                items: [
+                  'Father',
+                  'Mother',
+                  'Son',
+                  'Daughter',
+                  'Grandmother',
+                  'Grandfather',
+                  'Uncle',
+                  'Aunt'
+                ]
                     .map((position) => DropdownMenuItem(
                           value: position,
                           child: Text(position),

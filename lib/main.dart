@@ -29,7 +29,6 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   bool isAuthenticated = false;
   bool isLoading = true;
-  String? errorMessage;
 
   // Family Head details
   String? famFirstName;
@@ -88,7 +87,6 @@ class _MyAppState extends State<MyApp> {
     try {
       setState(() {
         isLoading = true;
-        errorMessage = null;
       });
 
       // Check if the user is a Family Head
@@ -101,8 +99,8 @@ class _MyAppState extends State<MyApp> {
       if (famResponse != null) {
         // Family Head found
         setState(() {
-          famFirstName = famResponse['first_name'] ?? 'Unknown';
-          famLastName = famResponse['last_name'] ?? 'User';
+          famFirstName = famResponse['first_name'];
+          famLastName = famResponse['last_name'];
           famUserId = famResponse['user_id'];
           isAuthenticated = true;
           isLoading = false;
@@ -117,17 +115,7 @@ class _MyAppState extends State<MyApp> {
           .eq('user_id', userId)
           .maybeSingle();
 
-      if (cookResponse != null) {
-        if (cookResponse['is_accepted'] != true) {
-          // Cook not approved
-          setState(() {
-            errorMessage = 'Your account is not approved yet.';
-            isAuthenticated = false;
-            isLoading = false;
-          });
-          return;
-        }
-
+      if (cookResponse != null && cookResponse['is_accepted'] == true) {
         // Cook found and approved
         setState(() {
           cookFirstName = cookResponse['first_name'];
@@ -139,16 +127,14 @@ class _MyAppState extends State<MyApp> {
         return;
       }
 
-      // No matching user found
+      // If no matching user is found, treat as not authenticated
       setState(() {
-        errorMessage = 'User not found in Family Head or Cook records.';
         isAuthenticated = false;
         isLoading = false;
       });
     } catch (e) {
       // Handle errors
       setState(() {
-        errorMessage = 'Error fetching user details: $e';
         isAuthenticated = false;
         isLoading = false;
       });
@@ -166,17 +152,14 @@ class _MyAppState extends State<MyApp> {
           ? const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             )
-          : errorMessage != null
-              ? _buildErrorScreen()
-              : !isAuthenticated
-                  ? const HomePage()
-                  : _buildDashboard(),
+          : !isAuthenticated
+              ? const HomePage()
+              : _buildDashboard(),
     );
   }
 
   Widget _buildDashboard() {
     if (famFirstName != null && famLastName != null && famUserId != null) {
-      // Redirect to Family Head Dashboard
       return FamHeadDashboard(
         firstName: famFirstName!,
         lastName: famLastName!,
@@ -185,7 +168,6 @@ class _MyAppState extends State<MyApp> {
     } else if (cookFirstName != null &&
         cookLastName != null &&
         cookUserId != null) {
-      // Redirect to Cook Dashboard
       return CookDashboard(
         firstName: cookFirstName!,
         lastName: cookLastName!,
@@ -197,35 +179,8 @@ class _MyAppState extends State<MyApp> {
       body: Center(child: CircularProgressIndicator()),
     );
   }
-
-  Widget _buildErrorScreen() {
-    return Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error, color: Colors.red, size: 50),
-            const SizedBox(height: 20),
-            Text(
-              errorMessage ?? 'Unknown error occurred.',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (context) => const HomePage()),
-                );
-              },
-              child: const Text('Go to Login'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
+
 
 
 //mao ni sya and para sa admin login

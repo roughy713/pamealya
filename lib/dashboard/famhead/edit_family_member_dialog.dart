@@ -34,7 +34,11 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
     'Father',
     'Mother',
     'Son',
-    'Daughter'
+    'Daughter',
+    'Grandmother',
+    'Grandfather',
+    'Uncle',
+    'Aunt'
   ];
 
   @override
