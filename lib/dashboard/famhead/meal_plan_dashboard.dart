@@ -26,7 +26,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     super.dispose();
   }
 
-  // Fetch serving details from the PortionSize table
   Future<Map<String, String>> fetchServingDetails(
       int age, String gender) async {
     String ageGroup;
@@ -77,19 +76,31 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.mealPlanData.isEmpty || widget.familyMembers.isEmpty) {
-      return const Center(
+    // Check if mealPlanData is empty or contains only empty meals
+    bool isMealPlanEmpty = widget.mealPlanData.isEmpty ||
+        widget.mealPlanData.every(
+          (day) =>
+              day.isEmpty || day.every((meal) => meal['meal_name'] == null),
+        );
+
+    // Check if familyMembers is empty
+    bool areFamilyMembersEmpty = widget.familyMembers.isEmpty;
+
+    // If no meal plan data or no family members, show a message
+    if (isMealPlanEmpty || areFamilyMembersEmpty) {
+      return Center(
         child: Text(
-          'No meal plan generated',
+          'No meal plan generated yet.',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.black,
+            color: Colors.grey[700],
           ),
         ),
       );
     }
 
+    // Otherwise, show the meal plan table
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Scrollbar(
