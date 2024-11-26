@@ -28,8 +28,10 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
     super.initState();
     firstName = widget.initialFirstName;
     lastName = widget.initialLastName;
-    _addFamilyHead();
-    fetchFamilyMembers();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _addFamilyHead();
+      fetchFamilyMembers();
+    });
   }
 
   Future<void> _addFamilyHead() async {
@@ -60,10 +62,14 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
 
   Future<void> fetchFamilyMembers() async {
     try {
-      final response = await Supabase.instance.client
-          .from('familymember')
-          .select()
-          .eq('family_head', '$firstName $lastName');
+      final response =
+          await Supabase.instance.client.from('familymember').select(
+        '''
+              *, 
+              familymember_allergens(is_seafood, is_nuts, is_dairy),
+              familymember_specialconditions(is_pregnant, is_lactating, is_none)
+            ''',
+      ).eq('family_head', '$firstName $lastName');
 
       setState(() {
         familyMembers =
@@ -115,84 +121,36 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
 
   Future<void> _deleteFamilyMember(String familyMemberId) async {
     try {
-      // Delete related allergens first
+      // Delete allergens associated with the family member
       await Supabase.instance.client
           .from('familymember_allergens')
           .delete()
           .eq('familymember_id', familyMemberId);
 
-      // Delete the family member
+      // Delete special conditions associated with the family member
+      await Supabase.instance.client
+          .from('familymember_specialconditions')
+          .delete()
+          .eq('familymember_id', familyMemberId);
+
+      // Delete the family member record
       await Supabase.instance.client
           .from('familymember')
           .delete()
           .eq('familymember_id', familyMemberId);
 
-      fetchFamilyMembers();
+      // Update the UI
+      setState(() {
+        familyMembers.removeWhere(
+            (member) => member['familymember_id'] == familyMemberId);
+      });
+
       _showSuccessDialog('Family member deleted successfully!');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Error deleting family member: ${e.toString()}')),
+        SnackBar(content: Text('Error deleting family member: $e')),
       );
     }
-  }
-
-  void _showEditDeleteDialog(Map<String, dynamic> member) {
-    final bool isFamilyHead = member['position'] == 'Family Head';
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-            isFamilyHead ? "Edit Family Head" : "Edit or Delete Family Member"),
-        content: isFamilyHead
-            ? const Text("You can edit the family head but cannot delete it.")
-            : const Text("Do you want to edit or delete this member?"),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _editFamilyMember(member);
-            },
-            child: const Text("Edit"),
-          ),
-          if (!isFamilyHead)
-            TextButton(
-              onPressed: () async {
-                try {
-                  Navigator.pop(context);
-
-                  final supabase = Supabase.instance.client;
-
-                  // Delete allergens associated with the member first
-                  await supabase
-                      .from('familymember_allergens')
-                      .delete()
-                      .eq('familymember_id', member['familymember_id']);
-
-                  // Then delete the family member
-                  await supabase
-                      .from('familymember')
-                      .delete()
-                      .eq('familymember_id', member['familymember_id']);
-
-                  setState(() {
-                    familyMembers.removeWhere((m) =>
-                        m['familymember_id'] == member['familymember_id']);
-                  });
-
-                  // Show success dialog
-                  _showSuccessDialog('Family member deleted successfully!');
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error deleting family member: $e')),
-                  );
-                }
-              },
-              child: const Text("Delete"),
-            ),
-        ],
-      ),
-    );
   }
 
   Future<void> _showSuccessDialog(String message) async {
@@ -218,12 +176,19 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            ListTile(
-              leading: const Icon(Icons.family_restroom, size: 50),
-              title: Text(
-                "$firstName $lastName's Family",
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
+            Row(
+              children: [
+                const Icon(
+                  Icons.family_restroom,
+                  size: 50,
+                  color: Colors.black,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  "$firstName $lastName's Family",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
             const Divider(),
             const SizedBox(height: 20),
@@ -245,6 +210,10 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
               },
               icon: const Icon(Icons.add),
               label: const Text('Add Family Member'),
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.black,
+                backgroundColor: Colors.yellow,
+              ),
             ),
             const SizedBox(height: 20),
             Expanded(
@@ -262,7 +231,22 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                       backgroundColor: Colors.grey,
                       child: Icon(Icons.person),
                     ),
-                    onTap: () => _showEditDeleteDialog(member),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blue),
+                          onPressed: () => _editFamilyMember(member),
+                        ),
+                        if (member['position'] != 'Family Head')
+                          IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () =>
+                                _deleteFamilyMember(member['familymember_id']),
+                          ),
+                      ],
+                    ),
+                    onTap: () => _showFamilyMemberDetails(member),
                   );
                 },
               ),
@@ -271,8 +255,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => generateMealPlan(
-            context, '$firstName $lastName'), // Call meal plan generator
+        onPressed: () => generateMealPlan(context, '$firstName $lastName'),
         backgroundColor: Colors.yellow,
         label: const Text(
           'Generate Meal Plan',
@@ -280,6 +263,59 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+
+  void _showFamilyMemberDetails(Map<String, dynamic> member) {
+    final allergens = member['familymember_allergens'];
+    final conditions = member['familymember_specialconditions'];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${member['first_name']} ${member['last_name']} Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('First Name: ${member['first_name'] ?? ''}'),
+            Text('Last Name: ${member['last_name'] ?? ''}'),
+            Text('Position: ${member['position'] ?? ''}'),
+            Text('Age: ${member['age'] ?? 'N/A'}'),
+            Text('Date of Birth: ${member['dob'] ?? 'N/A'}'),
+            Text('Religion: ${member['religion'] ?? 'N/A'}'),
+            Text('Gender: ${member['gender'] ?? 'N/A'}'),
+            const SizedBox(height: 10),
+            Text(
+              'Special Condition: ${conditions != null ? (conditions['is_pregnant'] == true ? 'Pregnant' : conditions['is_lactating'] == true ? 'Lactating' : 'None') : 'N/A'}',
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Allergens:',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            if (allergens != null)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (allergens['is_seafood'] == true) const Text('Seafood'),
+                  if (allergens['is_nuts'] == true) const Text('Nuts'),
+                  if (allergens['is_dairy'] == true) const Text('Dairy'),
+                  if (allergens['is_seafood'] != true &&
+                      allergens['is_nuts'] != true &&
+                      allergens['is_dairy'] != true)
+                    const Text('No Allergens'),
+                ],
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
     );
   }
 }
