@@ -55,60 +55,41 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     try {
       final response = await Supabase.instance.client
           .from('mealplan')
-          .select()
+          .select('mealplan_id, meal_category_id, day, recipe_id, meal_name')
           .eq('family_head', '${widget.firstName} ${widget.lastName}')
-          .order('day', ascending: true);
+          .order('day', ascending: true)
+          .order('meal_category_id', ascending: true); // Sort by category
 
-      // Initialize a list with 7 days, each containing 3 empty maps (for Breakfast, Lunch, Dinner)
+      // Initialize meal plan structure
       List<List<Map<String, dynamic>>> fetchedMealPlan = List.generate(
           7,
           (_) => [
                 {
-                  'meal_type': 'Breakfast',
+                  'meal_category_id': 1,
                   'meal_name': null,
                   'recipe_id': null,
                   'mealplan_id': null
-                },
+                }, // Breakfast
                 {
-                  'meal_type': 'Lunch',
+                  'meal_category_id': 2,
                   'meal_name': null,
                   'recipe_id': null,
                   'mealplan_id': null
-                },
+                }, // Lunch
                 {
-                  'meal_type': 'Dinner',
+                  'meal_category_id': 3,
                   'meal_name': null,
                   'recipe_id': null,
                   'mealplan_id': null
-                },
+                }, // Dinner
               ]);
 
       for (var meal in response) {
         int day = meal['day'] - 1;
 
-        if (day < 0 || day >= 7) {
-          continue; // Ignore invalid day values
-        }
+        if (day < 0 || day >= 7) continue;
 
-        // Capitalize the meal_type
-        String mealTypeCapitalized =
-            '${meal['meal_type'][0].toUpperCase()}${meal['meal_type'].substring(1)}';
-
-        Map<String, dynamic> mealData = {
-          'meal_type': mealTypeCapitalized,
-          'meal_name': meal['meal_name'],
-          'recipe_id': meal['recipe_id'],
-          'mealplan_id': meal['mealplan_id'],
-        };
-
-        // Place meals in the correct slot based on meal_type
-        if (mealTypeCapitalized == 'Breakfast') {
-          fetchedMealPlan[day][0] = mealData;
-        } else if (mealTypeCapitalized == 'Lunch') {
-          fetchedMealPlan[day][1] = mealData;
-        } else if (mealTypeCapitalized == 'Dinner') {
-          fetchedMealPlan[day][2] = mealData;
-        }
+        fetchedMealPlan[day][meal['meal_category_id'] - 1] = meal;
       }
 
       setState(() {

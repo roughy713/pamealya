@@ -31,7 +31,7 @@ Future<void> generateMealPlan(
     // Separate meals by category, excluding already assigned meals
     List<Map<String, dynamic>> breakfasts = meals
         .where((meal) =>
-            meal['recipe_id'] != null && // Exclude meals with null recipe_id
+            meal['recipe_id'] != null &&
             (meal['meal_category_id'] == 1 || // Breakfast
                 meal['meal_category_id'] == 4 || // All
                 meal['meal_category_id'] == 6) && // Breakfast & Lunch
@@ -40,7 +40,7 @@ Future<void> generateMealPlan(
 
     List<Map<String, dynamic>> lunches = meals
         .where((meal) =>
-            meal['recipe_id'] != null && // Exclude meals with null recipe_id
+            meal['recipe_id'] != null &&
             (meal['meal_category_id'] == 2 || // Lunch
                 meal['meal_category_id'] == 4 || // All
                 meal['meal_category_id'] == 6 || // Breakfast & Lunch
@@ -50,7 +50,7 @@ Future<void> generateMealPlan(
 
     List<Map<String, dynamic>> dinners = meals
         .where((meal) =>
-            meal['recipe_id'] != null && // Exclude meals with null recipe_id
+            meal['recipe_id'] != null &&
             (meal['meal_category_id'] == 3 || // Dinner
                 meal['meal_category_id'] == 4 || // All
                 meal['meal_category_id'] == 7) && // Lunch & Dinner
@@ -81,11 +81,11 @@ Future<void> generateMealPlan(
       print(
           'Day ${day + 1} - Breakfast: ${dailyMeals[0]}, Lunch: ${dailyMeals[1]}, Dinner: ${dailyMeals[2]}');
       await _saveMealToDatabase(
-          day + 1, 'breakfast', dailyMeals[0], familyHeadName);
+          day + 1, 1, dailyMeals[0], familyHeadName); // Breakfast
       await _saveMealToDatabase(
-          day + 1, 'lunch', dailyMeals[1], familyHeadName);
+          day + 1, 2, dailyMeals[1], familyHeadName); // Lunch
       await _saveMealToDatabase(
-          day + 1, 'dinner', dailyMeals[2], familyHeadName);
+          day + 1, 3, dailyMeals[2], familyHeadName); // Dinner
     }
 
     // Show success dialog
@@ -98,7 +98,7 @@ Future<void> generateMealPlan(
 }
 
 // Function to save meal to the database
-Future<void> _saveMealToDatabase(int day, String mealType,
+Future<void> _saveMealToDatabase(int day, int mealCategoryId,
     Map<String, dynamic> meal, String familyHeadName) async {
   try {
     if (meal['recipe_id'] == null || meal['name'] == null) {
@@ -108,8 +108,8 @@ Future<void> _saveMealToDatabase(int day, String mealType,
 
     await Supabase.instance.client.from('mealplan').insert({
       'day': day,
-      'meal_type': mealType,
-      'recipe_id': meal['recipe_id'], // Use recipe_id instead of meal_id
+      'meal_category_id': mealCategoryId,
+      'recipe_id': meal['recipe_id'],
       'meal_name': meal['name'],
       'family_head': familyHeadName,
     });
