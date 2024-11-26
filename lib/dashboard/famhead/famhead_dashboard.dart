@@ -57,8 +57,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           .from('mealplan')
           .select()
           .eq('family_head', '${widget.firstName} ${widget.lastName}')
-          .order('day', ascending: true)
-          .then((data) => data as List<dynamic>);
+          .order('day', ascending: true);
 
       List<List<Map<String, dynamic>>> fetchedMealPlan =
           List.generate(7, (_) => []);
@@ -87,8 +86,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
       final response = await Supabase.instance.client
           .from('familymember')
           .select('first_name, last_name, age, gender')
-          .eq('family_head', '${widget.firstName} ${widget.lastName}')
-          .then((data) => data as List<dynamic>);
+          .eq('family_head', '${widget.firstName} ${widget.lastName}');
 
       final members = response.map((member) {
         return {
@@ -111,11 +109,8 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
 
   Future<void> fetchPortionSizeData() async {
     try {
-      final response = await Supabase.instance.client
-          .from('PortionSize')
-          .select(
-              'AgeGroup, Gender, Rice_breakfast, Rice_lunch, Rice_dinner, Proteins_per_meal, FruitsVegetables_per_meal, Water_per_meal')
-          .then((data) => data as List<dynamic>);
+      final response = await Supabase.instance.client.from('PortionSize').select(
+          'AgeGroup, Gender, Rice_breakfast, Rice_lunch, Rice_dinner, Proteins_per_meal, FruitsVegetables_per_meal, Water_per_meal');
 
       Map<String, dynamic> portionMap = {};
       for (var portion in response) {
@@ -137,6 +132,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           mealPlanData: mealPlanData,
           familyMembers: familyMembers,
           portionSizeData: portionSizeData,
+          familyHeadName: '${widget.firstName} ${widget.lastName}',
         ),
         MyFamilyPage(
           initialFirstName: widget.firstName,
@@ -154,33 +150,6 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         const TransactionPage(),
       ];
 
-  void _onSelectItem(int index) {
-    setState(() {
-      _selectedIndex = index;
-      _scaffoldKey.currentState?.closeDrawer();
-    });
-  }
-
-  void _onDrawerStateChanged(bool isOpen) {
-    setState(() {
-      _isDrawerOpen = isOpen;
-    });
-  }
-
-  Future<void> _handleLogout(BuildContext context) async {
-    try {
-      await Supabase.instance.client.auth.signOut();
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const HomePage()),
-        (route) => false,
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error during logout: $e')),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -195,37 +164,38 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
       },
       child: Scaffold(
         key: _scaffoldKey,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(56.0),
-          child: AppBar(
-            backgroundColor: Colors.white,
-            iconTheme: const IconThemeData(color: Color(0xFF1CBB80)),
-            elevation: 0,
-            title: Text(
-              _titles[_selectedIndex],
-              style: const TextStyle(
-                  color: Colors.black, fontWeight: FontWeight.bold),
-            ),
-            leading: IconButton(
-              icon: const Icon(Icons.menu),
-              onPressed: () {
-                _scaffoldKey.currentState?.openDrawer();
-              },
-            ),
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          iconTheme: const IconThemeData(color: Color(0xFF1CBB80)),
+          title: Text(
+            _titles[_selectedIndex],
+            style: const TextStyle(
+                color: Colors.black, fontWeight: FontWeight.bold),
+          ),
+          leading: IconButton(
+            icon: const Icon(Icons.menu),
+            onPressed: () {
+              _scaffoldKey.currentState?.openDrawer();
+            },
           ),
         ),
         drawer: CustomDrawer(
           selectedIndex: _selectedIndex,
-          onItemTap: _onSelectItem,
+          onItemTap: (index) {
+            setState(() {
+              _selectedIndex = index;
+            });
+            Navigator.pop(context);
+          },
           userName: '${widget.firstName} ${widget.lastName}',
-          onLogoutTap: () => _handleLogout(context),
+          onLogoutTap: () {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => const HomePage()),
+            );
+          },
         ),
-        onDrawerChanged: _onDrawerStateChanged,
-        body: AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          margin: EdgeInsets.only(left: _isDrawerOpen ? 200 : 0),
-          child: _pageDetails[_selectedIndex],
-        ),
+        body: _pageDetails[_selectedIndex],
       ),
     );
   }

@@ -14,26 +14,51 @@ Future<void> generateMealPlan(
       throw 'Error fetching meals or no meals found.';
     }
 
-    // Separate meals by category (1 = Breakfast, 2 = Lunch, 3 = Dinner)
-    List<Map<String, dynamic>> breakfasts = response
-        .where((meal) => meal['meal_category_id'] == 1)
-        .cast<Map<String, dynamic>>()
-        .toList();
-    List<Map<String, dynamic>> lunches = response
-        .where((meal) => meal['meal_category_id'] == 2)
-        .cast<Map<String, dynamic>>()
-        .toList();
-    List<Map<String, dynamic>> dinners = response
-        .where((meal) => meal['meal_category_id'] == 3)
-        .cast<Map<String, dynamic>>()
+    // Cast response to List<Map<String, dynamic>> for type safety
+    final meals = response.cast<Map<String, dynamic>>();
+
+    // Fetch already assigned meal IDs for the current family head
+    final existingMealPlanResponse = await Supabase.instance.client
+        .from('mealplan')
+        .select('meal_id')
+        .eq('family_head', familyHeadName);
+
+    final assignedMealIds = (existingMealPlanResponse as List<dynamic>)
+        .map((meal) => meal['meal_id'])
+        .toSet();
+
+    // Separate meals by category, excluding already assigned meals
+    List<Map<String, dynamic>> breakfasts = meals
+        .where((meal) =>
+            (meal['meal_category_id'] == 1 || // Breakfast
+                meal['meal_category_id'] == 4 || // All
+                meal['meal_category_id'] == 6) && // Breakfast & Lunch
+            !assignedMealIds.contains(meal['recipe_id']))
         .toList();
 
-    // Ensure there are at least 7 unique meals in each category
-    if (breakfasts.length < 7 || lunches.length < 7 || dinners.length < 7) {
-      throw 'Not enough unique meals in each category to generate a meal plan without repetition.';
-    }
+    List<Map<String, dynamic>> lunches = meals
+        .where((meal) =>
+            (meal['meal_category_id'] == 2 || // Lunch
+                meal['meal_category_id'] == 4 || // All
+                meal['meal_category_id'] == 6 || // Breakfast & Lunch
+                meal['meal_category_id'] == 7) && // Lunch & Dinner
+            !assignedMealIds.contains(meal['recipe_id']))
+        .toList();
 
-    // Shuffle and select 7 unique meals from each category
+    List<Map<String, dynamic>> dinners = meals
+        .where((meal) =>
+            (meal['meal_category_id'] == 3 || // Dinner
+                meal['meal_category_id'] == 4 || // All
+                meal['meal_category_id'] == 7) && // Lunch & Dinner
+            !assignedMealIds.contains(meal['recipe_id']))
+        .toList();
+
+    // Validate that there are enough unique meals in each category
+    if (breakfasts.length < 7) throw 'Not enough breakfast meals.';
+    if (lunches.length < 7) throw 'Not enough lunch meals.';
+    if (dinners.length < 7) throw 'Not enough dinner meals.';
+
+    // Shuffle and select 7 meals from each category
     breakfasts.shuffle();
     lunches.shuffle();
     dinners.shuffle();
@@ -46,7 +71,7 @@ Future<void> generateMealPlan(
               dinners[index],
             ]);
 
-    // Save each day's meals to the database
+    // Save meal plan to the database
     for (int day = 0; day < newMealPlan.length; day++) {
       final dailyMeals = newMealPlan[day];
       await _saveMealToDatabase(
@@ -70,15 +95,11 @@ Future<void> generateMealPlan(
 Future<void> _saveMealToDatabase(int day, String mealType,
     Map<String, dynamic> meal, String familyHeadName) async {
   try {
-    if (meal['recipe_id'] == null) {
-      throw 'Meal ID is null for $mealType on Day $day: $meal';
-    }
-
     await Supabase.instance.client.from('mealplan').insert({
       'day': day,
       'meal_type': mealType,
       'meal_id': meal['recipe_id'],
-      'meal_name': meal['name'] ?? 'Unknown', // Make sure 'name' key is correct
+      'meal_name': meal['name'],
       'family_head': familyHeadName,
     });
   } catch (e) {
