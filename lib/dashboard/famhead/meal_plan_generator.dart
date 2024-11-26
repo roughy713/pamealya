@@ -17,40 +17,44 @@ Future<void> generateMealPlan(
     // Cast response to List<Map<String, dynamic>> for type safety
     final meals = response.cast<Map<String, dynamic>>();
 
-    // Fetch already assigned meal IDs for the current family head
+    // Fetch already assigned recipe IDs for the current family head
     final existingMealPlanResponse = await Supabase.instance.client
         .from('mealplan')
-        .select('meal_id')
+        .select('recipe_id')
         .eq('family_head', familyHeadName);
 
-    final assignedMealIds = (existingMealPlanResponse as List<dynamic>)
-        .map((meal) => meal['meal_id'])
-        .toSet();
+    final assignedRecipeIds = (existingMealPlanResponse as List<dynamic>?)
+            ?.map((meal) => meal['recipe_id'])
+            .toSet() ??
+        {};
 
     // Separate meals by category, excluding already assigned meals
     List<Map<String, dynamic>> breakfasts = meals
         .where((meal) =>
+            meal['recipe_id'] != null && // Exclude meals with null recipe_id
             (meal['meal_category_id'] == 1 || // Breakfast
                 meal['meal_category_id'] == 4 || // All
                 meal['meal_category_id'] == 6) && // Breakfast & Lunch
-            !assignedMealIds.contains(meal['recipe_id']))
+            !assignedRecipeIds.contains(meal['recipe_id']))
         .toList();
 
     List<Map<String, dynamic>> lunches = meals
         .where((meal) =>
+            meal['recipe_id'] != null && // Exclude meals with null recipe_id
             (meal['meal_category_id'] == 2 || // Lunch
                 meal['meal_category_id'] == 4 || // All
                 meal['meal_category_id'] == 6 || // Breakfast & Lunch
                 meal['meal_category_id'] == 7) && // Lunch & Dinner
-            !assignedMealIds.contains(meal['recipe_id']))
+            !assignedRecipeIds.contains(meal['recipe_id']))
         .toList();
 
     List<Map<String, dynamic>> dinners = meals
         .where((meal) =>
+            meal['recipe_id'] != null && // Exclude meals with null recipe_id
             (meal['meal_category_id'] == 3 || // Dinner
                 meal['meal_category_id'] == 4 || // All
                 meal['meal_category_id'] == 7) && // Lunch & Dinner
-            !assignedMealIds.contains(meal['recipe_id']))
+            !assignedRecipeIds.contains(meal['recipe_id']))
         .toList();
 
     // Validate that there are enough unique meals in each category
@@ -74,6 +78,8 @@ Future<void> generateMealPlan(
     // Save meal plan to the database
     for (int day = 0; day < newMealPlan.length; day++) {
       final dailyMeals = newMealPlan[day];
+      print(
+          'Day ${day + 1} - Breakfast: ${dailyMeals[0]}, Lunch: ${dailyMeals[1]}, Dinner: ${dailyMeals[2]}');
       await _saveMealToDatabase(
           day + 1, 'breakfast', dailyMeals[0], familyHeadName);
       await _saveMealToDatabase(
@@ -95,10 +101,15 @@ Future<void> generateMealPlan(
 Future<void> _saveMealToDatabase(int day, String mealType,
     Map<String, dynamic> meal, String familyHeadName) async {
   try {
+    if (meal['recipe_id'] == null || meal['name'] == null) {
+      throw Exception(
+          'Invalid meal data: recipe_id or name is null. Meal: $meal');
+    }
+
     await Supabase.instance.client.from('mealplan').insert({
       'day': day,
       'meal_type': mealType,
-      'meal_id': meal['recipe_id'],
+      'recipe_id': meal['recipe_id'], // Use recipe_id instead of meal_id
       'meal_name': meal['name'],
       'family_head': familyHeadName,
     });

@@ -59,16 +59,52 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           .eq('family_head', '${widget.firstName} ${widget.lastName}')
           .order('day', ascending: true);
 
-      List<List<Map<String, dynamic>>> fetchedMealPlan =
-          List.generate(7, (_) => []);
+      // Initialize a list with 7 days, each containing 3 empty maps (for breakfast, lunch, dinner)
+      List<List<Map<String, dynamic>>> fetchedMealPlan = List.generate(
+          7,
+          (_) => [
+                {
+                  'meal_type': 'breakfast',
+                  'meal_name': null,
+                  'recipe_id': null,
+                  'mealplan_id': null
+                },
+                {
+                  'meal_type': 'lunch',
+                  'meal_name': null,
+                  'recipe_id': null,
+                  'mealplan_id': null
+                },
+                {
+                  'meal_type': 'dinner',
+                  'meal_name': null,
+                  'recipe_id': null,
+                  'mealplan_id': null
+                },
+              ]);
 
       for (var meal in response) {
         int day = meal['day'] - 1;
-        fetchedMealPlan[day].add({
+
+        if (day < 0 || day >= 7) {
+          continue; // Ignore invalid day values
+        }
+
+        Map<String, dynamic> mealData = {
           'meal_type': meal['meal_type'],
           'meal_name': meal['meal_name'],
-          'recipe_id': meal['meal_id'],
-        });
+          'recipe_id': meal['recipe_id'],
+          'mealplan_id': meal['mealplan_id'],
+        };
+
+        // Place meals in the correct slot based on meal_type
+        if (meal['meal_type'] == 'breakfast') {
+          fetchedMealPlan[day][0] = mealData;
+        } else if (meal['meal_type'] == 'lunch') {
+          fetchedMealPlan[day][1] = mealData;
+        } else if (meal['meal_type'] == 'dinner') {
+          fetchedMealPlan[day][2] = mealData;
+        }
       }
 
       setState(() {

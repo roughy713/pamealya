@@ -24,6 +24,13 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
   final ScrollController _verticalScrollController = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+    // Debug log to check the initial meal plan data
+    print('Initial Meal Plan Data: ${widget.mealPlanData}');
+  }
+
+  @override
   void dispose() {
     _horizontalScrollController.dispose();
     _verticalScrollController.dispose();
@@ -32,77 +39,93 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
   Future<void> regenerateMeal(int day, String mealType) async {
     try {
-      // Determine the meal category ID based on mealType
-      int mealCategoryId = mealType == 'breakfast'
-          ? 1
-          : mealType == 'lunch'
-              ? 2
-              : 3;
+      // Find the specific meal for the given day and meal type
+      final existingMeal = widget.mealPlanData[day].firstWhere(
+        (meal) => meal['meal_type'] == mealType,
+        orElse: () => {"mealplan_id": null, "recipe_id": null},
+      );
 
-      // Fetch all meal IDs already in the `mealplan` table for this family head
-      final existingMealsResponse = await Supabase.instance.client
-          .from('mealplan')
-          .select('meal_id')
-          .eq('family_head', widget.familyHeadName);
-
-      if (existingMealsResponse == null) {
-        throw Exception('Error fetching existing meals.');
-      }
-
-      // Collect all existing meal IDs
-      final existingMealIds = (existingMealsResponse as List<dynamic>)
-          .map((meal) => meal['meal_id'])
-          .toSet();
-
-      // Get the current meal ID to exclude it from regeneration
-      final existingMeal = widget.mealPlanData[day]
-          .firstWhere((meal) => meal['meal_type'] == mealType);
+      final mealPlanId = existingMeal['mealplan_id'];
       final oldMealId = existingMeal['recipe_id'];
 
-      // Fetch a new meal from the `meal` table
-      final response = await Supabase.instance.client
-          .from('meal')
-          .select()
-          .neq('recipe_id', oldMealId)
-          .eq('meal_category_id', mealCategoryId)
-          .not('recipe_id', 'in', existingMealIds.toList())
-          .limit(1)
-          .maybeSingle();
-
-      if (response == null) {
-        throw Exception('No suitable replacement meal found.');
+      if (mealPlanId == null || oldMealId == null) {
+        throw Exception(
+            'Meal plan ID or old meal ID is missing. MealPlan Data: $existingMeal');
       }
 
-      final newMeal = response as Map<String, dynamic>;
+      // Determine the meal category ID based on meal type
+      int mealCategoryId;
+      switch (mealType) {
+        case 'breakfast':
+          mealCategoryId = 1;
+          break;
+        case 'lunch':
+          mealCategoryId = 2;
+          break;
+        case 'dinner':
+          mealCategoryId = 3;
+          break;
+        default:
+          throw Exception('Invalid meal type.');
+      }
 
-      // Update the database
-      await Supabase.instance.client.from('mealplan').delete().match({
-        'day': day + 1,
-        'meal_type': mealType,
-      });
+      // Fetch meals in the same category that are not already in the current meal plan
+      final allMealsResponse = await Supabase.instance.client
+          .from('meal')
+          .select()
+          .eq('meal_category_id', mealCategoryId);
 
-      await Supabase.instance.client.from('mealplan').insert({
-        'day': day + 1,
-        'meal_type': mealType,
+      final allMeals = allMealsResponse as List<dynamic>;
+
+      // Get all recipe IDs currently in the meal plan (exclude them from selection)
+      final currentRecipeIds = widget.mealPlanData
+          .expand((dayMeals) => dayMeals)
+          .map((meal) => meal['recipe_id'])
+          .toSet();
+
+      // Create a pool of available meals for regeneration
+      List<Map<String, dynamic>> availableMeals = allMeals
+          .where((meal) => !currentRecipeIds.contains(meal['recipe_id']))
+          .cast<Map<String, dynamic>>()
+          .toList();
+
+      if (availableMeals.isEmpty) {
+        throw Exception(
+            'No available meals left for this category that are not already in the meal plan.');
+      }
+
+      // Shuffle for random selection
+      availableMeals.shuffle();
+
+      // Select the first available meal
+      final newMeal = availableMeals.first;
+
+      // Update the specific row in the `mealplan` table
+      await Supabase.instance.client.from('mealplan').update({
+        'recipe_id': newMeal['recipe_id'],
         'meal_name': newMeal['name'],
-        'meal_id': newMeal['recipe_id'],
-        'family_head': widget.familyHeadName,
-      });
+      }).eq('mealplan_id', mealPlanId);
 
-      // Update the local state
+      // Update local state for the specific cell
       setState(() {
-        widget.mealPlanData[day]
-            .firstWhere((meal) => meal['meal_type'] == mealType)
-          ..['meal_name'] = newMeal['name']
-          ..['recipe_id'] = newMeal['recipe_id'];
+        widget.mealPlanData[day] = widget.mealPlanData[day].map((meal) {
+          if (meal['mealplan_id'] == mealPlanId) {
+            return {
+              ...meal,
+              'recipe_id': newMeal['recipe_id'],
+              'meal_name': newMeal['name'],
+            };
+          }
+          return meal;
+        }).toList();
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Meal successfully regenerated!')),
+        SnackBar(content: Text('$mealType successfully regenerated!')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error regenerating meal: $e')),
+        SnackBar(content: Text('Error regenerating $mealType: $e')),
       );
     }
   }
