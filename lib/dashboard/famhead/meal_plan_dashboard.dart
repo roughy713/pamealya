@@ -56,13 +56,13 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       // Determine the meal category ID based on meal type
       int mealCategoryId;
       switch (mealType) {
-        case 'breakfast':
+        case 'Breakfast':
           mealCategoryId = 1;
           break;
-        case 'lunch':
+        case 'Lunch':
           mealCategoryId = 2;
           break;
-        case 'dinner':
+        case 'Dinner':
           mealCategoryId = 3;
           break;
         default:
@@ -330,13 +330,13 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           ),
         ),
         _buildMealCell(
-            context, meals.isNotEmpty ? meals[0] : null, dayIndex, 'breakfast'),
+            context, meals.isNotEmpty ? meals[0] : null, dayIndex, 'Breakfast'),
         for (var member in widget.familyMembers) _buildServingCell(member),
         _buildMealCell(
-            context, meals.length > 1 ? meals[1] : null, dayIndex, 'lunch'),
+            context, meals.length > 1 ? meals[1] : null, dayIndex, 'Lunch'),
         for (var member in widget.familyMembers) _buildServingCell(member),
         _buildMealCell(
-            context, meals.length > 2 ? meals[2] : null, dayIndex, 'dinner'),
+            context, meals.length > 2 ? meals[2] : null, dayIndex, 'Dinner'),
         for (var member in widget.familyMembers) _buildServingCell(member),
       ],
     );

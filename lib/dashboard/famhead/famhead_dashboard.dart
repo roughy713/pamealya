@@ -59,24 +59,24 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           .eq('family_head', '${widget.firstName} ${widget.lastName}')
           .order('day', ascending: true);
 
-      // Initialize a list with 7 days, each containing 3 empty maps (for breakfast, lunch, dinner)
+      // Initialize a list with 7 days, each containing 3 empty maps (for Breakfast, Lunch, Dinner)
       List<List<Map<String, dynamic>>> fetchedMealPlan = List.generate(
           7,
           (_) => [
                 {
-                  'meal_type': 'breakfast',
+                  'meal_type': 'Breakfast',
                   'meal_name': null,
                   'recipe_id': null,
                   'mealplan_id': null
                 },
                 {
-                  'meal_type': 'lunch',
+                  'meal_type': 'Lunch',
                   'meal_name': null,
                   'recipe_id': null,
                   'mealplan_id': null
                 },
                 {
-                  'meal_type': 'dinner',
+                  'meal_type': 'Dinner',
                   'meal_name': null,
                   'recipe_id': null,
                   'mealplan_id': null
@@ -90,19 +90,23 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           continue; // Ignore invalid day values
         }
 
+        // Capitalize the meal_type
+        String mealTypeCapitalized =
+            '${meal['meal_type'][0].toUpperCase()}${meal['meal_type'].substring(1)}';
+
         Map<String, dynamic> mealData = {
-          'meal_type': meal['meal_type'],
+          'meal_type': mealTypeCapitalized,
           'meal_name': meal['meal_name'],
           'recipe_id': meal['recipe_id'],
           'mealplan_id': meal['mealplan_id'],
         };
 
         // Place meals in the correct slot based on meal_type
-        if (meal['meal_type'] == 'breakfast') {
+        if (mealTypeCapitalized == 'Breakfast') {
           fetchedMealPlan[day][0] = mealData;
-        } else if (meal['meal_type'] == 'lunch') {
+        } else if (mealTypeCapitalized == 'Lunch') {
           fetchedMealPlan[day][1] = mealData;
-        } else if (meal['meal_type'] == 'dinner') {
+        } else if (mealTypeCapitalized == 'Dinner') {
           fetchedMealPlan[day][2] = mealData;
         }
       }
