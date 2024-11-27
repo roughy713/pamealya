@@ -358,17 +358,25 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
     return Stack(
       children: [
-        Padding(
-          padding: const EdgeInsets.only(
-              left: 8.0, right: 24.0, top: 8.0, bottom: 8.0),
-          child: Align(
-            alignment: Alignment.centerLeft, // Align the text to the left
-            child: Text(
-              meal['meal_name'],
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
+        GestureDetector(
+          onTap: meal['recipe_id'] != null
+              ? () => _showMealDetailsDialog(context, meal)
+              : null,
+          child: Padding(
+            padding: const EdgeInsets.only(
+                left: 8.0, right: 24.0, top: 8.0, bottom: 8.0),
+            child: Align(
+              alignment: Alignment.centerLeft, // Align the text to the left
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: Text(
+                  meal['meal_name'],
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
               ),
             ),
           ),
