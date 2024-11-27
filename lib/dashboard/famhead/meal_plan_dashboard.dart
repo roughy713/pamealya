@@ -351,7 +351,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         padding: EdgeInsets.all(8.0),
         child: Text(
           'N/A',
-          textAlign: TextAlign.center,
           style: TextStyle(fontSize: 12),
         ),
       );
@@ -359,29 +358,24 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
     return Stack(
       children: [
-        GestureDetector(
-          onTap: meal['recipe_id'] != null
-              ? () => _showMealDetailsDialog(context, meal)
-              : null,
-          child: MouseRegion(
-            cursor: SystemMouseCursors.click,
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                meal['meal_name'],
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
+        Padding(
+          padding: const EdgeInsets.only(
+              left: 8.0, right: 24.0, top: 8.0, bottom: 8.0),
+          child: Align(
+            alignment: Alignment.centerLeft, // Align the text to the left
+            child: Text(
+              meal['meal_name'],
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
               ),
             ),
           ),
         ),
         Positioned(
-          bottom: 4,
-          right: 4,
+          bottom: 4, // Place the regenerate icon at the bottom
+          right: 4, // Align it to the right
           child: Tooltip(
             message: 'Regenerate Meal',
             child: IconButton(
