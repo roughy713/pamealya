@@ -110,7 +110,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
 
       if (fileBytes != null) {
         try {
-          final filePath = 'public/$fileName';
+          final filePath = 'cooks certifications/$fileName';
           final response = await Supabase.instance.client.storage
               .from('certifications')
               .uploadBinary(filePath, fileBytes);
