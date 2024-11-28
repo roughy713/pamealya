@@ -104,17 +104,21 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
 
   Future<void> fetchFamilyMembers() async {
     try {
-      final response = await Supabase.instance.client
-          .from('familymember')
-          .select('first_name, last_name, age, gender')
-          .eq('family_head', '${widget.firstName} ${widget.lastName}');
+      final response =
+          await Supabase.instance.client.from('familymember').select('''
+          first_name, last_name, age, gender,
+          familymember_specialconditions(is_pregnant, is_lactating)
+          ''').eq('family_head', '${widget.firstName} ${widget.lastName}');
 
       final members = response.map((member) {
+        final specialConditions = member['familymember_specialconditions'];
         return {
           'first_name': member['first_name'],
           'last_name': member['last_name'],
           'age': member['age'],
           'gender': member['gender'],
+          'is_pregnant': specialConditions?['is_pregnant'] ?? false,
+          'is_lactating': specialConditions?['is_lactating'] ?? false,
         };
       }).toList();
 
@@ -122,29 +126,45 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         familyMembers = members;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching family members: $e')),
-      );
+      print('Error fetching family members: $e');
     }
   }
 
   Future<void> fetchPortionSizeData() async {
     try {
-      final response = await Supabase.instance.client.from('PortionSize').select(
-          'AgeGroup, Gender, Rice_breakfast, Rice_lunch, Rice_dinner, Proteins_per_meal, FruitsVegetables_per_meal, Water_per_meal');
+      final response =
+          await Supabase.instance.client.from('PortionSize').select('*');
 
-      Map<String, dynamic> portionMap = {};
-      for (var portion in response) {
-        portionMap['${portion['AgeGroup']}_${portion['Gender']}'] = portion;
+      // Initialize an empty map
+      final Map<String, Map<String, dynamic>> portionSizeMap = {};
+
+      for (var row in response) {
+        final String? ageGroup = row['AgeGroup'] as String?;
+        final String? gender = row['Gender'] as String?;
+
+        if (ageGroup != null) {
+          // Add special condition keys (Pregnant, Lactating)
+          if (ageGroup == 'Pregnant') {
+            portionSizeMap['Pregnant'] = row as Map<String, dynamic>;
+          } else if (ageGroup == 'Lactating') {
+            portionSizeMap['Lactating'] = row as Map<String, dynamic>;
+          }
+
+          // Add ageGroup + gender combination for non-special conditions
+          if (gender != null) {
+            portionSizeMap['$ageGroup$gender'] = row as Map<String, dynamic>;
+          }
+        }
       }
 
+      // Update the state
       setState(() {
-        portionSizeData = portionMap;
+        portionSizeData = portionSizeMap;
       });
+
+      print('PortionSize Data Loaded: $portionSizeMap');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching portion size data: $e')),
-      );
+      print('Error fetching portion size data: $e');
     }
   }
 
