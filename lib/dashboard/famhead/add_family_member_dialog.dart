@@ -164,10 +164,11 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                 value: _religionController.text.isNotEmpty
                     ? _religionController.text
                     : null,
-                decoration: const InputDecoration(
-                  labelText: 'Religion',
-                  border: OutlineInputBorder(),
-                ),
+                onChanged: (value) {
+                  setState(() {
+                    _religionController.text = value!;
+                  });
+                },
                 items: [
                   'Roman Catholic',
                   'Islam',
@@ -182,17 +183,7 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                     child: Text(religion),
                   );
                 }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _religionController.text = value!;
-                  });
-                },
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Please select a religion';
-                  }
-                  return null;
-                },
+                decoration: const InputDecoration(labelText: 'Religion'),
               ),
               DropdownButtonFormField<String>(
                 value: _selectedGender,
