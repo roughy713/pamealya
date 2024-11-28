@@ -160,9 +160,39 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                 onTap: () => _selectDate(context),
                 readOnly: true,
               ),
-              TextFormField(
-                controller: _religionController,
-                decoration: const InputDecoration(labelText: 'Religion'),
+              DropdownButtonFormField<String>(
+                value: _religionController.text.isNotEmpty
+                    ? _religionController.text
+                    : null,
+                decoration: const InputDecoration(
+                  labelText: 'Religion',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  'Roman Catholic',
+                  'Islam',
+                  'Christian',
+                  'Saksi ni Jehova',
+                  '7th Day Adventist',
+                  'Iglesia Ni Cristo',
+                  'Mormons',
+                ].map((religion) {
+                  return DropdownMenuItem(
+                    value: religion,
+                    child: Text(religion),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _religionController.text = value!;
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select a religion';
+                  }
+                  return null;
+                },
               ),
               DropdownButtonFormField<String>(
                 value: _selectedGender,

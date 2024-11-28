@@ -205,9 +205,39 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
                   }
                 },
               ),
-              TextField(
-                controller: religionController,
-                decoration: const InputDecoration(labelText: 'Religion'),
+              DropdownButtonFormField<String>(
+                value: religionController.text.isNotEmpty
+                    ? religionController.text
+                    : null,
+                decoration: const InputDecoration(
+                  labelText: 'Religion',
+                  border: OutlineInputBorder(),
+                ),
+                items: [
+                  'Roman Catholic',
+                  'Islam',
+                  'Christian',
+                  'Saksi ni Jehova',
+                  '7th Day Adventist',
+                  'Iglesia Ni Cristo',
+                  'Mormons',
+                ].map((religion) {
+                  return DropdownMenuItem(
+                    value: religion,
+                    child: Text(religion),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    religionController.text = value!;
+                  });
+                },
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please select a religion';
+                  }
+                  return null;
+                },
               ),
               DropdownButtonFormField<String>(
                 value: gender,
