@@ -448,9 +448,9 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       padding: const EdgeInsets.all(8.0),
       child: Text(
         'Rice: $riceType\n'
-        'Protein: ${portion['Proteins_per_meal']} grams\n'
-        'Fruits & Veggies: ${portion['FruitsVegetables_per_meal']} grams\n'
-        'Water: ${portion['Water_per_meal']} glasses',
+        'Protein: ${portion['Proteins_per_meal']}\n'
+        'Fruits: ${portion['FruitsVegetables_per_meal']}\n'
+        'Water: ${portion['Water_per_meal']}',
         textAlign: TextAlign.center,
       ),
     );
