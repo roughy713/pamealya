@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:uuid/uuid.dart'; // Import the uuid package
-import '../home_page.dart'; // Import the home page
+import '../home_page.dart';
+import '../dashboard/famhead/famhead_dashboard.dart'; // Import FamHeadDashboard
 
 class SignUpFormDialog extends StatefulWidget {
   const SignUpFormDialog({super.key});
@@ -33,6 +33,14 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
   String? _selectedReligion; // Dropdown for religion
   String? _selectedGender;
   bool _isChecked = false;
+
+  // Allergens
+  bool seafoodAllergy = false;
+  bool nutsAllergy = false;
+  bool dairyAllergy = false;
+
+  // Special conditions
+  String? _selectedCondition; // None, Lactating, Pregnant
 
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) {
@@ -80,6 +88,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
           'province': _provinceController.text,
           'postal_code': _postalCodeController.text,
           'dob': _dobController.text,
+          'religion': _selectedReligion ?? 'N/A', // Include religion here
           'user_id': user.id, // Link with Supabase Auth user ID
           'is_family_head': true, // Automatically set as family head
           'position': 'Family Head', // Automatically set position
@@ -93,8 +102,33 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
             .select();
 
         if (insertResponse != null && insertResponse.isNotEmpty) {
-          // Show success dialog and redirect
-          await _showSuccessDialog();
+          final familyMemberId = insertResponse[0]['familymember_id'];
+
+          // Step 3: Save allergens
+          await Supabase.instance.client.from('familymember_allergens').upsert({
+            'familymember_id': familyMemberId,
+            'is_seafood': seafoodAllergy,
+            'is_nuts': nutsAllergy,
+            'is_dairy': dairyAllergy,
+          });
+
+          // Step 4: Save special conditions
+          await Supabase.instance.client
+              .from('familymember_specialconditions')
+              .upsert({
+            'familymember_id': familyMemberId,
+            'is_pregnant': _selectedCondition == 'Pregnant',
+            'is_lactating': _selectedCondition == 'Lactating',
+            'is_none': _selectedCondition == 'None',
+          });
+
+          // Step 5: Show success dialog
+          await _showSuccessDialog(
+            onSuccess: () {
+              _autoLogin(
+                  user.id, _emailController.text, _passwordController.text);
+            },
+          );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Insert Error: No data returned')),
@@ -108,29 +142,69 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
     }
   }
 
-  Future<void> _showSuccessDialog() async {
+  Future<void> _showSuccessDialog({required VoidCallback onSuccess}) async {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Account Created'),
-          content: const Text('Your account has been created successfully!'),
+          content: const Text(
+            'Your account has been created successfully! Click OK to proceed to your dashboard.',
+          ),
           actions: <Widget>[
             TextButton(
               child: const Text('OK'),
               onPressed: () {
                 Navigator.pop(context); // Close the dialog
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HomePage()),
-                );
+                onSuccess(); // Trigger the success callback to login
               },
             ),
           ],
         );
       },
     );
+  }
+
+  Future<void> _autoLogin(String userId, String email, String password) async {
+    try {
+      final loginResponse =
+          await Supabase.instance.client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      if (loginResponse.user == null) {
+        throw Exception('Auto-login failed.');
+      }
+
+      final user = loginResponse.user;
+
+      // Fetch the user's details from the `familymember` table
+      final familyHeadResponse = await Supabase.instance.client
+          .from('familymember')
+          .select('first_name, last_name')
+          .eq('user_id', user!.id)
+          .single();
+
+      final firstName = familyHeadResponse['first_name'];
+      final lastName = familyHeadResponse['last_name'];
+
+      // Redirect to the FamHeadDashboard
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => FamHeadDashboard(
+            firstName: firstName,
+            lastName: lastName,
+            currentUserUsername: email,
+          ),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error during auto-login: $e')),
+      );
+    }
   }
 
   Future<void> _showTermsDialog(BuildContext context) async {

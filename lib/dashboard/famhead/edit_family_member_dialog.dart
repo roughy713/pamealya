@@ -23,7 +23,7 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
   late TextEditingController religionController;
   String? gender;
   String? position;
-  String? _selectedCondition; // Special condition dropdown value
+  String? _selectedCondition;
 
   bool seafoodAllergy = false;
   bool nutsAllergy = false;
@@ -39,7 +39,7 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
     'Grandmother',
     'Grandfather',
     'Uncle',
-    'Aunt'
+    'Aunt',
   ];
 
   @override
@@ -71,12 +71,12 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
           .from('familymember_allergens')
           .select('is_seafood, is_nuts, is_dairy')
           .eq('familymember_id', widget.memberData['familymember_id'])
-          .single();
+          .maybeSingle();
 
       setState(() {
-        seafoodAllergy = response['is_seafood'] ?? false;
-        nutsAllergy = response['is_nuts'] ?? false;
-        dairyAllergy = response['is_dairy'] ?? false;
+        seafoodAllergy = response?['is_seafood'] ?? false;
+        nutsAllergy = response?['is_nuts'] ?? false;
+        dairyAllergy = response?['is_dairy'] ?? false;
       });
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -92,7 +92,6 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
           .from('familymember_specialconditions')
           .select('is_pregnant, is_lactating, is_none')
           .eq('familymember_id', widget.memberData['familymember_id'])
-          .limit(1)
           .maybeSingle();
 
       if (response != null) {
@@ -101,7 +100,7 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
             _selectedCondition = 'Pregnant';
           } else if (response['is_lactating'] == true) {
             _selectedCondition = 'Lactating';
-          } else if (response['is_none'] == true) {
+          } else {
             _selectedCondition = 'None';
           }
         });
@@ -114,34 +113,30 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
   }
 
   Future<void> saveAllergens(String familyMemberId) async {
-    final supabase = Supabase.instance.client;
-
     try {
-      await supabase.from('familymember_allergens').upsert({
+      await Supabase.instance.client.from('familymember_allergens').upsert({
         'familymember_id': familyMemberId,
         'is_seafood': seafoodAllergy,
         'is_nuts': nutsAllergy,
         'is_dairy': dairyAllergy,
       });
     } catch (e) {
-      print('Error updating allergens: $e');
-      throw Exception('Failed to update allergens');
+      throw Exception('Failed to update allergens: $e');
     }
   }
 
   Future<void> saveSpecialCondition(String familyMemberId) async {
-    final supabase = Supabase.instance.client;
-
     try {
-      await supabase.from('familymember_specialconditions').upsert({
+      await Supabase.instance.client
+          .from('familymember_specialconditions')
+          .upsert({
         'familymember_id': familyMemberId,
         'is_pregnant': _selectedCondition == 'Pregnant',
         'is_lactating': _selectedCondition == 'Lactating',
         'is_none': _selectedCondition == 'None',
       });
     } catch (e) {
-      print('Error updating special condition: $e');
-      throw Exception('Failed to update special condition');
+      throw Exception('Failed to update special condition: $e');
     }
   }
 
@@ -191,7 +186,7 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
                 ),
                 readOnly: true,
                 onTap: () async {
-                  final DateTime? picked = await showDatePicker(
+                  final picked = await showDatePicker(
                     context: context,
                     initialDate: DateTime.now(),
                     firstDate: DateTime(1900),
@@ -209,11 +204,8 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
                 value: religionController.text.isNotEmpty
                     ? religionController.text
                     : null,
-                onChanged: (value) {
-                  setState(() {
-                    religionController.text = value!;
-                  });
-                },
+                onChanged: (value) =>
+                    setState(() => religionController.text = value!),
                 items: [
                   'Roman Catholic',
                   'Islam',
@@ -224,60 +216,35 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
                   'Mormons',
                 ].map((religion) {
                   return DropdownMenuItem(
-                    value: religion,
-                    child: Text(religion),
-                  );
+                      value: religion, child: Text(religion));
                 }).toList(),
                 decoration: const InputDecoration(labelText: 'Religion'),
               ),
               DropdownButtonFormField<String>(
                 value: gender,
-                items: genderOptions.map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
+                items: genderOptions.map((value) {
+                  return DropdownMenuItem(value: value, child: Text(value));
                 }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    gender = value;
-                  });
-                },
+                onChanged: (value) => setState(() => gender = value),
                 decoration: const InputDecoration(labelText: 'Gender'),
               ),
               DropdownButtonFormField<String>(
                 value: position,
-                items: positionOptions.map((String value) {
-                  return DropdownMenuItem<String>(
-                    value: value,
-                    child: Text(value),
-                  );
+                items: positionOptions.map((value) {
+                  return DropdownMenuItem(value: value, child: Text(value));
                 }).toList(),
                 onChanged: (position == 'Family Head')
                     ? null
-                    : (value) {
-                        setState(() {
-                          position = value;
-                        });
-                      },
+                    : (value) => setState(() => position = value),
                 decoration: const InputDecoration(labelText: 'Position'),
               ),
               DropdownButtonFormField<String>(
                 value: _selectedCondition,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCondition = value;
-                  });
-                },
-                items: [
-                  'None',
-                  'Lactating',
-                  'Pregnant',
-                ].map((condition) {
+                onChanged: (value) =>
+                    setState(() => _selectedCondition = value),
+                items: ['None', 'Lactating', 'Pregnant'].map((condition) {
                   return DropdownMenuItem(
-                    value: condition,
-                    child: Text(condition),
-                  );
+                      value: condition, child: Text(condition));
                 }).toList(),
                 decoration:
                     const InputDecoration(labelText: 'Special Condition'),
@@ -287,29 +254,20 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
               CheckboxListTile(
                 title: const Text('Seafood'),
                 value: seafoodAllergy,
-                onChanged: (value) {
-                  setState(() {
-                    seafoodAllergy = value ?? false;
-                  });
-                },
+                onChanged: (value) =>
+                    setState(() => seafoodAllergy = value ?? false),
               ),
               CheckboxListTile(
                 title: const Text('Nuts'),
                 value: nutsAllergy,
-                onChanged: (value) {
-                  setState(() {
-                    nutsAllergy = value ?? false;
-                  });
-                },
+                onChanged: (value) =>
+                    setState(() => nutsAllergy = value ?? false),
               ),
               CheckboxListTile(
                 title: const Text('Dairy'),
                 value: dairyAllergy,
-                onChanged: (value) {
-                  setState(() {
-                    dairyAllergy = value ?? false;
-                  });
-                },
+                onChanged: (value) =>
+                    setState(() => dairyAllergy = value ?? false),
               ),
             ],
           ),
@@ -317,9 +275,7 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
       ),
       actions: [
         TextButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
+          onPressed: () => Navigator.pop(context),
           child: const Text("Cancel"),
         ),
         TextButton(
@@ -339,7 +295,7 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
               await saveSpecialCondition(widget.memberData['familymember_id']);
               widget.onEdit(updatedMember);
               Navigator.pop(context);
-              _showSuccessDialog('Family member updated successfully!');
+              await _showSuccessDialog('Family member updated successfully!');
             } catch (e) {
               print('Error: $e');
             }

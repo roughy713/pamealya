@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../dashboard/cook/cook_dashboard.dart'; // Redirect to this page after successful login
+import '../signup/signup_cook_dialog.dart'; // Ensure this import exists
 
 class CookLoginDialog extends StatefulWidget {
   const CookLoginDialog({super.key});
@@ -83,6 +84,69 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
     );
   }
 
+  // Function to send password reset email
+  Future<void> _sendPasswordResetEmail(String email) async {
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(email);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Password reset email sent!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
+  // Function to show the Forgot Password dialog
+  void _showForgotPasswordDialog(BuildContext context) {
+    final TextEditingController emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Reset Password'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Enter your email to receive a password reset link.'),
+              const SizedBox(height: 10),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final email = emailController.text;
+                await _sendPasswordResetEmail(email);
+                Navigator.of(context).pop();
+              },
+              child: const Text('Send Link'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -152,17 +216,21 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () {
-                  // Forgot Password logic
-                  _showWarning(
-                      'Forgot Password functionality not implemented.');
+                  // Open the Forgot Password dialog
+                  _showForgotPasswordDialog(context);
                 },
                 child: const Text('Forgot Password?'),
               ),
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () {
-                  // Redirect to signup
-                  _showWarning('Signup functionality not implemented.');
+                  // Redirect to cook signup dialog
+                  showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return const SignUpCookDialog();
+                    },
+                  );
                 },
                 child: const Text("Don't Have An Account?"),
               ),

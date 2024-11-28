@@ -28,47 +28,19 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
     super.initState();
     firstName = widget.initialFirstName;
     lastName = widget.initialLastName;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _addFamilyHead();
-      fetchFamilyMembers();
-    });
+    fetchFamilyMembers(); // Fetch family members initially
   }
 
-  Future<void> _addFamilyHead() async {
-    try {
-      final response = await Supabase.instance.client
-          .from('familymember')
-          .select()
-          .eq('first_name', firstName)
-          .eq('last_name', lastName)
-          .eq('position', 'Family Head')
-          .maybeSingle();
-
-      if (response == null) {
-        await Supabase.instance.client.from('familymember').insert({
-          'first_name': firstName,
-          'last_name': lastName,
-          'position': 'Family Head',
-          'dietaryrestriction': 'None',
-          'family_head': '$firstName $lastName',
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error adding family head: ${e.toString()}')),
-      );
-    }
-  }
-
+  /// Fetch family members from the database
   Future<void> fetchFamilyMembers() async {
     try {
       final response =
           await Supabase.instance.client.from('familymember').select(
         '''
-              *, 
-              familymember_allergens(is_seafood, is_nuts, is_dairy),
-              familymember_specialconditions(is_pregnant, is_lactating, is_none)
-            ''',
+          *, 
+          familymember_allergens(is_seafood, is_nuts, is_dairy),
+          familymember_specialconditions(is_pregnant, is_lactating, is_none)
+        ''',
       ).eq('family_head', '$firstName $lastName');
 
       setState(() {
@@ -90,6 +62,15 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
     }
   }
 
+  /// Add a new family member
+  Future<void> _addFamilyMember(Map<String, dynamic> newMember) async {
+    setState(() {
+      familyMembers.add(newMember); // Add to local list
+    });
+    await fetchFamilyMembers(); // Refresh the list
+  }
+
+  /// Edit an existing family member
   Future<void> _editFamilyMember(Map<String, dynamic> memberData) async {
     showDialog(
       context: context,
@@ -102,7 +83,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                   .from('familymember')
                   .update(updatedData)
                   .eq('familymember_id', memberData['familymember_id']);
-              fetchFamilyMembers();
+              await fetchFamilyMembers(); // Refresh the list after update
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Family member updated.')),
               );
@@ -119,6 +100,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
     );
   }
 
+  /// Delete a family member
   Future<void> _deleteFamilyMember(String familyMemberId) async {
     try {
       // Delete allergens associated with the family member
@@ -198,11 +180,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                   context: context,
                   builder: (BuildContext context) {
                     return AddFamilyMemberDialog(
-                      onAdd: (data) {
-                        setState(() {
-                          familyMembers.add(data);
-                        });
-                      },
+                      onAdd: (data) => _addFamilyMember(data),
                       familyHeadName: '$firstName $lastName',
                     );
                   },

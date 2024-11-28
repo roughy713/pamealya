@@ -157,6 +157,9 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                   labelText: 'Date of Birth',
                   suffixIcon: Icon(Icons.calendar_today),
                 ),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Enter date of birth'
+                    : null,
                 onTap: () => _selectDate(context),
                 readOnly: true,
               ),
@@ -169,6 +172,8 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                     _religionController.text = value!;
                   });
                 },
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Select religion' : null,
                 items: [
                   'Roman Catholic',
                   'Islam',
@@ -190,6 +195,8 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                 onChanged: (value) => setState(() {
                   _selectedGender = value;
                 }),
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Select gender' : null,
                 items: ['Male', 'Female']
                     .map((gender) => DropdownMenuItem(
                           value: gender,
@@ -203,6 +210,8 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                 onChanged: (value) => setState(() {
                   _selectedPosition = value;
                 }),
+                validator: (value) =>
+                    value == null || value.isEmpty ? 'Select position' : null,
                 items: [
                   'Father',
                   'Mother',
@@ -212,12 +221,12 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                   'Grandfather',
                   'Uncle',
                   'Aunt'
-                ]
-                    .map((position) => DropdownMenuItem(
-                          value: position,
-                          child: Text(position),
-                        ))
-                    .toList(),
+                ].map((position) {
+                  return DropdownMenuItem(
+                    value: position,
+                    child: Text(position),
+                  );
+                }).toList(),
                 decoration: const InputDecoration(labelText: 'Position'),
               ),
               DropdownButtonFormField<String>(
