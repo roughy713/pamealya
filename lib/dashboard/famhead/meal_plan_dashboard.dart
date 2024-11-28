@@ -314,15 +314,42 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
             style: const TextStyle(fontSize: 12),
           ),
         ),
+        // Breakfast meal cell
         _buildMealCell(
-            context, meals.isNotEmpty ? meals[0] : null, dayIndex, 1),
-        for (var member in widget.familyMembers) _buildServingCell(member),
+          context,
+          meals.isNotEmpty ? meals[0] : null,
+          dayIndex,
+          1, // Meal category ID for Breakfast
+        ),
+        for (var member in widget.familyMembers)
+          _buildServingCell(
+            member,
+            1, // Meal category ID for Breakfast
+          ),
+        // Lunch meal cell
         _buildMealCell(
-            context, meals.length > 1 ? meals[1] : null, dayIndex, 2),
-        for (var member in widget.familyMembers) _buildServingCell(member),
+          context,
+          meals.length > 1 ? meals[1] : null,
+          dayIndex,
+          2, // Meal category ID for Lunch
+        ),
+        for (var member in widget.familyMembers)
+          _buildServingCell(
+            member,
+            2, // Meal category ID for Lunch
+          ),
+        // Dinner meal cell
         _buildMealCell(
-            context, meals.length > 2 ? meals[2] : null, dayIndex, 3),
-        for (var member in widget.familyMembers) _buildServingCell(member),
+          context,
+          meals.length > 2 ? meals[2] : null,
+          dayIndex,
+          3, // Meal category ID for Dinner
+        ),
+        for (var member in widget.familyMembers)
+          _buildServingCell(
+            member,
+            3, // Meal category ID for Dinner
+          ),
       ],
     );
   }
@@ -379,7 +406,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     );
   }
 
-  Widget _buildServingCell(Map<String, dynamic> member) {
+  Widget _buildServingCell(Map<String, dynamic> member, int mealCategoryId) {
     String? portionKey;
 
     // Check for special conditions first
@@ -396,7 +423,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       }
     }
 
-    // Retrieve portion size from the map
+    // Retrieve portion size data
     final portion =
         portionKey != null ? widget.portionSizeData[portionKey] : null;
 
@@ -407,12 +434,20 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       );
     }
 
+    // Determine rice type based on meal category
+    String riceType = '';
+    if (mealCategoryId == 1) {
+      riceType = portion['Rice_breakfast'];
+    } else if (mealCategoryId == 2) {
+      riceType = portion['Rice_lunch'];
+    } else if (mealCategoryId == 3) {
+      riceType = portion['Rice_dinner'];
+    }
+
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Text(
-        'Rice (Breakfast): ${portion['Rice_breakfast']}\n'
-        'Rice (Lunch): ${portion['Rice_lunch']}\n'
-        'Rice (Dinner): ${portion['Rice_dinner']}\n'
+        'Rice: $riceType\n'
         'Protein: ${portion['Proteins_per_meal']} grams\n'
         'Fruits & Veggies: ${portion['FruitsVegetables_per_meal']} grams\n'
         'Water: ${portion['Water_per_meal']} glasses',
