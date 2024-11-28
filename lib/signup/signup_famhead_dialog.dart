@@ -30,6 +30,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
   final TextEditingController _provinceController = TextEditingController();
   final TextEditingController _postalCodeController = TextEditingController();
 
+  String? _selectedReligion; // Dropdown for religion
   String? _selectedGender;
   bool _isChecked = false;
 
@@ -501,7 +502,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                                 labelText: 'Gender',
                                 border: OutlineInputBorder(),
                               ),
-                              items: ['Male', 'Female', 'Other']
+                              items: ['Male', 'Female']
                                   .map((label) => DropdownMenuItem(
                                         value: label,
                                         child: Text(label),
@@ -524,6 +525,38 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           border: OutlineInputBorder(),
                           suffixIcon: Icon(Icons.calendar_today),
                         ),
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<String>(
+                        decoration: const InputDecoration(
+                          labelText: 'Religion',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: [
+                          'Roman Catholic',
+                          'Islam',
+                          'Christian',
+                          'Saksi ni Jehova',
+                          '7th Day Adventist',
+                          'Iglesia Ni Cristo',
+                          'Mormons'
+                        ].map((religion) {
+                          return DropdownMenuItem(
+                            value: religion,
+                            child: Text(religion),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedReligion = value;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select a religion';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 10),
                       TextFormField(
