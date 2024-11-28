@@ -646,6 +646,7 @@ void _showIngredientsDialog(
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -658,6 +659,7 @@ void _showIngredientsDialog(
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.yellow,
+                        foregroundColor: Colors.black,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -769,6 +771,7 @@ void _showInstructionsDialog(
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.yellow,
+                        foregroundColor: Colors.black,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -789,6 +792,7 @@ void _showInstructionsDialog(
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.yellow,
+                        foregroundColor: Colors.black,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),

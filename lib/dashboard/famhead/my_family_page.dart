@@ -28,19 +28,18 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
     super.initState();
     firstName = widget.initialFirstName;
     lastName = widget.initialLastName;
-    fetchFamilyMembers(); // Fetch family members initially
+    fetchFamilyMembers();
   }
 
-  /// Fetch family members from the database
   Future<void> fetchFamilyMembers() async {
     try {
       final response =
           await Supabase.instance.client.from('familymember').select(
         '''
-          *, 
-          familymember_allergens(is_seafood, is_nuts, is_dairy),
-          familymember_specialconditions(is_pregnant, is_lactating, is_none)
-        ''',
+              *, 
+              familymember_allergens(is_seafood, is_nuts, is_dairy),
+              familymember_specialconditions(is_pregnant, is_lactating, is_none)
+            ''',
       ).eq('family_head', '$firstName $lastName');
 
       setState(() {
@@ -62,15 +61,6 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
     }
   }
 
-  /// Add a new family member
-  Future<void> _addFamilyMember(Map<String, dynamic> newMember) async {
-    setState(() {
-      familyMembers.add(newMember); // Add to local list
-    });
-    await fetchFamilyMembers(); // Refresh the list
-  }
-
-  /// Edit an existing family member
   Future<void> _editFamilyMember(Map<String, dynamic> memberData) async {
     showDialog(
       context: context,
@@ -83,7 +73,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                   .from('familymember')
                   .update(updatedData)
                   .eq('familymember_id', memberData['familymember_id']);
-              await fetchFamilyMembers(); // Refresh the list after update
+              fetchFamilyMembers();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Family member updated.')),
               );
@@ -100,7 +90,6 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
     );
   }
 
-  /// Delete a family member
   Future<void> _deleteFamilyMember(String familyMemberId) async {
     try {
       // Delete allergens associated with the family member
@@ -155,10 +144,14 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding:
+            const EdgeInsets.all(16.0), // Outer padding for the entire page
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header with family icon and text
             Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 const Icon(
                   Icons.family_restroom,
@@ -168,63 +161,120 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                 const SizedBox(width: 10),
                 Text(
                   "$firstName $lastName's Family",
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
                 ),
               ],
             ),
             const Divider(),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AddFamilyMemberDialog(
-                      onAdd: (data) => _addFamilyMember(data),
-                      familyHeadName: '$firstName $lastName',
+            // Add Family Member Button
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                    vertical: 16.0), // Padding around Add button
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AddFamilyMemberDialog(
+                          onAdd: (data) {
+                            setState(() {
+                              familyMembers.add(data);
+                            });
+                          },
+                          familyHeadName: '$firstName $lastName',
+                        );
+                      },
                     );
                   },
-                );
-              },
-              icon: const Icon(Icons.add),
-              label: const Text('Add Family Member'),
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.black,
-                backgroundColor: Colors.yellow,
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Family Member'),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.black,
+                    backgroundColor: Colors.yellow,
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 20),
             Expanded(
               child: ListView.builder(
                 itemCount: familyMembers.length,
+                padding: const EdgeInsets.only(bottom: 70), // Space for FAB
                 itemBuilder: (context, index) {
                   final member = familyMembers[index];
-                  return ListTile(
-                    title: Text(
-                      '${member['first_name'] ?? ''} ${member['last_name'] ?? ''}',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Text(member['position'] ?? ''),
-                    leading: const CircleAvatar(
-                      backgroundColor: Colors.grey,
-                      child: Icon(Icons.person),
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue),
-                          onPressed: () => _editFamilyMember(member),
-                        ),
-                        if (member['position'] != 'Family Head')
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () =>
-                                _deleteFamilyMember(member['familymember_id']),
+                  bool isHovered = false;
+
+                  return StatefulBuilder(
+                    builder: (context, setState) {
+                      return MouseRegion(
+                        onEnter: (_) {
+                          setState(() {
+                            isHovered = true;
+                          });
+                        },
+                        onExit: (_) {
+                          setState(() {
+                            isHovered = false;
+                          });
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 5.0), // Vertical spacing
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isHovered
+                                  ? Colors.green.withOpacity(0.3)
+                                  : Colors.transparent,
+                              borderRadius:
+                                  BorderRadius.circular(12), // Rounded corners
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal:
+                                    16.0, // Align content with the header
+                              ),
+                              title: Text(
+                                '${member['first_name'] ?? ''} ${member['last_name'] ?? ''}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16, // Larger font size
+                                ),
+                              ),
+                              subtitle: Text(
+                                member['position'] ?? '',
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                              leading: const CircleAvatar(
+                                radius: 20, // Profile icon size (40px diameter)
+                                backgroundColor: Colors.grey,
+                                child: Icon(Icons.person, size: 20),
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit,
+                                        color: Colors.blue),
+                                    onPressed: () => _editFamilyMember(member),
+                                  ),
+                                  if (member['position'] != 'Family Head')
+                                    IconButton(
+                                      icon: const Icon(Icons.delete,
+                                          color: Colors.red),
+                                      onPressed: () => _deleteFamilyMember(
+                                          member['familymember_id']),
+                                    ),
+                                ],
+                              ),
+                              onTap: () => _showFamilyMemberDetails(member),
+                            ),
                           ),
-                      ],
-                    ),
-                    onTap: () => _showFamilyMemberDetails(member),
+                        ),
+                      );
+                    },
                   );
                 },
               ),
