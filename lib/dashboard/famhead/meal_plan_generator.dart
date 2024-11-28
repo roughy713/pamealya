@@ -4,57 +4,106 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 Future<void> generateMealPlan(
     BuildContext context, String familyHeadName) async {
   try {
-    // Fetch all meals from the database
-    final response = await Supabase.instance.client
-        .from('meal')
-        .select()
-        .then((data) => data as List<dynamic>);
+    final supabase = Supabase.instance.client;
 
-    if (response.isEmpty) {
-      throw 'Error fetching meals or no meals found.';
-    }
-
-    // Cast response to List<Map<String, dynamic>> for type safety
-    final meals = response.cast<Map<String, dynamic>>();
-
-    // Fetch already assigned recipe IDs for the current family head
-    final existingMealPlanResponse = await Supabase.instance.client
+    // Fetch existing meal plan
+    final existingMealPlanResponse = await supabase
         .from('mealplan')
-        .select('recipe_id')
+        .select()
         .eq('family_head', familyHeadName);
 
-    final assignedRecipeIds = (existingMealPlanResponse as List<dynamic>?)
-            ?.map((meal) => meal['recipe_id'])
-            .toSet() ??
-        {};
+    if (existingMealPlanResponse.isNotEmpty) {
+      // Show dialog if meal plan already exists
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Meal Plan Exists'),
+          content: const Text('A meal plan has already been generated.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
 
-    // Separate meals by category, excluding already assigned meals
-    List<Map<String, dynamic>> breakfasts = meals
+    // Fetch family members
+    final familyMembersResponse = await supabase
+        .from('familymember')
+        .select('familymember_id, religion')
+        .eq('family_head', familyHeadName);
+
+    if (familyMembersResponse.isEmpty) {
+      throw 'No family members found for this family head.';
+    }
+
+    final familyMembers = familyMembersResponse as List<dynamic>;
+    final familyMemberIds =
+        familyMembers.map((member) => member['familymember_id']).toList();
+
+    // Fetch allergens for family members
+    final allergensResponse = await supabase
+        .from('familymember_allergens')
+        .select('familymember_id, is_dairy, is_nuts, is_seafood');
+
+    final allergens = allergensResponse
+        .where(
+            (allergen) => familyMemberIds.contains(allergen['familymember_id']))
+        .toList();
+
+    final hasAllergy = {
+      'is_dairy': allergens.any((a) => a['is_dairy'] == true),
+      'is_nuts': allergens.any((a) => a['is_nuts'] == true),
+      'is_seafood': allergens.any((a) => a['is_seafood'] == true),
+    };
+
+    // Check if anyone in the family is Islamic
+    final isHalalRequired =
+        familyMembers.any((member) => member['religion'] == 'Islam');
+
+    // Fetch all meals
+    final mealsResponse = await supabase.from('meal').select();
+    final meals = mealsResponse as List<dynamic>;
+
+    // Filter meals based on allergens and halal requirements
+    final filteredMeals = meals.where((meal) {
+      final isExcludedForAllergens =
+          (hasAllergy['is_dairy'] == true && meal['is_dairy'] == true) ||
+              (hasAllergy['is_nuts'] == true && meal['is_nuts'] == true) ||
+              (hasAllergy['is_seafood'] == true && meal['is_seafood'] == true);
+
+      final isExcludedForHalal = isHalalRequired && meal['is_halal'] != true;
+
+      return !isExcludedForAllergens && !isExcludedForHalal;
+    }).toList();
+
+    // Separate meals by category
+    List breakfasts = filteredMeals
         .where((meal) =>
             meal['recipe_id'] != null &&
             (meal['meal_category_id'] == 1 || // Breakfast
                 meal['meal_category_id'] == 4 || // All
-                meal['meal_category_id'] == 6) && // Breakfast & Lunch
-            !assignedRecipeIds.contains(meal['recipe_id']))
+                meal['meal_category_id'] == 6)) // Breakfast & Lunch
         .toList();
 
-    List<Map<String, dynamic>> lunches = meals
+    List lunches = filteredMeals
         .where((meal) =>
             meal['recipe_id'] != null &&
             (meal['meal_category_id'] == 2 || // Lunch
                 meal['meal_category_id'] == 4 || // All
                 meal['meal_category_id'] == 6 || // Breakfast & Lunch
-                meal['meal_category_id'] == 7) && // Lunch & Dinner
-            !assignedRecipeIds.contains(meal['recipe_id']))
+                meal['meal_category_id'] == 7)) // Lunch & Dinner
         .toList();
 
-    List<Map<String, dynamic>> dinners = meals
+    List dinners = filteredMeals
         .where((meal) =>
             meal['recipe_id'] != null &&
             (meal['meal_category_id'] == 3 || // Dinner
                 meal['meal_category_id'] == 4 || // All
-                meal['meal_category_id'] == 7) && // Lunch & Dinner
-            !assignedRecipeIds.contains(meal['recipe_id']))
+                meal['meal_category_id'] == 7)) // Lunch & Dinner
         .toList();
 
     // Validate that there are enough unique meals in each category
@@ -78,8 +127,6 @@ Future<void> generateMealPlan(
     // Save meal plan to the database
     for (int day = 0; day < newMealPlan.length; day++) {
       final dailyMeals = newMealPlan[day];
-      print(
-          'Day ${day + 1} - Breakfast: ${dailyMeals[0]}, Lunch: ${dailyMeals[1]}, Dinner: ${dailyMeals[2]}');
       await _saveMealToDatabase(
           day + 1, 1, dailyMeals[0], familyHeadName); // Breakfast
       await _saveMealToDatabase(
@@ -97,15 +144,9 @@ Future<void> generateMealPlan(
   }
 }
 
-// Function to save meal to the database
 Future<void> _saveMealToDatabase(int day, int mealCategoryId,
     Map<String, dynamic> meal, String familyHeadName) async {
   try {
-    if (meal['recipe_id'] == null || meal['name'] == null) {
-      throw Exception(
-          'Invalid meal data: recipe_id or name is null. Meal: $meal');
-    }
-
     await Supabase.instance.client.from('mealplan').insert({
       'day': day,
       'meal_category_id': mealCategoryId,
@@ -118,7 +159,6 @@ Future<void> _saveMealToDatabase(int day, int mealCategoryId,
   }
 }
 
-// Function to show success dialog
 void _showSuccessDialog(BuildContext context) {
   showDialog(
     context: context,
