@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ViewFamilyHeadsPage extends StatefulWidget {
-  const ViewFamilyHeadsPage({super.key});
+  const ViewFamilyHeadsPage({Key? key}) : super(key: key);
 
   @override
   _ViewFamilyHeadsPageState createState() => _ViewFamilyHeadsPageState();
@@ -26,11 +26,13 @@ class _ViewFamilyHeadsPageState extends State<ViewFamilyHeadsPage> {
     });
 
     try {
-      final response =
-          await Supabase.instance.client.from('Family_Head').select();
+      final response = await Supabase.instance.client
+          .from('familymember')
+          .select()
+          .eq('position', 'Family Head');
 
       setState(() {
-        familyHeads = response;
+        familyHeads = response as List<dynamic>;
         isLoading = false;
       });
     } catch (e) {
@@ -38,41 +40,72 @@ class _ViewFamilyHeadsPageState extends State<ViewFamilyHeadsPage> {
         isLoading = false;
         hasError = true;
       });
+      debugPrint('Error fetching family heads: $e');
     }
+  }
+
+  void _showFamilyDetails(BuildContext context, dynamic familyHead) async {
+    // Add logic to navigate to details or open dialog (similar to previous implementation)
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('View Family Heads')),
+      appBar: AppBar(
+        title: const Text('View Family Heads'),
+        backgroundColor: Colors.green,
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : hasError
-              ? const Center(child: Text('Error loading data'))
+              ? const Center(
+                  child: Text(
+                    'Error loading data. Please try again.',
+                    style: TextStyle(fontSize: 16, color: Colors.red),
+                  ),
+                )
               : familyHeads.isEmpty
-                  ? const Center(child: Text('No family heads found'))
-                  : SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: DataTable(
-                        columns: const [
-                          DataColumn(label: Text('First Name')),
-                          DataColumn(label: Text('Last Name')),
-                          DataColumn(label: Text('Email')),
-                          DataColumn(label: Text('Phone')),
-                          DataColumn(label: Text('Address')),
-                        ],
-                        rows: familyHeads
-                            .map(
-                              (head) => DataRow(cells: [
-                                DataCell(Text(head['first_name'] ?? '')),
-                                DataCell(Text(head['last_name'] ?? '')),
-                                DataCell(Text(head['email'] ?? '')),
-                                DataCell(Text(head['phone'] ?? '')),
-                                DataCell(Text(head['address_line1'] ?? '')),
-                              ]),
-                            )
-                            .toList(),
+                  ? const Center(
+                      child: Text(
+                        'No family heads found.',
+                        style: TextStyle(fontSize: 16, color: Colors.grey),
                       ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(8.0),
+                      itemCount: familyHeads.length,
+                      itemBuilder: (context, index) {
+                        final familyHead = familyHeads[index];
+                        return Card(
+                          margin: const EdgeInsets.symmetric(
+                              vertical: 8.0, horizontal: 16.0),
+                          elevation: 4.0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16.0),
+                          ),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.green[100],
+                              child:
+                                  const Icon(Icons.person, color: Colors.green),
+                            ),
+                            title: Text(
+                              '${familyHead['first_name']} ${familyHead['last_name']}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              'Age: ${familyHead['age'] ?? 'N/A'} | City: ${familyHead['city'] ?? 'N/A'}',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            trailing: const Icon(Icons.arrow_forward_ios),
+                            onTap: () =>
+                                _showFamilyDetails(context, familyHead),
+                          ),
+                        );
+                      },
                     ),
     );
   }
