@@ -370,15 +370,19 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       children: [
         GestureDetector(
           onTap: meal['recipe_id'] != null
-              ? () => _showMealDetailsDialog(context, meal)
+              ? () => _showMealDetailsDialog(
+                    context,
+                    meal,
+                    widget.familyMembers.length, // Use widget.familyMembers
+                  )
               : null,
           child: Padding(
             padding: const EdgeInsets.only(
                 left: 8.0, right: 24.0, top: 8.0, bottom: 8.0),
             child: Align(
-              alignment: Alignment.centerLeft, // Align the text to the left
+              alignment: Alignment.centerLeft,
               child: MouseRegion(
-                cursor: SystemMouseCursors.click, // Add the animated cursor
+                cursor: SystemMouseCursors.click,
                 child: Text(
                   meal['meal_name'],
                   style: const TextStyle(
@@ -510,7 +514,10 @@ Future<Map<String, dynamic>> fetchMealDetails(int recipeId) async {
 }
 
 void _showMealDetailsDialog(
-    BuildContext context, Map<String, dynamic> meal) async {
+  BuildContext context,
+  Map<String, dynamic> meal,
+  int familyMemberCount,
+) async {
   if (meal['recipe_id'] == null) return;
 
   try {
@@ -524,7 +531,7 @@ void _showMealDetailsDialog(
         .maybeSingle();
 
     // Construct image URL
-    final imageUrl = constructImageUrl(mealDetailsResponse?['image_url']);
+    final imageUrl = constructImageUrl(mealDetailsResponse?['image_url'] ?? '');
 
     // Fetch ingredients
     final ingredientsResponse = await Supabase.instance.client
@@ -540,7 +547,8 @@ void _showMealDetailsDialog(
         .order('step_number', ascending: true);
 
     // Process fetched data
-    final mealDescription = mealDetailsResponse?['description'];
+    final mealDescription =
+        mealDetailsResponse?['description'] ?? 'No description available';
     final ingredients = (ingredientsResponse as List<dynamic>)
         .map((ingredient) => ingredient as Map<String, dynamic>)
         .toList();
@@ -550,12 +558,13 @@ void _showMealDetailsDialog(
 
     // Show Ingredients Dialog
     _showIngredientsDialog(
-      context,
-      meal['meal_name'],
-      imageUrl,
-      mealDescription,
-      ingredients,
-      instructions,
+      context: context,
+      mealName: meal['meal_name'],
+      mealDescription: mealDescription,
+      ingredients: ingredients,
+      instructions: instructions,
+      familyMemberCount: familyMemberCount, // Pass family member count
+      imageUrl: imageUrl, // Pass image URL
     );
   } catch (error) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -564,28 +573,29 @@ void _showMealDetailsDialog(
   }
 }
 
-void _showIngredientsDialog(
-  BuildContext context,
-  String mealName,
-  String imageUrl,
-  String mealDescription,
-  List<Map<String, dynamic>> ingredients,
-  List<Map<String, dynamic>> instructions,
-) {
+void _showIngredientsDialog({
+  required BuildContext context,
+  required String mealName,
+  required String mealDescription,
+  required List<Map<String, dynamic>> ingredients,
+  required List<Map<String, dynamic>> instructions, // Needed for "Proceed"
+  required int familyMemberCount,
+  required String imageUrl, // Pass to Instructions Dialog
+}) {
   showDialog(
     context: context,
     builder: (BuildContext context) {
       return Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: SizedBox(
-          width: 600, // Set dialog width
-          height: 400, // Set dialog height
+          width: 600,
+          height: 400,
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Title
+                // Meal name header
                 Center(
                   child: Text(
                     mealName,
@@ -601,45 +611,29 @@ void _showIngredientsDialog(
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
-                // Ingredients Table
+
+                // Ingredients list
                 Expanded(
-                  child: SingleChildScrollView(
-                    child: Table(
-                      columnWidths: const {
-                        0: IntrinsicColumnWidth(),
-                        1: FixedColumnWidth(20), // Add spacing
-                        2: IntrinsicColumnWidth(),
-                      },
-                      defaultVerticalAlignment:
-                          TableCellVerticalAlignment.middle,
-                      children: ingredients.map((ingredient) {
-                        return TableRow(
-                          children: [
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 4.0),
-                              child: Text(
-                                '${ingredient['quantity']} ${ingredient['unit']}',
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                            const SizedBox.shrink(), // Spacer column
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(vertical: 4.0),
-                              child: Text(
-                                ingredient['name'],
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                            ),
-                          ],
-                        );
-                      }).toList(),
-                    ),
+                  child: ListView(
+                    children: ingredients.map((ingredient) {
+                      final adjustedQuantity = _adjustQuantity(
+                          ingredient['quantity'], familyMemberCount);
+                      final unit = ingredient['unit'] ?? '';
+                      final name = ingredient['name'] ?? 'Unknown Ingredient';
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: Text(
+                          '$adjustedQuantity $unit $name',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
-                const SizedBox(height: 20),
-                // Buttons
+                const SizedBox(height: 16),
+
+                // Action buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -652,7 +646,7 @@ void _showIngredientsDialog(
                         ),
                       ),
                       onPressed: () {
-                        // Placeholder for Book Cook action
+                        // Placeholder for booking action
                       },
                       child: const Text('Book Cook'),
                     ),
@@ -667,12 +661,13 @@ void _showIngredientsDialog(
                       onPressed: () {
                         Navigator.of(context).pop();
                         _showInstructionsDialog(
-                          context,
-                          mealName,
-                          imageUrl,
-                          instructions,
-                          mealDescription,
-                          ingredients,
+                          context: context,
+                          mealName: mealName,
+                          mealDescription: mealDescription,
+                          instructions: instructions, // Pass instructions
+                          imageUrl: imageUrl, // Pass image URL
+                          ingredients: ingredients, // Pass ingredients back
+                          familyMemberCount: familyMemberCount, // Pass count
                         );
                       },
                       child: const Text('Proceed →'),
@@ -688,26 +683,81 @@ void _showIngredientsDialog(
   );
 }
 
-void _showInstructionsDialog(
-    BuildContext context,
-    String mealName,
-    String imageUrl,
-    List<Map<String, dynamic>> instructions,
-    String mealDescription,
-    List<Map<String, dynamic>> ingredients) {
+// Helper function to adjust the quantity
+dynamic _adjustQuantity(dynamic quantity, int familyMemberCount) {
+  if (quantity is num) {
+    // For numeric values, multiply by familyMemberCount
+    return (quantity * familyMemberCount).toStringAsFixed(0);
+  } else if (quantity is String) {
+    // Handle string quantities (e.g., "50 grams")
+    final match = RegExp(r'^(\d+(\.\d+)?)\s*(\w+)?$').firstMatch(quantity);
+    if (match != null) {
+      final value = double.tryParse(match.group(1) ?? '0') ?? 0;
+      final unit = match.group(3) ?? '';
+      final adjustedValue = (value * familyMemberCount).toStringAsFixed(0);
+      return '$adjustedValue $unit';
+    } else if (quantity.contains('/')) {
+      // Handle fractional quantities (e.g., "1/4 cup")
+      final parts = quantity.split('/').map(int.tryParse).toList();
+      if (parts.length == 2 && parts[0] != null && parts[1] != null) {
+        // Calculate the fractional value and scale it
+        final fractionValue = parts[0]! / parts[1]!;
+        final adjustedFraction = fractionValue * familyMemberCount;
+
+        // Split into whole number and remaining fraction
+        final wholeNumber = adjustedFraction.floor();
+        final remainingFraction = adjustedFraction - wholeNumber;
+
+        if (remainingFraction == 0) {
+          return wholeNumber.toString(); // No fraction remains
+        } else {
+          // Reduce the fraction
+          final gcd = _greatestCommonDivisor(
+            (remainingFraction * parts[1]!).round(),
+            parts[1]!,
+          );
+          final numerator = (remainingFraction * parts[1]!).round() ~/ gcd;
+          final denominator = parts[1]! ~/ gcd;
+
+          if (wholeNumber > 0) {
+            return '$wholeNumber ${numerator}/${denominator}';
+          } else {
+            return '${numerator}/${denominator}';
+          }
+        }
+      }
+    }
+  }
+
+  // Return the original quantity if it can't be adjusted
+  return quantity;
+}
+
+// Helper function to calculate the greatest common divisor
+int _greatestCommonDivisor(int a, int b) {
+  return b == 0 ? a.abs() : _greatestCommonDivisor(b, a % b);
+}
+
+void _showInstructionsDialog({
+  required BuildContext context,
+  required String mealName,
+  required String mealDescription,
+  required List<Map<String, dynamic>> instructions,
+  required String imageUrl, // Image URL
+  required List<Map<String, dynamic>> ingredients, // Added for navigating back
+  required int familyMemberCount, // Added for navigating back
+}) {
   showDialog(
     context: context,
     builder: (BuildContext context) {
       return Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: SizedBox(
-          width: 600, // Restrict width
-          height: 400, // Restrict height
+          width: 600,
+          height: 400,
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Center(
                   child: Text(
@@ -731,7 +781,7 @@ void _showInstructionsDialog(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                'Procedures:',
+                                'Instructions:',
                                 style: TextStyle(
                                     fontWeight: FontWeight.bold, fontSize: 16),
                               ),
@@ -751,6 +801,7 @@ void _showInstructionsDialog(
                         ),
                       ),
                       const SizedBox(width: 16),
+
                       // Image on the right
                       Expanded(
                         flex: 1,
@@ -764,7 +815,9 @@ void _showInstructionsDialog(
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+
+                // Navigation buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -779,20 +832,21 @@ void _showInstructionsDialog(
                       onPressed: () {
                         Navigator.of(context).pop();
                         _showIngredientsDialog(
-                          context,
-                          mealName,
-                          imageUrl,
-                          mealDescription,
-                          ingredients,
-                          instructions,
+                          context: context,
+                          mealName: mealName,
+                          mealDescription: mealDescription,
+                          ingredients: ingredients, // Pass ingredients
+                          instructions: instructions, // Pass instructions
+                          familyMemberCount: familyMemberCount, // Pass count
+                          imageUrl: imageUrl, // Pass image URL
                         );
                       },
                       child: const Text('Previous'),
                     ),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.yellow,
-                        foregroundColor: Colors.black,
+                        backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
