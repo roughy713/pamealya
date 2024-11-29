@@ -54,6 +54,7 @@ Future<void> generateMealPlan(
             (allergen) => familyMemberIds.contains(allergen['familymember_id']))
         .toList();
 
+    // Consolidate allergy information
     final hasAllergy = {
       'is_dairy': allergens.any((a) => a['is_dairy'] == true),
       'is_nuts': allergens.any((a) => a['is_nuts'] == true),
@@ -77,6 +78,7 @@ Future<void> generateMealPlan(
 
       final isExcludedForHalal = isHalalRequired && meal['is_halal'] != true;
 
+      // Include only meals that are not excluded
       return !isExcludedForAllergens && !isExcludedForHalal;
     }).toList();
 

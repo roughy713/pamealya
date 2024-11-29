@@ -302,8 +302,9 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
   TableRow _buildTableRow(
       BuildContext context, int dayIndex, List<Map<String, dynamic>> meals) {
     return TableRow(
-      decoration: BoxDecoration(
-        color: dayIndex % 2 == 0 ? Colors.white : Colors.green.withOpacity(0.3),
+      decoration: const BoxDecoration(
+        // Set all rows to have a white background color
+        color: Colors.white,
       ),
       children: [
         Padding(
