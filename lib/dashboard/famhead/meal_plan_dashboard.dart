@@ -580,7 +580,7 @@ void _showIngredientsDialog({
   required List<Map<String, dynamic>> ingredients,
   required List<Map<String, dynamic>> instructions, // Needed for "Proceed"
   required int familyMemberCount,
-  required String imageUrl, // Pass to Instructions Dialog
+  required String imageUrl, // Pass to display in dialog
 }) {
   showDialog(
     context: context,
@@ -606,31 +606,64 @@ void _showIngredientsDialog({
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Ingredients List:',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
 
-                // Ingredients list
                 Expanded(
-                  child: ListView(
-                    children: ingredients.map((ingredient) {
-                      final adjustedQuantity = _adjustQuantity(
-                          ingredient['quantity'], familyMemberCount);
-                      final unit = ingredient['unit'] ?? '';
-                      final name = ingredient['name'] ?? 'Unknown Ingredient';
+                  child: Row(
+                    children: [
+                      // Ingredients list on the left
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Ingredients List:',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Expanded(
+                              child: ListView(
+                                children: ingredients.map((ingredient) {
+                                  final adjustedQuantity = _adjustQuantity(
+                                      ingredient['quantity'],
+                                      familyMemberCount);
+                                  final unit = ingredient['unit'] ?? '';
+                                  final name = ingredient['name'] ??
+                                      'Unknown Ingredient';
 
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4.0),
-                        child: Text(
-                          '$adjustedQuantity $unit $name',
-                          style: const TextStyle(fontSize: 14),
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 4.0),
+                                    child: Text(
+                                      '$adjustedQuantity $unit $name',
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-                    }).toList(),
+                      ),
+                      const SizedBox(width: 16),
+
+                      // Image on the right
+                      Expanded(
+                        flex: 1,
+                        child: Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Center(child: Text('Image not available')),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+
                 const SizedBox(height: 16),
 
                 // Action buttons
