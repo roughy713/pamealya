@@ -593,7 +593,6 @@ void _showIngredientsDialog({
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Meal name header
                 Center(
@@ -609,43 +608,41 @@ void _showIngredientsDialog({
 
                 Expanded(
                   child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Ingredients list on the left
                       Expanded(
                         flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Ingredients List:',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Ingredients List:',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            Expanded(
-                              child: ListView(
-                                children: ingredients.map((ingredient) {
-                                  final adjustedQuantity = _adjustQuantity(
-                                      ingredient['quantity'],
-                                      familyMemberCount);
-                                  final unit = ingredient['unit'] ?? '';
-                                  final name = ingredient['name'] ??
-                                      'Unknown Ingredient';
+                              const SizedBox(height: 8),
+                              ...ingredients.map((ingredient) {
+                                final adjustedQuantity = _adjustQuantity(
+                                    ingredient['quantity'], familyMemberCount);
+                                final unit = ingredient['unit'] ?? '';
+                                final name =
+                                    ingredient['name'] ?? 'Unknown Ingredient';
 
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 4.0),
-                                    child: Text(
-                                      '$adjustedQuantity $unit $name',
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ),
-                          ],
+                                return Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4.0),
+                                  child: Text(
+                                    '$adjustedQuantity $unit $name',
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                );
+                              }).toList(),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -802,11 +799,12 @@ void _showInstructionsDialog({
                   ),
                 ),
                 const SizedBox(height: 16),
+
                 Expanded(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Instructions on the left
+                      // Instructions list on the left
                       Expanded(
                         flex: 2,
                         child: SingleChildScrollView(
@@ -816,7 +814,9 @@ void _showInstructionsDialog({
                               const Text(
                                 'Instructions:',
                                 style: TextStyle(
-                                    fontWeight: FontWeight.bold, fontSize: 16),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
                               ),
                               const SizedBox(height: 8),
                               ...instructions.map((instruction) {
@@ -848,6 +848,7 @@ void _showInstructionsDialog({
                     ],
                   ),
                 ),
+
                 const SizedBox(height: 16),
 
                 // Navigation buttons
@@ -878,8 +879,8 @@ void _showInstructionsDialog({
                     ),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.yellow,
+                        foregroundColor: Colors.black,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
