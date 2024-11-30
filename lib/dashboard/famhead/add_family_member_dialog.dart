@@ -249,6 +249,8 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                 decoration:
                     const InputDecoration(labelText: 'Special Condition'),
               ),
+              const SizedBox(height: 10),
+              const Text('Allergens'),
               CheckboxListTile(
                 title: const Text('Seafood'),
                 value: _seafoodAllergy,

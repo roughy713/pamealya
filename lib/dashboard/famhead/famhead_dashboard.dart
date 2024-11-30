@@ -55,12 +55,12 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     try {
       final response = await Supabase.instance.client
           .from('mealplan')
-          .select('mealplan_id, meal_category_id, day, recipe_id, meal_name')
+          .select(
+              'mealplan_id, meal_category_id, day, recipe_id, meal_name, is_completed')
           .eq('family_head', '${widget.firstName} ${widget.lastName}')
           .order('day', ascending: true)
-          .order('meal_category_id', ascending: true); // Sort by category
+          .order('meal_category_id', ascending: true);
 
-      // Initialize meal plan structure
       List<List<Map<String, dynamic>>> fetchedMealPlan = List.generate(
           7,
           (_) => [
@@ -68,20 +68,23 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
                   'meal_category_id': 1,
                   'meal_name': null,
                   'recipe_id': null,
-                  'mealplan_id': null
-                }, // Breakfast
+                  'mealplan_id': null,
+                  'is_completed': false,
+                },
                 {
                   'meal_category_id': 2,
                   'meal_name': null,
                   'recipe_id': null,
-                  'mealplan_id': null
-                }, // Lunch
+                  'mealplan_id': null,
+                  'is_completed': false,
+                },
                 {
                   'meal_category_id': 3,
                   'meal_name': null,
                   'recipe_id': null,
-                  'mealplan_id': null
-                }, // Dinner
+                  'mealplan_id': null,
+                  'is_completed': false,
+                },
               ]);
 
       for (var meal in response) {
@@ -135,7 +138,6 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
       final response =
           await Supabase.instance.client.from('PortionSize').select('*');
 
-      // Initialize an empty map
       final Map<String, Map<String, dynamic>> portionSizeMap = {};
 
       for (var row in response) {
@@ -143,28 +145,49 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         final String? gender = row['Gender'] as String?;
 
         if (ageGroup != null) {
-          // Add special condition keys (Pregnant, Lactating)
           if (ageGroup == 'Pregnant') {
             portionSizeMap['Pregnant'] = row as Map<String, dynamic>;
           } else if (ageGroup == 'Lactating') {
             portionSizeMap['Lactating'] = row as Map<String, dynamic>;
           }
 
-          // Add ageGroup + gender combination for non-special conditions
           if (gender != null) {
             portionSizeMap['$ageGroup$gender'] = row as Map<String, dynamic>;
           }
         }
       }
 
-      // Update the state
       setState(() {
         portionSizeData = portionSizeMap;
       });
-
-      print('PortionSize Data Loaded: $portionSizeMap');
     } catch (e) {
       print('Error fetching portion size data: $e');
+    }
+  }
+
+  Future<void> markMealAsCompleted(String mealPlanId) async {
+    try {
+      await Supabase.instance.client
+          .from('mealplan')
+          .update({'is_completed': true}).eq('mealplan_id', mealPlanId);
+
+      setState(() {
+        for (var dayMeals in mealPlanData) {
+          for (var meal in dayMeals) {
+            if (meal['mealplan_id'] == mealPlanId) {
+              meal['is_completed'] = true;
+            }
+          }
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Meal marked as completed!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to mark meal as completed: $e')),
+      );
     }
   }
 
@@ -174,6 +197,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           familyMembers: familyMembers,
           portionSizeData: portionSizeData,
           familyHeadName: '${widget.firstName} ${widget.lastName}',
+          onCompleteMeal: markMealAsCompleted,
         ),
         MyFamilyPage(
           initialFirstName: widget.firstName,
@@ -223,9 +247,11 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         drawer: CustomDrawer(
           selectedIndex: _selectedIndex,
           onItemTap: (index) {
-            setState(() {
-              _selectedIndex = index;
-            });
+            if (index >= 0 && index < _pageDetails.length) {
+              setState(() {
+                _selectedIndex = index;
+              });
+            }
             Navigator.pop(context);
           },
           userName: '${widget.firstName} ${widget.lastName}',

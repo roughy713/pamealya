@@ -14,10 +14,11 @@ String constructImageUrl(String? imageUrl) {
 }
 
 class MealPlanDashboard extends StatefulWidget {
-  List<List<Map<String, dynamic>>> mealPlanData;
+  final List<List<Map<String, dynamic>>> mealPlanData;
   final List<Map<String, dynamic>> familyMembers;
   final Map<String, dynamic> portionSizeData;
   final String familyHeadName;
+  final Function(String mealPlanId)? onCompleteMeal; // Add this line
 
   MealPlanDashboard({
     super.key,
@@ -25,6 +26,7 @@ class MealPlanDashboard extends StatefulWidget {
     required this.familyMembers,
     required this.portionSizeData,
     required this.familyHeadName,
+    this.onCompleteMeal, // Add this line
   });
 
   @override
@@ -51,6 +53,34 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     _verticalScrollController.dispose();
     _mealPlanSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> markMealAsCompleted(String mealPlanId) async {
+    try {
+      // Update the is_completed field in the Supabase database
+      await Supabase.instance.client
+          .from('mealplan')
+          .update({'is_completed': true}).eq('mealplan_id', mealPlanId);
+
+      // Update the local state to reflect the change
+      setState(() {
+        for (var dayMeals in mealPlanData) {
+          for (var meal in dayMeals) {
+            if (meal['mealplan_id'] == mealPlanId) {
+              meal['is_completed'] = true;
+            }
+          }
+        }
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Meal marked as completed!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to mark meal as completed: $e')),
+      );
+    }
   }
 
   void _setupMealPlanSubscription() {
@@ -84,7 +114,8 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     try {
       final response = await Supabase.instance.client
           .from('mealplan')
-          .select()
+          .select(
+              'mealplan_id, meal_category_id, day, recipe_id, meal_name, is_completed') // Include is_completed
           .eq('family_head', widget.familyHeadName)
           .order('day', ascending: true)
           .order('meal_category_id', ascending: true);
@@ -96,19 +127,22 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
             'meal_category_id': 1,
             'meal_name': null,
             'recipe_id': null,
-            'mealplan_id': null
+            'mealplan_id': null,
+            'is_completed': false
           },
           {
             'meal_category_id': 2,
             'meal_name': null,
             'recipe_id': null,
-            'mealplan_id': null
+            'mealplan_id': null,
+            'is_completed': false
           },
           {
             'meal_category_id': 3,
             'meal_name': null,
             'recipe_id': null,
-            'mealplan_id': null
+            'mealplan_id': null,
+            'is_completed': false
           },
         ],
       );
@@ -118,12 +152,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         int categoryIndex = (meal['meal_category_id'] ?? 1) - 1;
 
         if (day >= 0 && day < 7 && categoryIndex >= 0 && categoryIndex < 3) {
-          fetchedMealPlan[day][categoryIndex] = {
-            'meal_category_id': meal['meal_category_id'],
-            'meal_name': meal['meal_name'],
-            'recipe_id': meal['recipe_id'],
-            'mealplan_id': meal['mealplan_id'],
-          };
+          fetchedMealPlan[day][categoryIndex] = meal;
         }
       }
 
@@ -139,7 +168,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
   Future<void> regenerateMeal(int day, int mealCategoryId) async {
     try {
-      // Find the specific meal for the given day and meal category
+      // Find the meal plan entry for the given day and mealCategoryId
       final existingMeal = mealPlanData[day].firstWhere(
         (meal) => meal['meal_category_id'] == mealCategoryId,
         orElse: () => {"mealplan_id": null, "recipe_id": null},
@@ -153,7 +182,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
             'Meal plan ID or old recipe ID is missing. MealPlan Data: $existingMeal');
       }
 
-      // Fetch all meals in the same category that are not already in the current meal plan
+      // Fetch all meals of the same category
       final allMealsResponse = await Supabase.instance.client
           .from('meal')
           .select()
@@ -161,13 +190,12 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
       final allMeals = allMealsResponse as List<dynamic>;
 
-      // Get all recipe IDs currently in the meal plan
+      // Filter out meals that are already in the meal plan
       final currentRecipeIds = mealPlanData
           .expand((dayMeals) => dayMeals)
           .map((meal) => meal['recipe_id'])
           .toSet();
 
-      // Filter out meals that are already in the meal plan
       List<Map<String, dynamic>> availableMeals = allMeals
           .where((meal) => !currentRecipeIds.contains(meal['recipe_id']))
           .cast<Map<String, dynamic>>()
@@ -178,17 +206,17 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
             'No available meals left for this category that are not already in the meal plan.');
       }
 
-      // Shuffle and select a new meal
+      // Select a new meal randomly
       availableMeals.shuffle();
       final newMeal = availableMeals.first;
 
-      // Update the specific meal in the database
+      // Update the meal in the database
       await Supabase.instance.client.from('mealplan').update({
         'recipe_id': newMeal['recipe_id'],
         'meal_name': newMeal['name'],
       }).eq('mealplan_id', mealPlanId);
 
-      // Update the local state for this specific cell only
+      // Update the local state to reflect the new meal
       setState(() {
         mealPlanData[day] = mealPlanData[day].map((meal) {
           if (meal['mealplan_id'] == mealPlanId) {
@@ -356,7 +384,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
   }
 
   Widget _buildMealCell(BuildContext context, Map<String, dynamic>? meal,
-      int day, int mealCategoryId) {
+      int dayIndex, int mealCategoryId) {
     if (meal == null || meal['meal_name'] == null) {
       return const Padding(
         padding: EdgeInsets.all(8.0),
@@ -367,44 +395,67 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       );
     }
 
+    bool isCompleted = meal['is_completed'] == true;
+
     return Stack(
       children: [
-        GestureDetector(
-          onTap: meal['recipe_id'] != null
-              ? () => _showMealDetailsDialog(
-                    context,
-                    meal,
-                    widget.familyMembers.length, // Use widget.familyMembers
-                  )
-              : null,
-          child: Padding(
-            padding: const EdgeInsets.only(
-                left: 8.0, right: 24.0, top: 8.0, bottom: 8.0),
-            child: Align(
-              alignment: Alignment.centerLeft,
+        // Full cell container
+        Container(
+          color: isCompleted ? Colors.green : Colors.transparent,
+          padding: const EdgeInsets.all(8.0),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Tooltip(
+              message: !isCompleted ? 'View Meal Details' : '',
               child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: Text(
-                  meal['meal_name'],
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                cursor: !isCompleted
+                    ? SystemMouseCursors.click
+                    : SystemMouseCursors.basic,
+                child: GestureDetector(
+                  onTap: !isCompleted && meal['recipe_id'] != null
+                      ? () => _showMealDetailsDialog(
+                            context: context,
+                            meal: meal,
+                            familyMemberCount: widget.familyMembers.length,
+                            onCompleteMeal: widget.onCompleteMeal,
+                          )
+                      : null,
+                  child: Text(
+                    meal['meal_name'],
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                    textAlign: TextAlign.left,
                   ),
                 ),
               ),
             ),
           ),
         ),
+        // Regenerate and check icons at the bottom-right
         Positioned(
-          bottom: 4, // Place the regenerate icon at the bottom
-          right: 4, // Align it to the right
-          child: Tooltip(
-            message: 'Regenerate Meal',
-            child: IconButton(
-              icon: const Icon(Icons.refresh, size: 16, color: Colors.green),
-              onPressed: () => regenerateMeal(day, mealCategoryId),
-            ),
+          bottom: 4,
+          right: 4,
+          child: Row(
+            children: [
+              if (!isCompleted)
+                Tooltip(
+                  message: 'Regenerate Meal',
+                  child: IconButton(
+                    icon: const Icon(Icons.refresh,
+                        color: Colors.green, size: 16),
+                    onPressed: () => regenerateMeal(dayIndex, mealCategoryId),
+                  ),
+                ),
+              if (isCompleted)
+                Tooltip(
+                  message: 'Meal Completed',
+                  child: const Icon(Icons.check_circle,
+                      color: Colors.white, size: 16),
+                ),
+            ],
           ),
         ),
       ],
@@ -514,11 +565,12 @@ Future<Map<String, dynamic>> fetchMealDetails(int recipeId) async {
   }
 }
 
-void _showMealDetailsDialog(
-  BuildContext context,
-  Map<String, dynamic> meal,
-  int familyMemberCount,
-) async {
+void _showMealDetailsDialog({
+  required BuildContext context,
+  required Map<String, dynamic> meal,
+  required int familyMemberCount,
+  required void Function(String mealPlanId)? onCompleteMeal,
+}) async {
   if (meal['recipe_id'] == null) return;
 
   try {
@@ -531,25 +583,23 @@ void _showMealDetailsDialog(
         .eq('recipe_id', recipeId)
         .maybeSingle();
 
-    // Construct image URL
     final imageUrl = constructImageUrl(mealDetailsResponse?['image_url'] ?? '');
 
-    // Fetch ingredients
     final ingredientsResponse = await Supabase.instance.client
         .from('ingredients')
         .select('name, quantity, unit')
         .eq('recipe_id', recipeId);
 
-    // Fetch instructions
     final instructionsResponse = await Supabase.instance.client
         .from('instructions')
         .select('step_number, instruction')
         .eq('recipe_id', recipeId)
         .order('step_number', ascending: true);
 
-    // Process fetched data
+    // Process fetched data and handle types
     final mealDescription =
-        mealDetailsResponse?['description'] ?? 'No description available';
+        (mealDetailsResponse?['description'] ?? 'No description available')
+            .toString();
     final ingredients = (ingredientsResponse as List<dynamic>)
         .map((ingredient) => ingredient as Map<String, dynamic>)
         .toList();
@@ -557,15 +607,16 @@ void _showMealDetailsDialog(
         .map((instruction) => instruction as Map<String, dynamic>)
         .toList();
 
-    // Show Ingredients Dialog
     _showIngredientsDialog(
       context: context,
-      mealName: meal['meal_name'],
+      mealName: meal['meal_name'].toString(),
       mealDescription: mealDescription,
       ingredients: ingredients,
       instructions: instructions,
-      familyMemberCount: familyMemberCount, // Pass family member count
-      imageUrl: imageUrl, // Pass image URL
+      familyMemberCount: familyMemberCount,
+      imageUrl: imageUrl,
+      mealPlanId: meal['mealplan_id'].toString(), // Ensure it's a string
+      onCompleteMeal: onCompleteMeal,
     );
   } catch (error) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -579,9 +630,11 @@ void _showIngredientsDialog({
   required String mealName,
   required String mealDescription,
   required List<Map<String, dynamic>> ingredients,
-  required List<Map<String, dynamic>> instructions, // Needed for "Proceed"
+  required List<Map<String, dynamic>> instructions,
   required int familyMemberCount,
-  required String imageUrl, // Pass to display in dialog
+  required String imageUrl,
+  required String mealPlanId,
+  required void Function(String mealPlanId)? onCompleteMeal,
 }) {
   showDialog(
     context: context,
@@ -595,7 +648,6 @@ void _showIngredientsDialog({
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                // Meal name header
                 Center(
                   child: Text(
                     mealName,
@@ -606,12 +658,10 @@ void _showIngredientsDialog({
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 Expanded(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Ingredients list on the left
                       Expanded(
                         flex: 2,
                         child: SingleChildScrollView(
@@ -647,8 +697,6 @@ void _showIngredientsDialog({
                         ),
                       ),
                       const SizedBox(width: 16),
-
-                      // Image on the right
                       Expanded(
                         flex: 1,
                         child: Image.network(
@@ -661,10 +709,7 @@ void _showIngredientsDialog({
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
-                // Action buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -672,12 +717,9 @@ void _showIngredientsDialog({
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
                       ),
                       onPressed: () {
-                        // Placeholder for booking action
+                        // Placeholder for "Book Cook"
                       },
                       child: const Text('Book Cook'),
                     ),
@@ -685,9 +727,6 @@ void _showIngredientsDialog({
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.yellow,
                         foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
                       ),
                       onPressed: () {
                         Navigator.of(context).pop();
@@ -695,10 +734,11 @@ void _showIngredientsDialog({
                           context: context,
                           mealName: mealName,
                           mealDescription: mealDescription,
-                          instructions: instructions, // Pass instructions
-                          imageUrl: imageUrl, // Pass image URL
-                          ingredients: ingredients, // Pass ingredients back
-                          familyMemberCount: familyMemberCount, // Pass count
+                          instructions: instructions,
+                          imageUrl: imageUrl,
+                          onCompleteMeal: onCompleteMeal,
+                          mealPlanId: mealPlanId,
+                          familyMemberCount: familyMemberCount, // Pass here
                         );
                       },
                       child: const Text('Proceed →'),
@@ -774,9 +814,10 @@ void _showInstructionsDialog({
   required String mealName,
   required String mealDescription,
   required List<Map<String, dynamic>> instructions,
-  required String imageUrl, // Image URL
-  required List<Map<String, dynamic>> ingredients, // Added for navigating back
-  required int familyMemberCount, // Added for navigating back
+  required String imageUrl,
+  required String mealPlanId,
+  required void Function(String mealPlanId)? onCompleteMeal,
+  required int familyMemberCount,
 }) {
   showDialog(
     context: context,
@@ -800,12 +841,10 @@ void _showInstructionsDialog({
                   ),
                 ),
                 const SizedBox(height: 16),
-
                 Expanded(
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Instructions list on the left
                       Expanded(
                         flex: 2,
                         child: SingleChildScrollView(
@@ -835,8 +874,6 @@ void _showInstructionsDialog({
                         ),
                       ),
                       const SizedBox(width: 16),
-
-                      // Image on the right
                       Expanded(
                         flex: 1,
                         child: Image.network(
@@ -849,10 +886,7 @@ void _showInstructionsDialog({
                     ],
                   ),
                 ),
-
                 const SizedBox(height: 16),
-
-                // Navigation buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -860,9 +894,6 @@ void _showInstructionsDialog({
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.yellow,
                         foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
                       ),
                       onPressed: () {
                         Navigator.of(context).pop();
@@ -870,10 +901,12 @@ void _showInstructionsDialog({
                           context: context,
                           mealName: mealName,
                           mealDescription: mealDescription,
-                          ingredients: ingredients, // Pass ingredients
-                          instructions: instructions, // Pass instructions
-                          familyMemberCount: familyMemberCount, // Pass count
-                          imageUrl: imageUrl, // Pass image URL
+                          instructions: instructions,
+                          imageUrl: imageUrl,
+                          ingredients: [],
+                          familyMemberCount: familyMemberCount,
+                          mealPlanId: mealPlanId,
+                          onCompleteMeal: onCompleteMeal,
                         );
                       },
                       child: const Text('Previous'),
@@ -882,11 +915,11 @@ void _showInstructionsDialog({
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.yellow,
                         foregroundColor: Colors.black,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
                       ),
                       onPressed: () {
+                        if (onCompleteMeal != null) {
+                          onCompleteMeal(mealPlanId);
+                        }
                         Navigator.of(context).pop();
                       },
                       child: const Text('Complete'),

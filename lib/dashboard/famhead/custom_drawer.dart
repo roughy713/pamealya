@@ -125,14 +125,9 @@ class CustomDrawer extends StatelessWidget {
               onTap: () => onItemTap(4),
             ),
             SidebarMenuItem(
-              title: 'BMI Calculator',
+              title: 'Transactions',
               isSelected: selectedIndex == 5,
               onTap: () => onItemTap(5),
-            ),
-            SidebarMenuItem(
-              title: 'Transactions',
-              isSelected: selectedIndex == 6,
-              onTap: () => onItemTap(6),
             ),
             const Spacer(),
             Padding(
