@@ -1,125 +1,148 @@
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:url_launcher/url_launcher.dart';
 
-class TransactionPage extends StatefulWidget {
+class TransactionPage extends StatelessWidget {
   const TransactionPage({super.key});
-
-  @override
-  _TransactionPageState createState() => _TransactionPageState();
-}
-
-class _TransactionPageState extends State<TransactionPage> {
-  final TextEditingController _amountController = TextEditingController();
-  bool _isProcessing = false;
-
-  Future<void> _makePayment() async {
-    final amount = _amountController.text;
-
-    if (amount.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter an amount')),
-      );
-      return;
-    }
-
-    setState(() {
-      _isProcessing = true;
-    });
-
-    const url = 'https://api.paymongo.com/v1/sources';
-    final headers = {
-      'Authorization':
-          'Basic ${base64Encode(utf8.encode('sk_test_TTwEdeQ8myrEc4yuoK2LgeBg'))}',
-      'Content-Type': 'application/json'
-    };
-
-    final body = jsonEncode({
-      'data': {
-        'attributes': {
-          'amount': (double.parse(amount) * 100).toInt(),
-          'currency': 'PHP',
-          'type': 'gcash',
-          'redirect': {
-            'success': 'https://your-success-url.com',
-            'failed': 'https://your-failure-url.com'
-          }
-        }
-      }
-    });
-
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: headers,
-        body: body,
-      );
-
-      setState(() {
-        _isProcessing = false;
-      });
-
-      if (response.statusCode == 201) {
-        final responseData = json.decode(response.body);
-        final checkoutUrl =
-            responseData['data']['attributes']['redirect']['checkout_url'];
-
-        if (await canLaunchUrl(Uri.parse(checkoutUrl))) {
-          await launchUrl(Uri.parse(checkoutUrl));
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open payment URL.')),
-          );
-        }
-      } else {
-        print('Error: ${response.body}');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Payment creation failed. Please try again.')),
-        );
-      }
-    } catch (e) {
-      setState(() {
-        _isProcessing = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _amountController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            TextField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Amount (PHP)',
-                border: OutlineInputBorder(),
+            const SizedBox(height: 40), // Top spacing
+            Container(
+              width: double.infinity,
+              height: 200, // Square container
+              padding: const EdgeInsets.all(16.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    'Transaction Details',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF333333),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Text(
+                        'Amount:',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                      Text(
+                        'PHP 500.00',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1CBB80),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Text(
+                        'Payment Method:',
+                        style: TextStyle(fontSize: 18, color: Colors.grey),
+                      ),
+                      Text(
+                        'GCash',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1CBB80),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _isProcessing ? null : _makePayment,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1CBB80),
+            const SizedBox(height: 30),
+            const Text(
+              'Transaction History',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF333333),
               ),
-              child: _isProcessing
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Pay with GCash'),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: ListView.builder(
+                itemCount: 5, // Example transaction count
+                itemBuilder: (context, index) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.2),
+                          blurRadius: 6,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Transaction ${index + 1}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 5),
+                            const Text(
+                              'Date: 2024-11-30',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Text(
+                          'PHP 500.00',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1CBB80),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           ],
         ),

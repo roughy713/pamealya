@@ -315,7 +315,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
             Text('Gender: ${member['gender'] ?? 'N/A'}'),
             const SizedBox(height: 10),
             Text(
-              'Special Condition: ${conditions != null ? (conditions['is_pregnant'] == true ? 'Pregnant' : conditions['is_lactating'] == true ? 'Lactating' : 'None') : 'N/A'}',
+              'Special Condition: ${conditions != null ? (conditions['is_pregnant'] == true ? 'Pregnant' : conditions['is_lactating'] == true ? 'Lactating' : 'None') : 'None'}',
             ),
             const SizedBox(height: 10),
             Text(
@@ -332,9 +332,11 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                   if (allergens['is_seafood'] != true &&
                       allergens['is_nuts'] != true &&
                       allergens['is_dairy'] != true)
-                    const Text('No Allergens'),
+                    const Text('None'),
                 ],
-              ),
+              )
+            else
+              const Text('None'),
           ],
         ),
         actions: [

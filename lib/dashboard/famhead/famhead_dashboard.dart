@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // Import intl package
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '/home_page.dart';
 import 'meal_plan_dashboard.dart';
@@ -51,6 +52,16 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     fetchPortionSizeData();
   }
 
+  // Helper function to format dates as MM/DD/YYYY
+  String formatDate(String? dateString) {
+    try {
+      final parsedDate = DateTime.parse(dateString!);
+      return DateFormat('MM/dd/yyyy').format(parsedDate);
+    } catch (e) {
+      return 'Invalid Date';
+    }
+  }
+
   Future<void> fetchMealPlan() async {
     try {
       final response = await Supabase.instance.client
@@ -92,7 +103,11 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
 
         if (day < 0 || day >= 7) continue;
 
-        fetchedMealPlan[day][meal['meal_category_id'] - 1] = meal;
+        fetchedMealPlan[day][meal['meal_category_id'] - 1] = {
+          ...meal,
+          'formatted_date':
+              formatDate(meal['day'].toString()), // Format the day
+        };
       }
 
       setState(() {

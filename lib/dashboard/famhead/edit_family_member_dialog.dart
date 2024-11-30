@@ -281,13 +281,19 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
         TextButton(
           onPressed: () async {
             final updatedMember = {
-              'first_name': firstNameController.text,
-              'last_name': lastNameController.text,
-              'age': int.tryParse(ageController.text) ?? 0,
-              'dob': dobController.text,
-              'religion': religionController.text,
-              'gender': gender,
-              'position': position,
+              'first_name': firstNameController.text.isNotEmpty
+                  ? firstNameController.text
+                  : null,
+              'last_name': lastNameController.text.isNotEmpty
+                  ? lastNameController.text
+                  : null,
+              'age': int.tryParse(ageController.text) ?? null,
+              'dob': dobController.text.isNotEmpty ? dobController.text : null,
+              'religion': religionController.text.isNotEmpty
+                  ? religionController.text
+                  : null,
+              'gender': gender ?? 'N/A',
+              'position': position ?? 'N/A',
             };
 
             try {
