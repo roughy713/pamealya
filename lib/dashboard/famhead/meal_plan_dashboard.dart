@@ -182,6 +182,37 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
             'Meal plan ID or old recipe ID is missing. MealPlan Data: $existingMeal');
       }
 
+      // Fetch family members to determine allergens and religion
+      final familyMembersResponse = await Supabase.instance.client
+          .from('familymember')
+          .select('familymember_id, religion')
+          .eq('family_head', widget.familyHeadName);
+
+      final familyMembers = familyMembersResponse as List<dynamic>;
+      final familyMemberIds =
+          familyMembers.map((member) => member['familymember_id']).toList();
+
+      // Fetch allergens for family members
+      final allergensResponse = await Supabase.instance.client
+          .from('familymember_allergens')
+          .select('familymember_id, is_dairy, is_nuts, is_seafood');
+
+      final allergens = allergensResponse
+          .where((allergen) =>
+              familyMemberIds.contains(allergen['familymember_id']))
+          .toList();
+
+      // Consolidate allergy information
+      final hasAllergy = {
+        'is_dairy': allergens.any((a) => a['is_dairy'] == true),
+        'is_nuts': allergens.any((a) => a['is_nuts'] == true),
+        'is_seafood': allergens.any((a) => a['is_seafood'] == true),
+      };
+
+      // Check if anyone in the family is Islamic
+      final isHalalRequired =
+          familyMembers.any((member) => member['religion'] == 'Islam');
+
       // Fetch all meals of the same category
       final allMealsResponse = await Supabase.instance.client
           .from('meal')
@@ -190,13 +221,26 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
       final allMeals = allMealsResponse as List<dynamic>;
 
+      // Filter meals based on allergens and Halal requirements
+      final filteredMeals = allMeals.where((meal) {
+        final isExcludedForAllergens = (hasAllergy['is_dairy'] == true &&
+                meal['is_dairy'] == true) ||
+            (hasAllergy['is_nuts'] == true && meal['is_nuts'] == true) ||
+            (hasAllergy['is_seafood'] == true && meal['is_seafood'] == true);
+
+        final isExcludedForHalal = isHalalRequired && meal['is_halal'] != true;
+
+        // Include only meals that are not excluded
+        return !isExcludedForAllergens && !isExcludedForHalal;
+      }).toList();
+
       // Filter out meals that are already in the meal plan
       final currentRecipeIds = mealPlanData
           .expand((dayMeals) => dayMeals)
           .map((meal) => meal['recipe_id'])
           .toSet();
 
-      List<Map<String, dynamic>> availableMeals = allMeals
+      final availableMeals = filteredMeals
           .where((meal) => !currentRecipeIds.contains(meal['recipe_id']))
           .cast<Map<String, dynamic>>()
           .toList();
