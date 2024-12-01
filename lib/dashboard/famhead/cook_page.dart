@@ -20,24 +20,55 @@ class CookPage extends StatefulWidget {
 class _CookPageState extends State<CookPage> {
   final supabase = Supabase.instance.client;
   List<Map<String, dynamic>> cooks = [];
+  String? userCity; // To store the user's city
 
   @override
   void initState() {
     super.initState();
-    fetchCooks();
+    fetchUserCity(widget.userFirstName, widget.userLastName).then((city) {
+      if (city != null) {
+        setState(() {
+          userCity = city;
+        });
+        fetchCooks(city);
+      } else {
+        print('User city not found.');
+      }
+    });
   }
 
-  Future<void> fetchCooks() async {
+  Future<String?> fetchUserCity(String firstName, String lastName) async {
     try {
-      // Fetch data where is_accepted is true
-      final response = await supabase.from('Local_Cook').select(
-        '''
-          localcookid, first_name, last_name, age, gender, dateofbirth, phone,
-          address_line1, barangay, city, province, postal_code,
-          availability_days, time_available_from, time_available_to,
-          certifications
-          ''',
-      ).eq('is_accepted', true); // Filter where is_accepted is true
+      // Fetch the city of the family head from the `familymember` table
+      final response = await supabase
+          .from('familymember')
+          .select('city')
+          .eq('first_name', firstName) // Match the first name
+          .eq('last_name', lastName) // Match the last name
+          .maybeSingle(); // Expect a single result
+
+      return response != null ? response['city'] as String : null;
+    } catch (e) {
+      print('Error fetching user city: $e');
+      return null;
+    }
+  }
+
+  Future<void> fetchCooks(String userCity) async {
+    try {
+      // Fetch cooks with the same city as the user and where is_accepted is true
+      final response = await supabase
+          .from('Local_Cook')
+          .select(
+            '''
+            localcookid, first_name, last_name, age, gender, dateofbirth, phone,
+            address_line1, barangay, city, province, postal_code,
+            availability_days, time_available_from, time_available_to,
+            certifications
+            ''',
+          )
+          .eq('is_accepted', true) // Fetch only accepted cooks
+          .eq('city', userCity); // Fetch cooks with the same city as the user
 
       if (response.isNotEmpty) {
         setState(() {
