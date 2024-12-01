@@ -37,10 +37,7 @@ class _CookChatPageState extends State<CookChatPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Chats'),
-        backgroundColor: Colors.green[600],
-      ),
+      appBar: AppBar(),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _fetchAcceptedFamilyHeads(),
         builder: (context, snapshot) {

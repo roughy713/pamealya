@@ -3,43 +3,15 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Supabase.initialize(
-    url: 'https://mtwwfagurgkeggzicslj.supabase.co', // Your Supabase URL
-    anonKey:
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10d3dmYWd1cmdrZWdnemljc2xqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjYxOTUxMDAsImV4cCI6MjA0MTc3MTEwMH0.czvacjIwvIcLYPmKD3NrFpg75H6DCkOrhg48Q0KwPXI', // Your Supabase anon key
-  );
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    const String loggedInUserFirstName = 'LoggedInUserFirstName';
-    const String loggedInUserLastName = 'LoggedInUserLastName';
-
-    return MaterialApp(
-      title: 'Cook Booking',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const CookPage(
-        userFirstName: loggedInUserFirstName,
-        userLastName: loggedInUserLastName,
-      ),
-    );
-  }
-}
-
 class CookPage extends StatefulWidget {
   final String userFirstName;
   final String userLastName;
 
-  const CookPage(
-      {super.key, required this.userFirstName, required this.userLastName});
+  const CookPage({
+    super.key,
+    required this.userFirstName,
+    required this.userLastName,
+  });
 
   @override
   _CookPageState createState() => _CookPageState();
@@ -57,12 +29,20 @@ class _CookPageState extends State<CookPage> {
 
   Future<void> fetchCooks() async {
     try {
-      final response = await supabase.from('Local_Cook_Approved').select(
-          'localcookid, first_name, last_name, email, username, age, gender, dateofbirth, phone, address_line1, barangay, city, province, postal_code, availability_days, time_available_from, time_available_to, certifications');
+      // Fetch data where is_accepted is true
+      final response = await supabase.from('Local_Cook').select(
+        '''
+          localcookid, first_name, last_name, age, gender, dateofbirth, phone,
+          address_line1, barangay, city, province, postal_code,
+          availability_days, time_available_from, time_available_to,
+          certifications
+          ''',
+      ).eq('is_accepted', true); // Filter where is_accepted is true
 
       if (response.isNotEmpty) {
         setState(() {
-          cooks = response;
+          cooks = List<Map<String, dynamic>>.from(
+              response); // Ensure type consistency
         });
       }
     } catch (e) {
@@ -132,8 +112,6 @@ class _CookPageState extends State<CookPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Email: ${cook['email']}'),
-                    Text('Username: ${cook['username']}'),
                     Text('Age: ${cook['age']}'),
                     Text('Gender: ${cook['gender']}'),
                     Text('Date of Birth: ${cook['dateofbirth']}'),

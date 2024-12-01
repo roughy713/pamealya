@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:pamealya/dashboard/famhead/cook_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Utility function to construct the full image URL from a relative path
@@ -18,7 +19,9 @@ class MealPlanDashboard extends StatefulWidget {
   final List<Map<String, dynamic>> familyMembers;
   final Map<String, dynamic> portionSizeData;
   final String familyHeadName;
-  final Function(String mealPlanId)? onCompleteMeal; // Add this line
+  final Function(String mealPlanId)? onCompleteMeal;
+  final String userFirstName; // Add this
+  final String userLastName; // Add this
 
   MealPlanDashboard({
     super.key,
@@ -26,7 +29,9 @@ class MealPlanDashboard extends StatefulWidget {
     required this.familyMembers,
     required this.portionSizeData,
     required this.familyHeadName,
-    this.onCompleteMeal, // Add this line
+    this.onCompleteMeal,
+    required this.userFirstName, // Add this
+    required this.userLastName, // Add this
   });
 
   @override
@@ -763,7 +768,16 @@ void _showIngredientsDialog({
                         foregroundColor: Colors.white,
                       ),
                       onPressed: () {
-                        // Placeholder for "Book Cook"
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => CookPage(
+                              userFirstName:
+                                  'LoggedInUserFirstName', // Replace with actual data
+                              userLastName:
+                                  'LoggedInUserLastName', // Replace with actual data
+                            ),
+                          ),
+                        );
                       },
                       child: const Text('Book Cook'),
                     ),
@@ -780,9 +794,10 @@ void _showIngredientsDialog({
                           mealDescription: mealDescription,
                           instructions: instructions,
                           imageUrl: imageUrl,
-                          onCompleteMeal: onCompleteMeal,
                           mealPlanId: mealPlanId,
-                          familyMemberCount: familyMemberCount, // Pass here
+                          onCompleteMeal: onCompleteMeal,
+                          familyMemberCount: familyMemberCount,
+                          ingredients: ingredients, // Pass ingredients here
                         );
                       },
                       child: const Text('Proceed →'),
@@ -862,6 +877,7 @@ void _showInstructionsDialog({
   required String mealPlanId,
   required void Function(String mealPlanId)? onCompleteMeal,
   required int familyMemberCount,
+  required List<Map<String, dynamic>> ingredients, // Add this parameter
 }) {
   showDialog(
     context: context,
@@ -905,8 +921,9 @@ void _showInstructionsDialog({
                               const SizedBox(height: 8),
                               ...instructions.map((instruction) {
                                 return Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 4.0),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 4.0,
+                                  ),
                                   child: Text(
                                     'Step ${instruction['step_number']}: ${instruction['instruction']}',
                                     style: const TextStyle(fontSize: 14),
@@ -945,9 +962,9 @@ void _showInstructionsDialog({
                           context: context,
                           mealName: mealName,
                           mealDescription: mealDescription,
+                          ingredients: ingredients, // Pass the ingredients back
                           instructions: instructions,
                           imageUrl: imageUrl,
-                          ingredients: [],
                           familyMemberCount: familyMemberCount,
                           mealPlanId: mealPlanId,
                           onCompleteMeal: onCompleteMeal,

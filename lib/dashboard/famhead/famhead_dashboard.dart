@@ -213,6 +213,8 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           portionSizeData: portionSizeData,
           familyHeadName: '${widget.firstName} ${widget.lastName}',
           onCompleteMeal: markMealAsCompleted,
+          userFirstName: widget.firstName, // Pass user's first name
+          userLastName: widget.lastName, // Pass user's last name
         ),
         MyFamilyPage(
           initialFirstName: widget.firstName,
