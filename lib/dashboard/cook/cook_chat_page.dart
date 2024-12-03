@@ -1,44 +1,45 @@
 import 'package:flutter/material.dart';
+import 'package:pamealya/common/chat_room_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CookChatPage extends StatefulWidget {
   final String currentUserId;
-  final String currentUserUsername;
 
   const CookChatPage({
     Key? key,
     required this.currentUserId,
-    required this.currentUserUsername,
   }) : super(key: key);
 
   @override
-  _CookChatPageState createState() => _CookChatPageState();
+  State<CookChatPage> createState() => _CookChatPageState();
 }
 
 class _CookChatPageState extends State<CookChatPage> {
-  late Future<List<Map<String, dynamic>>> _familyHeadsFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _familyHeadsFuture = fetchFamilyHeads();
-  }
-
   Future<List<Map<String, dynamic>>> fetchFamilyHeads() async {
     try {
-      // Fetch all family heads from the familymember table
       final response = await Supabase.instance.client
           .from('familymember')
-          .select('user_id, first_name, last_name')
-          .eq('is_family_head', true); // Filter for family heads
-
-      if (response.isEmpty) {
-        return [];
-      }
+          .select('familymember_id, first_name, last_name')
+          .eq('is_family_head', true);
 
       return List<Map<String, dynamic>>.from(response);
     } catch (error) {
       throw Exception('Failed to fetch family heads: $error');
+    }
+  }
+
+  Future<String> getOrCreateChatRoom(String familyMemberId) async {
+    try {
+      final response = await Supabase.instance.client.rpc(
+        'get_or_create_chat_room',
+        params: {
+          'familymember_id': familyMemberId,
+          'localcook_id': widget.currentUserId,
+        },
+      );
+      return response as String;
+    } catch (error) {
+      throw Exception('Failed to create or get chat room: $error');
     }
   }
 
@@ -47,21 +48,20 @@ class _CookChatPageState extends State<CookChatPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Select a Family Head to Chat'),
+        automaticallyImplyLeading: false, // Removes the back arrow
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _familyHeadsFuture,
+        future: fetchFamilyHeads(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
-          }
-
-          final familyHeads = snapshot.data!;
-          if (familyHeads.isEmpty) {
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text('No family heads available.'));
           }
 
+          final familyHeads = snapshot.data!;
           return ListView.builder(
             itemCount: familyHeads.length,
             itemBuilder: (context, index) {
@@ -69,71 +69,31 @@ class _CookChatPageState extends State<CookChatPage> {
               return ListTile(
                 title: Text(
                     '${familyHead['first_name']} ${familyHead['last_name']}'),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChatRoomPage(
-                        roomId:
-                            '${widget.currentUserId}_${familyHead['user_id']}',
-                        recipientName:
-                            '${familyHead['first_name']} ${familyHead['last_name']}',
+                onTap: () async {
+                  try {
+                    final chatRoomId = await getOrCreateChatRoom(
+                      familyHead['familymember_id'],
+                    );
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ChatRoomPage(
+                          chatRoomId: chatRoomId,
+                          recipientName:
+                              '${familyHead['first_name']} ${familyHead['last_name']}',
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Failed to open chat room: $e')),
+                    );
+                  }
                 },
               );
             },
           );
         },
-      ),
-    );
-  }
-}
-
-class ChatRoomPage extends StatelessWidget {
-  final String roomId;
-  final String recipientName;
-
-  const ChatRoomPage({
-    Key? key,
-    required this.roomId,
-    required this.recipientName,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Chat with $recipientName'),
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: Center(
-              child: Text('Messages will be displayed here for $roomId.'),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    decoration:
-                        const InputDecoration(hintText: 'Type a message'),
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.send),
-                  onPressed: () {
-                    // Handle message sending
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

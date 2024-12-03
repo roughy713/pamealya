@@ -43,27 +43,27 @@ class _LoginDialogState extends State<LoginDialog> {
       final user = response.user;
 
       if (user != null) {
-        // final userUsername = user.email; // Get username from email (or any other identifier)
-
-        // Fetch the user's details from the "Family_Head" table (optional)
+        // Fetch the user's details from the "familymember" table
         final familyHeadResponse = await Supabase.instance.client
             .from('familymember')
             .select('first_name, last_name, user_id')
-            .eq('user_id', user.id) // Assuming username is stored in 'username'
+            .eq('user_id',
+                user.id) // Assuming the `user_id` is stored in the table
             .single();
 
         final firstName = familyHeadResponse['first_name'];
         final lastName = familyHeadResponse['last_name'];
+        final userId = familyHeadResponse['user_id'];
 
         // Redirect to the Family Head Dashboard
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => FamHeadDashboard(
-                firstName: firstName,
-                lastName: lastName,
-                currentUserUsername:
-                    lastName + ', ' + firstName // Pass username here
-                ),
+              firstName: firstName,
+              lastName: lastName,
+              currentUserUsername: lastName + ', ' + firstName,
+              currentUserId: userId, // Pass the user ID here
+            ),
           ),
         );
       }

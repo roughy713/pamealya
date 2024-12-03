@@ -163,7 +163,8 @@ class _MyAppState extends State<MyApp> {
       return FamHeadDashboard(
         firstName: famFirstName!,
         lastName: famLastName!,
-        currentUserUsername: famUserId!,
+        currentUserUsername: famUserId!, // Pass the user's username
+        currentUserId: famUserId!, // Pass the current user's ID
       );
     } else if (cookFirstName != null &&
         cookLastName != null &&
@@ -171,8 +172,8 @@ class _MyAppState extends State<MyApp> {
       return CookDashboard(
         firstName: cookFirstName!,
         lastName: cookLastName!,
-        currentUserId: cookUserId!,
-        currentUserUsername: '',
+        currentUserId: cookUserId!, // Pass the current user's ID
+        currentUserUsername: '', // Provide a default or relevant value
       );
     }
     return const Scaffold(

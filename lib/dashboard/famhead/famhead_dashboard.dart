@@ -14,13 +14,15 @@ class FamHeadDashboard extends StatefulWidget {
   final String firstName;
   final String lastName;
   final String currentUserUsername;
+  final String currentUserId; // New parameter added
 
   const FamHeadDashboard({
-    super.key,
+    Key? key,
     required this.firstName,
     required this.lastName,
     required this.currentUserUsername,
-  });
+    required this.currentUserId, // Marked as required
+  }) : super(key: key);
 
   @override
   FamHeadDashboardState createState() => FamHeadDashboardState();
@@ -221,8 +223,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           initialLastName: widget.lastName,
         ),
         FamHeadChatPage(
-          currentUserId: widget.firstName,
-          currentUserUsername: widget.currentUserUsername,
+          currentUserId: widget.currentUserId,
         ),
         CookPage(
           userFirstName: widget.firstName,

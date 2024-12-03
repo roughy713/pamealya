@@ -196,7 +196,8 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
           builder: (context) => FamHeadDashboard(
             firstName: firstName,
             lastName: lastName,
-            currentUserUsername: email,
+            currentUserUsername: email, // Pass the username or email
+            currentUserId: user.id, // Pass the current user's ID
           ),
         ),
       );

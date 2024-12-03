@@ -125,7 +125,6 @@ class CookDashboardState extends State<CookDashboard> {
       const OrdersPage(),
       CookChatPage(
         currentUserId: widget.currentUserId,
-        currentUserUsername: widget.currentUserUsername,
       ),
       const ReviewsPage(),
       const EarningsPage(),
