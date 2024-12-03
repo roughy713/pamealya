@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'sidebar_menu_item.dart';
+import 'package:pamealya/shared/sidebar_menu_item.dart';
 
 class CustomDrawer extends StatelessWidget {
   final int selectedIndex;

@@ -1,109 +1,83 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../shared/private_chat.dart'; // Ensure this is the correct import path for PrivateChatPage
 
 class CookChatPage extends StatefulWidget {
   final String currentUserId;
   final String currentUserUsername;
 
   const CookChatPage({
-    super.key,
+    Key? key,
     required this.currentUserId,
     required this.currentUserUsername,
-  });
+  }) : super(key: key);
 
   @override
   _CookChatPageState createState() => _CookChatPageState();
 }
 
 class _CookChatPageState extends State<CookChatPage> {
-  final supabase = Supabase.instance.client;
+  late Future<List<Map<String, dynamic>>> _familyHeadsFuture;
 
-  Future<List<Map<String, dynamic>>> _fetchAcceptedFamilyHeads() async {
+  @override
+  void initState() {
+    super.initState();
+    _familyHeadsFuture = fetchFamilyHeads();
+  }
+
+  Future<List<Map<String, dynamic>>> fetchFamilyHeads() async {
     try {
-      final response = await supabase
-          .from('bookingrequest')
-          .select('famhead_id, localcook_id')
-          .eq('_isBookingAccepted', true)
-          .eq('localcook_id', widget.currentUserId);
+      // Fetch all family heads from the familymember table
+      final response = await Supabase.instance.client
+          .from('familymember')
+          .select('user_id, first_name, last_name')
+          .eq('is_family_head', true); // Filter for family heads
 
-      return List<Map<String, dynamic>>.from(response as List);
-    } catch (e) {
-      debugPrint('Error fetching family heads: $e');
-      rethrow;
+      if (response.isEmpty) {
+        return [];
+      }
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (error) {
+      throw Exception('Failed to fetch family heads: $error');
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(),
+      appBar: AppBar(
+        title: const Text('Select a Family Head to Chat'),
+      ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: _fetchAcceptedFamilyHeads(),
+        future: _familyHeadsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('Failed to load chats.'),
-                  const SizedBox(height: 10),
-                  ElevatedButton(
-                    onPressed: () => setState(() {}),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green[600],
-                    ),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Text(
-                'No family heads available to chat with.',
-                style: TextStyle(fontSize: 16, color: Colors.grey),
-              ),
-            );
+            return Center(child: Text('Error: ${snapshot.error}'));
           }
 
           final familyHeads = snapshot.data!;
+          if (familyHeads.isEmpty) {
+            return const Center(child: Text('No family heads available.'));
+          }
+
           return ListView.builder(
             itemCount: familyHeads.length,
             itemBuilder: (context, index) {
-              final famHead = familyHeads[index];
-              final famHeadUserId = famHead['famhead_id'];
-
-              if (famHeadUserId == null) {
-                return const ListTile(
-                  title: Text('Error: Missing family head information'),
-                );
-              }
-
+              final familyHead = familyHeads[index];
               return ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: Colors.green,
-                  child: Icon(Icons.person, color: Colors.white),
-                ),
                 title: Text(
-                  'Family Head: $famHeadUserId', // Replace with actual name if available
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                subtitle: const Text('Tap to start chatting'),
+                    '${familyHead['first_name']} ${familyHead['last_name']}'),
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => PrivateChatPage(
-                        currentUserId: widget.currentUserId,
-                        currentUserUsername: widget.currentUserUsername,
-                        otherUserId: famHeadUserId,
-                        otherUserName:
-                            'Family Head: $famHeadUserId', // Replace with actual name if available
-                        isCookInitiated: true,
+                      builder: (context) => ChatRoomPage(
+                        roomId:
+                            '${widget.currentUserId}_${familyHead['user_id']}',
+                        recipientName:
+                            '${familyHead['first_name']} ${familyHead['last_name']}',
                       ),
                     ),
                   );
@@ -112,6 +86,54 @@ class _CookChatPageState extends State<CookChatPage> {
             },
           );
         },
+      ),
+    );
+  }
+}
+
+class ChatRoomPage extends StatelessWidget {
+  final String roomId;
+  final String recipientName;
+
+  const ChatRoomPage({
+    Key? key,
+    required this.roomId,
+    required this.recipientName,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Chat with $recipientName'),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: Center(
+              child: Text('Messages will be displayed here for $roomId.'),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration:
+                        const InputDecoration(hintText: 'Type a message'),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: () {
+                    // Handle message sending
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

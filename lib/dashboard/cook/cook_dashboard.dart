@@ -33,7 +33,7 @@ class CookDashboardState extends State<CookDashboard> {
   int _selectedIndex = 0;
   bool _isDrawerOpen = false;
   bool _isSessionRestoring = true;
-  bool _isLoggingOut = false; // To prevent redundant logout handling
+  bool _isLoggingOut = false;
 
   final List<String> _titles = [
     'Dashboard',
@@ -49,24 +49,16 @@ class CookDashboardState extends State<CookDashboard> {
   void initState() {
     super.initState();
     _restoreSession();
-
     Supabase.instance.client.auth.onAuthStateChange.listen((event) {
-      final session = event.session;
-
-      if (event.event == AuthChangeEvent.signedOut) {
-        if (!_isLoggingOut) {
-          _isLoggingOut = true;
-          _handleLogout(context); // Redirect to login if the session is lost
-        }
+      if (event.event == AuthChangeEvent.signedOut && !_isLoggingOut) {
+        _handleLogout(context);
       }
     });
   }
 
   Future<void> _restoreSession() async {
     final session = Supabase.instance.client.auth.currentSession;
-
     if (session == null) {
-      // Redirect to the home page if there's no session
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const HomePage()),
         (route) => false,
@@ -78,34 +70,19 @@ class CookDashboardState extends State<CookDashboard> {
     }
   }
 
-  void _onSelectItem(int index) {
-    setState(() {
-      _selectedIndex = index;
-      _scaffoldKey.currentState?.closeDrawer();
-    });
-  }
-
-  void _onDrawerStateChanged(bool isOpen) {
-    setState(() {
-      _isDrawerOpen = isOpen;
-    });
-  }
-
   Future<void> _handleLogout(BuildContext context) async {
-    if (_isLoggingOut) return; // Prevent redundant logout handling
     setState(() {
       _isLoggingOut = true;
     });
-
     try {
       await Supabase.instance.client.auth.signOut();
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => const HomePage()),
-        (route) => false, // Remove all previous routes
+        (route) => false,
       );
     } catch (e) {
       setState(() {
-        _isLoggingOut = false; // Allow retry in case of error
+        _isLoggingOut = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error during logout: $e')),
@@ -116,7 +93,6 @@ class CookDashboardState extends State<CookDashboard> {
   @override
   Widget build(BuildContext context) {
     if (_isSessionRestoring) {
-      // Show a loading indicator while restoring session
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
@@ -129,17 +105,16 @@ class CookDashboardState extends State<CookDashboard> {
       ),
       drawer: CustomDrawer(
         selectedIndex: _selectedIndex,
-        onItemTap: _onSelectItem,
         userName: '${widget.firstName} ${widget.lastName}',
+        onItemTap: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+          Navigator.pop(context);
+        },
         onLogoutTap: () => _handleLogout(context),
       ),
-      onDrawerChanged: _onDrawerStateChanged,
-      body: _selectedIndex == 3
-          ? CookChatPage(
-              currentUserId: widget.currentUserId,
-              currentUserUsername: widget.currentUserUsername,
-            )
-          : _getPage(_selectedIndex),
+      body: _getPage(_selectedIndex),
     );
   }
 
@@ -148,7 +123,10 @@ class CookDashboardState extends State<CookDashboard> {
       const DashboardPage(),
       const BookingRequestsPage(),
       const OrdersPage(),
-      const Center(child: Text('Select a Family Head to chat')),
+      CookChatPage(
+        currentUserId: widget.currentUserId,
+        currentUserUsername: widget.currentUserUsername,
+      ),
       const ReviewsPage(),
       const EarningsPage(),
       const SupportPage(),
