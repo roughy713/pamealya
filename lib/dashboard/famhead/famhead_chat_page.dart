@@ -55,7 +55,7 @@ class _FamHeadChatPageState extends State<FamHeadChatPage> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Select who to chat'),
+        title: const Text('Select cooks to chat'),
       ),
       body: FutureBuilder<List<dynamic>>(
         future: fetchCooks(),

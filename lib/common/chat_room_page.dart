@@ -42,6 +42,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
 
       if (response != null) {
         setState(() {
+          _messages.clear();
           _messages.addAll((response as List<dynamic>)
               .map((message) => message as Map<String, dynamic>)
               .toList());
@@ -61,6 +62,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         .eq('room_id', widget.chatRoomId)
         .listen((List<Map<String, dynamic>> payload) {
           for (final newMessage in payload) {
+            // Prevent duplicate messages
             if (!_messages
                 .any((message) => message['id'] == newMessage['id'])) {
               setState(() {
@@ -69,26 +71,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             }
           }
         });
-  }
-
-  Future<void> ensureRoomExists(String roomId) async {
-    try {
-      final response = await Supabase.instance.client
-          .from('rooms')
-          .select('id')
-          .eq('id', roomId)
-          .maybeSingle();
-
-      if (response == null) {
-        // Room doesn't exist; create it
-        await Supabase.instance.client.from('rooms').insert({
-          'id': roomId,
-          'created_at': DateTime.now().toIso8601String(),
-        });
-      }
-    } catch (e) {
-      print('Error ensuring room exists: $e');
-    }
   }
 
   Future<void> _sendMessage() async {
@@ -112,6 +94,26 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error sending message: $e')),
       );
+    }
+  }
+
+  Future<void> ensureRoomExists(String roomId) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('rooms')
+          .select('*')
+          .eq('id', roomId)
+          .maybeSingle();
+
+      if (response == null) {
+        // Room doesn't exist; create it
+        await Supabase.instance.client.from('rooms').insert({
+          'id': roomId,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (e) {
+      print('Error ensuring room exists: $e');
     }
   }
 
