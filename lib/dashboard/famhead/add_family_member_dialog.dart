@@ -24,16 +24,16 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
   final TextEditingController _religionController = TextEditingController();
   String? _selectedGender;
   String? _selectedPosition;
-  String? _selectedCondition; // No default value
+  String? _selectedCondition;
 
   bool _seafoodAllergy = false;
   bool _nutsAllergy = false;
   bool _dairyAllergy = false;
 
-  bool _isSaving = false; // Prevent multiple submissions
+  bool _isSaving = false;
 
   Future<void> _saveFamilyMember() async {
-    if (_isSaving) return; // Prevent duplicate submissions
+    if (_isSaving) return;
     setState(() {
       _isSaving = true;
     });
@@ -61,7 +61,6 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
 
       final familyMemberId = response['familymember_id'];
 
-      // Insert allergens
       await supabase.from('familymember_allergens').upsert({
         'familymember_id': familyMemberId,
         'is_seafood': _seafoodAllergy,
@@ -69,7 +68,6 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
         'is_dairy': _dairyAllergy,
       });
 
-      // Insert special conditions (Lactating, Pregnant, None)
       await supabase.from('familymember_specialconditions').upsert({
         'familymember_id': familyMemberId,
         'is_pregnant': _selectedCondition == 'Pregnant',
@@ -124,178 +122,215 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Add Family Member'),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextFormField(
-                controller: _firstNameController,
-                decoration: const InputDecoration(labelText: 'First Name'),
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Enter first name' : null,
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Container(
+        width: 500,
+        height: 500, // Square dimensions
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          children: [
+            const Text(
+              'Add Family Member',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
               ),
-              TextFormField(
-                controller: _lastNameController,
-                decoration: const InputDecoration(labelText: 'Last Name'),
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Enter last name' : null,
-              ),
-              TextFormField(
-                controller: _ageController,
-                decoration: const InputDecoration(labelText: 'Age'),
-                keyboardType: TextInputType.number,
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Enter age' : null,
-              ),
-              TextFormField(
-                controller: _dateOfBirthController,
-                decoration: const InputDecoration(
-                  labelText: 'Date of Birth',
-                  suffixIcon: Icon(Icons.calendar_today),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextFormField(
+                        controller: _firstNameController,
+                        decoration:
+                            const InputDecoration(labelText: 'First Name'),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Enter first name'
+                            : null,
+                      ),
+                      TextFormField(
+                        controller: _lastNameController,
+                        decoration:
+                            const InputDecoration(labelText: 'Last Name'),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Enter last name'
+                            : null,
+                      ),
+                      TextFormField(
+                        controller: _ageController,
+                        decoration: const InputDecoration(labelText: 'Age'),
+                        keyboardType: TextInputType.number,
+                        validator: (value) =>
+                            value == null || value.isEmpty ? 'Enter age' : null,
+                      ),
+                      TextFormField(
+                        controller: _dateOfBirthController,
+                        decoration: const InputDecoration(
+                          labelText: 'Date of Birth',
+                          suffixIcon: Icon(Icons.calendar_today),
+                        ),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Enter date of birth'
+                            : null,
+                        onTap: () => _selectDate(context),
+                        readOnly: true,
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: _religionController.text.isNotEmpty
+                            ? _religionController.text
+                            : null,
+                        onChanged: (value) {
+                          setState(() {
+                            _religionController.text = value!;
+                          });
+                        },
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Select religion'
+                            : null,
+                        items: [
+                          'Roman Catholic',
+                          'Islam',
+                          'Christian',
+                          'Saksi ni Jehova',
+                          '7th Day Adventist',
+                          'Iglesia Ni Cristo',
+                          'Mormons',
+                        ].map((religion) {
+                          return DropdownMenuItem(
+                            value: religion,
+                            child: Text(religion),
+                          );
+                        }).toList(),
+                        decoration:
+                            const InputDecoration(labelText: 'Religion'),
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: _selectedGender,
+                        onChanged: (value) => setState(() {
+                          _selectedGender = value;
+                        }),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Select gender'
+                            : null,
+                        items: ['Male', 'Female']
+                            .map((gender) => DropdownMenuItem(
+                                  value: gender,
+                                  child: Text(gender),
+                                ))
+                            .toList(),
+                        decoration: const InputDecoration(labelText: 'Gender'),
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: _selectedPosition,
+                        onChanged: (value) => setState(() {
+                          _selectedPosition = value;
+                        }),
+                        validator: (value) => value == null || value.isEmpty
+                            ? 'Select position'
+                            : null,
+                        items: [
+                          'Father',
+                          'Mother',
+                          'Son',
+                          'Daughter',
+                          'Grandmother',
+                          'Grandfather',
+                          'Uncle',
+                          'Aunt'
+                        ].map((position) {
+                          return DropdownMenuItem(
+                            value: position,
+                            child: Text(position),
+                          );
+                        }).toList(),
+                        decoration:
+                            const InputDecoration(labelText: 'Position'),
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: _selectedCondition,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedCondition = value;
+                          });
+                        },
+                        items: [
+                          'None',
+                          'Lactating',
+                          'Pregnant',
+                        ].map((condition) {
+                          return DropdownMenuItem(
+                            value: condition,
+                            child: Text(condition),
+                          );
+                        }).toList(),
+                        decoration: const InputDecoration(
+                            labelText: 'Special Condition'),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text('Allergens'),
+                      CheckboxListTile(
+                        title: const Text('Seafood'),
+                        value: _seafoodAllergy,
+                        onChanged: (value) {
+                          setState(() {
+                            _seafoodAllergy = value ?? false;
+                          });
+                        },
+                      ),
+                      CheckboxListTile(
+                        title: const Text('Nuts'),
+                        value: _nutsAllergy,
+                        onChanged: (value) {
+                          setState(() {
+                            _nutsAllergy = value ?? false;
+                          });
+                        },
+                      ),
+                      CheckboxListTile(
+                        title: const Text('Dairy'),
+                        value: _dairyAllergy,
+                        onChanged: (value) {
+                          setState(() {
+                            _dairyAllergy = value ?? false;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
                 ),
-                validator: (value) => value == null || value.isEmpty
-                    ? 'Enter date of birth'
-                    : null,
-                onTap: () => _selectDate(context),
-                readOnly: true,
               ),
-              DropdownButtonFormField<String>(
-                value: _religionController.text.isNotEmpty
-                    ? _religionController.text
-                    : null,
-                onChanged: (value) {
-                  setState(() {
-                    _religionController.text = value!;
-                  });
-                },
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Select religion' : null,
-                items: [
-                  'Roman Catholic',
-                  'Islam',
-                  'Christian',
-                  'Saksi ni Jehova',
-                  '7th Day Adventist',
-                  'Iglesia Ni Cristo',
-                  'Mormons',
-                ].map((religion) {
-                  return DropdownMenuItem(
-                    value: religion,
-                    child: Text(religion),
-                  );
-                }).toList(),
-                decoration: const InputDecoration(labelText: 'Religion'),
-              ),
-              DropdownButtonFormField<String>(
-                value: _selectedGender,
-                onChanged: (value) => setState(() {
-                  _selectedGender = value;
-                }),
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Select gender' : null,
-                items: ['Male', 'Female']
-                    .map((gender) => DropdownMenuItem(
-                          value: gender,
-                          child: Text(gender),
-                        ))
-                    .toList(),
-                decoration: const InputDecoration(labelText: 'Gender'),
-              ),
-              DropdownButtonFormField<String>(
-                value: _selectedPosition,
-                onChanged: (value) => setState(() {
-                  _selectedPosition = value;
-                }),
-                validator: (value) =>
-                    value == null || value.isEmpty ? 'Select position' : null,
-                items: [
-                  'Father',
-                  'Mother',
-                  'Son',
-                  'Daughter',
-                  'Grandmother',
-                  'Grandfather',
-                  'Uncle',
-                  'Aunt'
-                ].map((position) {
-                  return DropdownMenuItem(
-                    value: position,
-                    child: Text(position),
-                  );
-                }).toList(),
-                decoration: const InputDecoration(labelText: 'Position'),
-              ),
-              DropdownButtonFormField<String>(
-                value: _selectedCondition,
-                onChanged: (value) {
-                  setState(() {
-                    _selectedCondition = value;
-                  });
-                },
-                items: [
-                  'None',
-                  'Lactating',
-                  'Pregnant',
-                ].map((condition) {
-                  return DropdownMenuItem(
-                    value: condition,
-                    child: Text(condition),
-                  );
-                }).toList(),
-                decoration:
-                    const InputDecoration(labelText: 'Special Condition'),
-              ),
-              const SizedBox(height: 10),
-              const Text('Allergens'),
-              CheckboxListTile(
-                title: const Text('Seafood'),
-                value: _seafoodAllergy,
-                onChanged: (value) {
-                  setState(() {
-                    _seafoodAllergy = value ?? false;
-                  });
-                },
-              ),
-              CheckboxListTile(
-                title: const Text('Nuts'),
-                value: _nutsAllergy,
-                onChanged: (value) {
-                  setState(() {
-                    _nutsAllergy = value ?? false;
-                  });
-                },
-              ),
-              CheckboxListTile(
-                title: const Text('Dairy'),
-                value: _dairyAllergy,
-                onChanged: (value) {
-                  setState(() {
-                    _dairyAllergy = value ?? false;
-                  });
-                },
-              ),
-            ],
-          ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (_formKey.currentState?.validate() ?? false) {
+                      _saveFamilyMember();
+                    }
+                  },
+                  child: const Text('Submit'),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            if (_formKey.currentState?.validate() ?? false) {
-              _saveFamilyMember();
-            }
-          },
-          child: const Text('Submit'),
-        ),
-      ],
     );
   }
 }

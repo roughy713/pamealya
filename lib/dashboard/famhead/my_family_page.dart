@@ -90,6 +90,33 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
     );
   }
 
+  Future<void> _confirmDeleteFamilyMember(String familyMemberId) async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Deletion'),
+        content:
+            const Text('Are you sure you want to delete this family member?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(), // Close the dialog
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(context).pop(); // Close the confirmation dialog
+              await _deleteFamilyMember(familyMemberId);
+            },
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _deleteFamilyMember(String familyMemberId) async {
     try {
       // Delete allergens associated with the family member
@@ -264,8 +291,9 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                                     IconButton(
                                       icon: const Icon(Icons.delete,
                                           color: Colors.red),
-                                      onPressed: () => _deleteFamilyMember(
-                                          member['familymember_id']),
+                                      onPressed: () =>
+                                          _confirmDeleteFamilyMember(
+                                              member['familymember_id']),
                                     ),
                                 ],
                               ),
@@ -300,49 +328,108 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('${member['first_name']} ${member['last_name']} Details'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('First Name: ${member['first_name'] ?? ''}'),
-            Text('Last Name: ${member['last_name'] ?? ''}'),
-            Text('Position: ${member['position'] ?? ''}'),
-            Text('Age: ${member['age'] ?? 'N/A'}'),
-            Text('Date of Birth: ${member['dob'] ?? 'N/A'}'),
-            Text('Religion: ${member['religion'] ?? 'N/A'}'),
-            Text('Gender: ${member['gender'] ?? 'N/A'}'),
-            const SizedBox(height: 10),
-            Text(
-              'Special Condition: ${conditions != null ? (conditions['is_pregnant'] == true ? 'Pregnant' : conditions['is_lactating'] == true ? 'Lactating' : 'None') : 'None'}',
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'Allergens:',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (allergens != null)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (allergens['is_seafood'] == true) const Text('Seafood'),
-                  if (allergens['is_nuts'] == true) const Text('Nuts'),
-                  if (allergens['is_dairy'] == true) const Text('Dairy'),
-                  if (allergens['is_seafood'] != true &&
-                      allergens['is_nuts'] != true &&
-                      allergens['is_dairy'] != true)
-                    const Text('None'),
-                ],
-              )
-            else
-              const Text('None'),
-          ],
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16), // Rounded corners
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
+        child: Container(
+          width: 500,
+          height: 500, // Set the dialog to be square (500x500)
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${member['first_name']} ${member['last_name']} Details',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 20),
+              _buildDetailRow("First Name:", member['first_name'] ?? 'N/A'),
+              _buildDetailRow("Last Name:", member['last_name'] ?? 'N/A'),
+              _buildDetailRow("Position:", member['position'] ?? 'N/A'),
+              _buildDetailRow("Age:", member['age']?.toString() ?? 'N/A'),
+              _buildDetailRow("Date of Birth:", member['dob'] ?? 'N/A'),
+              _buildDetailRow("Religion:", member['religion'] ?? 'N/A'),
+              _buildDetailRow("Gender:", member['gender'] ?? 'N/A'),
+              const SizedBox(height: 10),
+              _buildDetailRow(
+                "Special Condition:",
+                conditions != null
+                    ? (conditions['is_pregnant'] == true
+                        ? 'Pregnant'
+                        : conditions['is_lactating'] == true
+                            ? 'Lactating'
+                            : 'None')
+                    : 'None',
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Allergens:',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 5),
+              if (allergens != null)
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (allergens['is_seafood'] == true)
+                      const Text('- Seafood'),
+                    if (allergens['is_nuts'] == true) const Text('- Nuts'),
+                    if (allergens['is_dairy'] == true) const Text('- Dairy'),
+                    if (allergens['is_seafood'] != true &&
+                        allergens['is_nuts'] != true &&
+                        allergens['is_dairy'] != true)
+                      const Text('- None'),
+                  ],
+                )
+              else
+                const Text('None'),
+              const Spacer(),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(color: Colors.purple),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '$title ',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 16),
+            ),
           ),
         ],
       ),

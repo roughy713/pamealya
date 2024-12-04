@@ -158,157 +158,197 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Edit Family Member'),
-      content: SingleChildScrollView(
-        child: Form(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                controller: firstNameController,
-                decoration: const InputDecoration(labelText: 'First Name'),
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16), // Rounded corners
+      ),
+      child: Container(
+        width: 500,
+        height: 500, // Set dialog to square dimensions
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Edit Family Member',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
               ),
-              TextField(
-                controller: lastNameController,
-                decoration: const InputDecoration(labelText: 'Last Name'),
-              ),
-              TextField(
-                controller: ageController,
-                decoration: const InputDecoration(labelText: 'Age'),
-                keyboardType: TextInputType.number,
-              ),
-              TextField(
-                controller: dobController,
-                decoration: const InputDecoration(
-                  labelText: 'Date of Birth',
-                  suffixIcon: Icon(Icons.calendar_today),
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Form(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: firstNameController,
+                        decoration:
+                            const InputDecoration(labelText: 'First Name'),
+                      ),
+                      TextField(
+                        controller: lastNameController,
+                        decoration:
+                            const InputDecoration(labelText: 'Last Name'),
+                      ),
+                      TextField(
+                        controller: ageController,
+                        decoration: const InputDecoration(labelText: 'Age'),
+                        keyboardType: TextInputType.number,
+                      ),
+                      TextField(
+                        controller: dobController,
+                        decoration: const InputDecoration(
+                          labelText: 'Date of Birth',
+                          suffixIcon: Icon(Icons.calendar_today),
+                        ),
+                        readOnly: true,
+                        onTap: () async {
+                          final picked = await showDatePicker(
+                            context: context,
+                            initialDate: DateTime.now(),
+                            firstDate: DateTime(1900),
+                            lastDate: DateTime(2100),
+                          );
+                          if (picked != null) {
+                            setState(() {
+                              dobController.text =
+                                  "${picked.month}/${picked.day}/${picked.year}";
+                            });
+                          }
+                        },
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: religionController.text.isNotEmpty
+                            ? religionController.text
+                            : null,
+                        onChanged: (value) =>
+                            setState(() => religionController.text = value!),
+                        items: [
+                          'Roman Catholic',
+                          'Islam',
+                          'Christian',
+                          'Saksi ni Jehova',
+                          '7th Day Adventist',
+                          'Iglesia Ni Cristo',
+                          'Mormons',
+                        ].map((religion) {
+                          return DropdownMenuItem(
+                              value: religion, child: Text(religion));
+                        }).toList(),
+                        decoration:
+                            const InputDecoration(labelText: 'Religion'),
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: gender,
+                        items: genderOptions.map((value) {
+                          return DropdownMenuItem(
+                              value: value, child: Text(value));
+                        }).toList(),
+                        onChanged: (value) => setState(() => gender = value),
+                        decoration: const InputDecoration(labelText: 'Gender'),
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: position,
+                        items: positionOptions.map((value) {
+                          return DropdownMenuItem(
+                              value: value, child: Text(value));
+                        }).toList(),
+                        onChanged: (position == 'Family Head')
+                            ? null
+                            : (value) => setState(() => position = value),
+                        decoration:
+                            const InputDecoration(labelText: 'Position'),
+                      ),
+                      DropdownButtonFormField<String>(
+                        value: _selectedCondition,
+                        onChanged: (value) =>
+                            setState(() => _selectedCondition = value),
+                        items:
+                            ['None', 'Lactating', 'Pregnant'].map((condition) {
+                          return DropdownMenuItem(
+                              value: condition, child: Text(condition));
+                        }).toList(),
+                        decoration: const InputDecoration(
+                            labelText: 'Special Condition'),
+                      ),
+                      const SizedBox(height: 10),
+                      const Text('Allergens'),
+                      CheckboxListTile(
+                        title: const Text('Seafood'),
+                        value: seafoodAllergy,
+                        onChanged: (value) =>
+                            setState(() => seafoodAllergy = value ?? false),
+                      ),
+                      CheckboxListTile(
+                        title: const Text('Nuts'),
+                        value: nutsAllergy,
+                        onChanged: (value) =>
+                            setState(() => nutsAllergy = value ?? false),
+                      ),
+                      CheckboxListTile(
+                        title: const Text('Dairy'),
+                        value: dairyAllergy,
+                        onChanged: (value) =>
+                            setState(() => dairyAllergy = value ?? false),
+                      ),
+                    ],
+                  ),
                 ),
-                readOnly: true,
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now(),
-                    firstDate: DateTime(1900),
-                    lastDate: DateTime(2100),
-                  );
-                  if (picked != null) {
-                    setState(() {
-                      dobController.text =
-                          "${picked.month}/${picked.day}/${picked.year}";
-                    });
-                  }
-                },
               ),
-              DropdownButtonFormField<String>(
-                value: religionController.text.isNotEmpty
-                    ? religionController.text
-                    : null,
-                onChanged: (value) =>
-                    setState(() => religionController.text = value!),
-                items: [
-                  'Roman Catholic',
-                  'Islam',
-                  'Christian',
-                  'Saksi ni Jehova',
-                  '7th Day Adventist',
-                  'Iglesia Ni Cristo',
-                  'Mormons',
-                ].map((religion) {
-                  return DropdownMenuItem(
-                      value: religion, child: Text(religion));
-                }).toList(),
-                decoration: const InputDecoration(labelText: 'Religion'),
-              ),
-              DropdownButtonFormField<String>(
-                value: gender,
-                items: genderOptions.map((value) {
-                  return DropdownMenuItem(value: value, child: Text(value));
-                }).toList(),
-                onChanged: (value) => setState(() => gender = value),
-                decoration: const InputDecoration(labelText: 'Gender'),
-              ),
-              DropdownButtonFormField<String>(
-                value: position,
-                items: positionOptions.map((value) {
-                  return DropdownMenuItem(value: value, child: Text(value));
-                }).toList(),
-                onChanged: (position == 'Family Head')
-                    ? null
-                    : (value) => setState(() => position = value),
-                decoration: const InputDecoration(labelText: 'Position'),
-              ),
-              DropdownButtonFormField<String>(
-                value: _selectedCondition,
-                onChanged: (value) =>
-                    setState(() => _selectedCondition = value),
-                items: ['None', 'Lactating', 'Pregnant'].map((condition) {
-                  return DropdownMenuItem(
-                      value: condition, child: Text(condition));
-                }).toList(),
-                decoration:
-                    const InputDecoration(labelText: 'Special Condition'),
-              ),
-              const SizedBox(height: 10),
-              const Text('Allergens'),
-              CheckboxListTile(
-                title: const Text('Seafood'),
-                value: seafoodAllergy,
-                onChanged: (value) =>
-                    setState(() => seafoodAllergy = value ?? false),
-              ),
-              CheckboxListTile(
-                title: const Text('Nuts'),
-                value: nutsAllergy,
-                onChanged: (value) =>
-                    setState(() => nutsAllergy = value ?? false),
-              ),
-              CheckboxListTile(
-                title: const Text('Dairy'),
-                value: dairyAllergy,
-                onChanged: (value) =>
-                    setState(() => dairyAllergy = value ?? false),
-              ),
-            ],
-          ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final updatedMember = {
+                      'first_name': firstNameController.text.isNotEmpty
+                          ? firstNameController.text
+                          : null,
+                      'last_name': lastNameController.text.isNotEmpty
+                          ? lastNameController.text
+                          : null,
+                      'age': int.tryParse(ageController.text) ?? null,
+                      'dob': dobController.text.isNotEmpty
+                          ? dobController.text
+                          : null,
+                      'religion': religionController.text.isNotEmpty
+                          ? religionController.text
+                          : null,
+                      'gender': gender ?? 'N/A',
+                      'position': position ?? 'N/A',
+                    };
+
+                    try {
+                      await saveAllergens(widget.memberData['familymember_id']);
+                      await saveSpecialCondition(
+                          widget.memberData['familymember_id']);
+                      widget.onEdit(updatedMember);
+                      Navigator.pop(context);
+                      await _showSuccessDialog(
+                          'Family member updated successfully!');
+                    } catch (e) {
+                      print('Error: $e');
+                    }
+                  },
+                  child: const Text("Save"),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text("Cancel"),
-        ),
-        TextButton(
-          onPressed: () async {
-            final updatedMember = {
-              'first_name': firstNameController.text.isNotEmpty
-                  ? firstNameController.text
-                  : null,
-              'last_name': lastNameController.text.isNotEmpty
-                  ? lastNameController.text
-                  : null,
-              'age': int.tryParse(ageController.text) ?? null,
-              'dob': dobController.text.isNotEmpty ? dobController.text : null,
-              'religion': religionController.text.isNotEmpty
-                  ? religionController.text
-                  : null,
-              'gender': gender ?? 'N/A',
-              'position': position ?? 'N/A',
-            };
-
-            try {
-              await saveAllergens(widget.memberData['familymember_id']);
-              await saveSpecialCondition(widget.memberData['familymember_id']);
-              widget.onEdit(updatedMember);
-              Navigator.pop(context);
-              await _showSuccessDialog('Family member updated successfully!');
-            } catch (e) {
-              print('Error: $e');
-            }
-          },
-          child: const Text("Save"),
-        ),
-      ],
     );
   }
 }

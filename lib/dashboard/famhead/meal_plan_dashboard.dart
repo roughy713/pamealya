@@ -120,7 +120,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       final response = await Supabase.instance.client
           .from('mealplan')
           .select(
-              'mealplan_id, meal_category_id, day, recipe_id, meal_name, is_completed') // Include is_completed
+              'mealplan_id, meal_category_id, day, recipe_id, meal_name, is_completed')
           .eq('family_head', widget.familyHeadName)
           .order('day', ascending: true)
           .order('meal_category_id', ascending: true);
@@ -129,21 +129,28 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         7,
         (_) => [
           {
-            'meal_category_id': 1,
+            'meal_category_id': 1, // Breakfast
             'meal_name': null,
             'recipe_id': null,
             'mealplan_id': null,
             'is_completed': false
           },
           {
-            'meal_category_id': 2,
+            'meal_category_id': 2, // Lunch
             'meal_name': null,
             'recipe_id': null,
             'mealplan_id': null,
             'is_completed': false
           },
           {
-            'meal_category_id': 3,
+            'meal_category_id': 3, // Dinner
+            'meal_name': null,
+            'recipe_id': null,
+            'mealplan_id': null,
+            'is_completed': false
+          },
+          {
+            'meal_category_id': 5, // Snacks
             'meal_name': null,
             'recipe_id': null,
             'mealplan_id': null,
@@ -153,10 +160,29 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       );
 
       for (var meal in response) {
-        int day = (meal['day'] ?? 1) - 1;
-        int categoryIndex = (meal['meal_category_id'] ?? 1) - 1;
+        int day = (meal['day'] ?? 1) - 1; // Convert to 0-based index
+        int categoryIndex;
 
-        if (day >= 0 && day < 7 && categoryIndex >= 0 && categoryIndex < 3) {
+        // Map meal_category_id to the appropriate column in the table
+        switch (meal['meal_category_id']) {
+          case 1: // Breakfast
+            categoryIndex = 0;
+            break;
+          case 2: // Lunch
+            categoryIndex = 1;
+            break;
+          case 3: // Dinner
+            categoryIndex = 2;
+            break;
+          case 5: // Snacks
+            categoryIndex = 3;
+            break;
+          default:
+            continue; // Skip unknown categories
+        }
+
+        // Populate fetchedMealPlan only for valid days and categories
+        if (day >= 0 && day < 7 && categoryIndex >= 0 && categoryIndex < 4) {
           fetchedMealPlan[day][categoryIndex] = meal;
         }
       }
@@ -351,6 +377,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                         for (var member in widget.familyMembers)
                           _buildHeader(
                               '${member['first_name']} ${member['last_name']}'),
+                        _buildHeader('Snacks'), // Snack header
                       ],
                     ),
                     for (int i = 0; i < mealPlanData.length; i++)
@@ -380,7 +407,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       BuildContext context, int dayIndex, List<Map<String, dynamic>> meals) {
     return TableRow(
       decoration: const BoxDecoration(
-        // Set all rows to have a white background color
         color: Colors.white,
       ),
       children: [
@@ -392,42 +418,28 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
             style: const TextStyle(fontSize: 12),
           ),
         ),
-        // Breakfast meal cell
+        // Breakfast cells
         _buildMealCell(
-          context,
-          meals.isNotEmpty ? meals[0] : null,
-          dayIndex,
-          1, // Meal category ID for Breakfast
-        ),
+            context, meals.isNotEmpty ? meals[0] : null, dayIndex, 1),
         for (var member in widget.familyMembers)
-          _buildServingCell(
-            member,
-            1, // Meal category ID for Breakfast
-          ),
-        // Lunch meal cell
+          _buildServingCell(member, 1), // Breakfast servings
+
+        // Lunch cells
         _buildMealCell(
-          context,
-          meals.length > 1 ? meals[1] : null,
-          dayIndex,
-          2, // Meal category ID for Lunch
-        ),
+            context, meals.length > 1 ? meals[1] : null, dayIndex, 2),
         for (var member in widget.familyMembers)
-          _buildServingCell(
-            member,
-            2, // Meal category ID for Lunch
-          ),
-        // Dinner meal cell
+          _buildServingCell(member, 2), // Lunch servings
+
+        // Dinner cells
         _buildMealCell(
-          context,
-          meals.length > 2 ? meals[2] : null,
-          dayIndex,
-          3, // Meal category ID for Dinner
-        ),
+            context, meals.length > 2 ? meals[2] : null, dayIndex, 3),
         for (var member in widget.familyMembers)
-          _buildServingCell(
-            member,
-            3, // Meal category ID for Dinner
-          ),
+          _buildServingCell(member, 3), // Dinner servings
+
+        // Snacks cell
+        _buildMealCell(
+            context, meals.length > 3 ? meals[3] : null, dayIndex, 5),
+        // Only meal cell for Snacks
       ],
     );
   }
