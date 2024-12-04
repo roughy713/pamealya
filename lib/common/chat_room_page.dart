@@ -17,14 +17,102 @@ class ChatRoomPage extends StatefulWidget {
 
 class _ChatRoomPageState extends State<ChatRoomPage> {
   final TextEditingController _messageController = TextEditingController();
+  final List<Map<String, dynamic>> _messages = [];
 
-  Future<void> sendMessage(String content) async {
-    await Supabase.instance.client.from('messages').insert({
-      'content': content,
-      'room_id': widget.chatRoomId,
-      'user_id': Supabase.instance.client.auth.currentUser?.id,
-      'created_at': DateTime.now().toIso8601String(),
-    });
+  @override
+  void initState() {
+    super.initState();
+    _fetchMessages();
+    _subscribeToMessages();
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchMessages() async {
+    try {
+      final response = await Supabase.instance.client
+          .from('messages')
+          .select('id, content, user_id, created_at')
+          .eq('room_id', widget.chatRoomId)
+          .order('created_at', ascending: true);
+
+      if (response != null) {
+        setState(() {
+          _messages.addAll((response as List<dynamic>)
+              .map((message) => message as Map<String, dynamic>)
+              .toList());
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching messages: $e')),
+      );
+    }
+  }
+
+  void _subscribeToMessages() {
+    Supabase.instance.client
+        .from('messages')
+        .stream(primaryKey: ['id'])
+        .eq('room_id', widget.chatRoomId)
+        .listen((List<Map<String, dynamic>> payload) {
+          for (final newMessage in payload) {
+            if (!_messages
+                .any((message) => message['id'] == newMessage['id'])) {
+              setState(() {
+                _messages.add(newMessage);
+              });
+            }
+          }
+        });
+  }
+
+  Future<void> ensureRoomExists(String roomId) async {
+    try {
+      final response = await Supabase.instance.client
+          .from('rooms')
+          .select('id')
+          .eq('id', roomId)
+          .maybeSingle();
+
+      if (response == null) {
+        // Room doesn't exist; create it
+        await Supabase.instance.client.from('rooms').insert({
+          'id': roomId,
+          'created_at': DateTime.now().toIso8601String(),
+        });
+      }
+    } catch (e) {
+      print('Error ensuring room exists: $e');
+    }
+  }
+
+  Future<void> _sendMessage() async {
+    if (_messageController.text.trim().isEmpty) {
+      return;
+    }
+
+    final messageContent = _messageController.text.trim();
+    _messageController.clear();
+
+    try {
+      // Ensure the room exists before sending the message
+      await ensureRoomExists(widget.chatRoomId);
+
+      await Supabase.instance.client.from('messages').insert({
+        'content': messageContent,
+        'room_id': widget.chatRoomId,
+        'user_id': Supabase.instance.client.auth.currentUser?.id,
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error sending message: $e')),
+      );
+    }
   }
 
   @override
@@ -32,39 +120,34 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Chat with ${widget.recipientName}'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.pop(context),
-        ),
       ),
       body: Column(
         children: [
           Expanded(
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: Supabase.instance.client
-                  .from('messages')
-                  .select()
-                  .eq('room_id', widget.chatRoomId)
-                  .order('created_at', ascending: true),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(
-                    child: Text('Failed to load messages: ${snapshot.error}'),
-                  );
-                }
-
-                final messages = snapshot.data ?? [];
-                return ListView.builder(
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final message = messages[index];
-                    return ListTile(
-                      title: Text(message['content']),
-                      subtitle: Text(message['created_at']),
-                    );
-                  },
+            child: ListView.builder(
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                final message = _messages[index];
+                final isMine = message['user_id'] ==
+                    Supabase.instance.client.auth.currentUser?.id;
+                return Align(
+                  alignment:
+                      isMine ? Alignment.centerRight : Alignment.centerLeft,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(
+                        vertical: 5.0, horizontal: 10.0),
+                    padding: const EdgeInsets.all(10.0),
+                    decoration: BoxDecoration(
+                      color: isMine ? Colors.green : Colors.grey[300],
+                      borderRadius: BorderRadius.circular(10.0),
+                    ),
+                    child: Text(
+                      message['content'],
+                      style: TextStyle(
+                        color: isMine ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ),
                 );
               },
             ),
@@ -77,23 +160,13 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
                   child: TextField(
                     controller: _messageController,
                     decoration: const InputDecoration(
-                      hintText: 'Enter your message',
+                      hintText: 'Type a message...',
                     ),
                   ),
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: () async {
-                    try {
-                      await sendMessage(_messageController.text);
-                      _messageController.clear();
-                      setState(() {});
-                    } catch (e) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Failed to send message: $e')),
-                      );
-                    }
-                  },
+                  onPressed: _sendMessage,
                 ),
               ],
             ),
