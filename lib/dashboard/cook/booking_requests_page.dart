@@ -21,11 +21,11 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
 
   Future<void> fetchBookingRequests() async {
     try {
-      // Fetch only requests that are not yet accepted or declined (status is NULL)
+      // Fetch requests where the status is 'pending'
       final response = await supabase
           .from('bookingrequest')
           .select()
-          .filter('status', 'is', null) // Use `.filter()` for null checks
+          .eq('status', 'pending') // Check for 'pending' status
           .order('request_date', ascending: false);
 
       setState(() {
@@ -145,7 +145,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                                'Family Member: ${booking['famhead_id'] ?? 'N/A'}'),
+                                'Family Member: ${booking['family_head'] ?? 'N/A'}'),
                             Text('Cook: ${booking['localcook_id'] ?? 'N/A'}'),
                             Text('Meal: ${booking['mealplan_id'] ?? 'N/A'}'),
                             Text('Date: ${booking['request_date'] ?? 'N/A'}'),

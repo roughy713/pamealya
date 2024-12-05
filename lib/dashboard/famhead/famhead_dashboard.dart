@@ -5,7 +5,7 @@ import '/home_page.dart';
 import 'meal_plan_dashboard.dart';
 import 'my_family_page.dart';
 import 'famhead_chat_page.dart';
-import 'cook_page.dart';
+
 import 'notifications_page.dart';
 import 'transactions_page.dart';
 import 'custom_drawer.dart';
@@ -224,10 +224,6 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         ),
         FamHeadChatPage(
           currentUserId: widget.currentUserId,
-        ),
-        CookPage(
-          userFirstName: widget.firstName,
-          userLastName: widget.lastName,
         ),
         const NotificationsPage(),
         const TransactionPage(),

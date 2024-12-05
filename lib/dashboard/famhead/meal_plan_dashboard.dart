@@ -1,27 +1,29 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:pamealya/dashboard/famhead/cook_page.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
-// Utility function to construct the full image URL from a relative path
+// Utility function
 String constructImageUrl(String? imageUrl) {
   if (imageUrl == null || imageUrl.isEmpty) return '';
   if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-    return imageUrl; // Already a complete URL
+    return imageUrl;
   }
   const bucketBaseUrl =
       'https://<supabase-url>/storage/v1/object/public/<bucket-name>';
   return '$bucketBaseUrl/$imageUrl';
 }
 
+// Main Widget
 class MealPlanDashboard extends StatefulWidget {
   final List<List<Map<String, dynamic>>> mealPlanData;
   final List<Map<String, dynamic>> familyMembers;
   final Map<String, dynamic> portionSizeData;
   final String familyHeadName;
   final Function(String mealPlanId)? onCompleteMeal;
-  final String userFirstName; // Add this
-  final String userLastName; // Add this
+  final String userFirstName;
+  final String userLastName;
 
   MealPlanDashboard({
     super.key,
@@ -30,26 +32,30 @@ class MealPlanDashboard extends StatefulWidget {
     required this.portionSizeData,
     required this.familyHeadName,
     this.onCompleteMeal,
-    required this.userFirstName, // Add this
-    required this.userLastName, // Add this
+    required this.userFirstName,
+    required this.userLastName,
   });
 
   @override
   _MealPlanDashboardState createState() => _MealPlanDashboardState();
 }
 
+// State Class
 class _MealPlanDashboardState extends State<MealPlanDashboard> {
   final ScrollController _horizontalScrollController = ScrollController();
   final ScrollController _verticalScrollController = ScrollController();
+  final supabase = Supabase.instance.client;
+
   late List<List<Map<String, dynamic>>> mealPlanData;
   StreamSubscription<dynamic>? _mealPlanSubscription;
 
+  // Initialization and Cleanup
   @override
   void initState() {
     super.initState();
     mealPlanData = widget.mealPlanData;
-    fetchMealPlan(); // Initial fetch
-    _setupMealPlanSubscription(); // Real-time updates
+    fetchMealPlan();
+    _setupMealPlanSubscription();
   }
 
   @override
@@ -60,61 +66,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     super.dispose();
   }
 
-  Future<void> markMealAsCompleted(String mealPlanId) async {
-    try {
-      // Update the is_completed field in the Supabase database
-      await Supabase.instance.client
-          .from('mealplan')
-          .update({'is_completed': true}).eq('mealplan_id', mealPlanId);
-
-      // Update the local state to reflect the change
-      setState(() {
-        for (var dayMeals in mealPlanData) {
-          for (var meal in dayMeals) {
-            if (meal['mealplan_id'] == mealPlanId) {
-              meal['is_completed'] = true;
-            }
-          }
-        }
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Meal marked as completed!')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to mark meal as completed: $e')),
-      );
-    }
-  }
-
-  void _setupMealPlanSubscription() {
-    _mealPlanSubscription = Supabase.instance.client
-        .from('mealplan')
-        .stream(primaryKey: ['mealplan_id'])
-        .eq('family_head', widget.familyHeadName)
-        .listen((data) {
-          for (var meal in data) {
-            int day = meal['day'] - 1;
-            int categoryIndex = meal['meal_category_id'] - 1;
-
-            if (day >= 0 &&
-                day < 7 &&
-                categoryIndex >= 0 &&
-                categoryIndex < 3) {
-              setState(() {
-                mealPlanData[day][categoryIndex] = {
-                  'meal_category_id': meal['meal_category_id'],
-                  'meal_name': meal['meal_name'],
-                  'recipe_id': meal['recipe_id'],
-                  'mealplan_id': meal['mealplan_id'],
-                };
-              });
-            }
-          }
-        });
-  }
-
+  // Supabase Functions
   Future<void> fetchMealPlan() async {
     try {
       final response = await Supabase.instance.client
@@ -195,6 +147,33 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         SnackBar(content: Text('Error fetching meal plan: $e')),
       );
     }
+  }
+
+  void _setupMealPlanSubscription() {
+    _mealPlanSubscription = Supabase.instance.client
+        .from('mealplan')
+        .stream(primaryKey: ['mealplan_id'])
+        .eq('family_head', widget.familyHeadName)
+        .listen((data) {
+          for (var meal in data) {
+            int day = meal['day'] - 1;
+            int categoryIndex = meal['meal_category_id'] - 1;
+
+            if (day >= 0 &&
+                day < 7 &&
+                categoryIndex >= 0 &&
+                categoryIndex < 3) {
+              setState(() {
+                mealPlanData[day][categoryIndex] = {
+                  'meal_category_id': meal['meal_category_id'],
+                  'meal_name': meal['meal_name'],
+                  'recipe_id': meal['recipe_id'],
+                  'mealplan_id': meal['mealplan_id'],
+                };
+              });
+            }
+          }
+        });
   }
 
   Future<void> regenerateMeal(int day, int mealCategoryId) async {
@@ -315,6 +294,70 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     }
   }
 
+  Future<String?> fetchUserCity(String firstName, String lastName) async {
+    try {
+      final response = await supabase
+          .from('familymember')
+          .select('city')
+          .eq('first_name', firstName)
+          .eq('last_name', lastName)
+          .maybeSingle();
+
+      return response != null ? response['city'] as String : null;
+    } catch (e) {
+      print('Error fetching user city: $e');
+      return null;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> fetchCooks(String userCity) async {
+    try {
+      final response = await supabase
+          .from('Local_Cook')
+          .select(
+            '''
+          localcookid, first_name, last_name, age, gender, dateofbirth, phone,
+          address_line1, barangay, city, province, postal_code,
+          availability_days, time_available_from, time_available_to,
+          certifications
+          ''',
+          )
+          .eq('is_accepted', true)
+          .eq('city', userCity);
+
+      return response != null ? List<Map<String, dynamic>>.from(response) : [];
+    } catch (e) {
+      print('Error fetching cooks: $e');
+      return [];
+    }
+  }
+
+  Future<void> bookCook(String cookId, DateTime desiredDeliveryTime) async {
+    try {
+      final uuid = const Uuid().v4();
+      final fullName = '${widget.userFirstName} ${widget.userLastName}';
+
+      await supabase.from('bookingrequest').insert({
+        'bookingrequest_id': uuid,
+        'localcook_id': cookId,
+        'famhead_id': fullName,
+        'is_cook_booking': true,
+        'request_date': DateTime.now().toIso8601String(),
+        'desired_delivery_time': desiredDeliveryTime.toIso8601String(),
+        'meal_price': 0.0
+      }).select();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Booking successful!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Booking failed: $e')),
+      );
+    }
+  }
+
+  // UI Rendering
   @override
   Widget build(BuildContext context) {
     bool isMealPlanEmpty = mealPlanData.isEmpty ||
@@ -573,7 +616,531 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     );
   }
 
-// Helper function to determine age group based on age
+  // Dialog Functions
+  void _showCookBookingDialog(BuildContext context) async {
+    String? userCity =
+        await fetchUserCity(widget.userFirstName, widget.userLastName);
+
+    if (userCity == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User city not found.')),
+      );
+      return;
+    }
+
+    List<Map<String, dynamic>> cooks = await fetchCooks(userCity);
+
+    if (cooks.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No cooks available in your city.')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: SizedBox(
+            height: 500,
+            child: Column(
+              children: [
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text(
+                    'Available cooks near you',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: cooks.length,
+                    itemBuilder: (context, index) {
+                      final cook = cooks[index];
+                      return ListTile(
+                        title:
+                            Text('${cook['first_name']} ${cook['last_name']}'),
+                        subtitle: Text('City: ${cook['city']}'),
+                        onTap: () => _showCookDetailsDialog(context, cook),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCookDetailsDialog(BuildContext context, Map<String, dynamic> cook) {
+    DateTime? selectedDateTime;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('${cook['first_name']} ${cook['last_name']}'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text('Phone: ${cook['phone']}'),
+                  Text('City: ${cook['city']}'),
+                  Text('Available From: ${cook['time_available_from']}'),
+                  Text('Available To: ${cook['time_available_to']}'),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: DateTime.now(),
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 30)),
+                      );
+                      if (date != null) {
+                        final time = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (time != null) {
+                          final combinedDateTime = DateTime(
+                            date.year,
+                            date.month,
+                            date.day,
+                            time.hour,
+                            time.minute,
+                          );
+                          setState(() {
+                            selectedDateTime = combinedDateTime;
+                          });
+                        }
+                      }
+                    },
+                    child: Text(
+                      selectedDateTime == null
+                          ? 'Select Delivery Date and Time'
+                          : 'Selected: ${DateFormat('MM-dd-yyyy – HH:mm').format(selectedDateTime!)}',
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    if (selectedDateTime != null) {
+                      Navigator.pop(context); // Close dialog
+                      bookCook(cook['localcookid'], selectedDateTime!);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Select a delivery time.')),
+                      );
+                    }
+                  },
+                  child: const Text('Book'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showMealDetailsDialog({
+    required BuildContext context,
+    required Map<String, dynamic> meal,
+    required int familyMemberCount,
+    required void Function(String mealPlanId)? onCompleteMeal,
+  }) async {
+    if (meal['recipe_id'] == null) return;
+
+    try {
+      final recipeId = meal['recipe_id'];
+
+      // Fetch meal details
+      final mealDetailsResponse = await Supabase.instance.client
+          .from('meal')
+          .select('description, image_url')
+          .eq('recipe_id', recipeId)
+          .maybeSingle();
+
+      final imageUrl =
+          constructImageUrl(mealDetailsResponse?['image_url'] ?? '');
+
+      final ingredientsResponse = await Supabase.instance.client
+          .from('ingredients')
+          .select('name, quantity, unit')
+          .eq('recipe_id', recipeId);
+
+      final instructionsResponse = await Supabase.instance.client
+          .from('instructions')
+          .select('step_number, instruction')
+          .eq('recipe_id', recipeId)
+          .order('step_number', ascending: true);
+
+      // Process fetched data and handle types
+      final mealDescription =
+          (mealDetailsResponse?['description'] ?? 'No description available')
+              .toString();
+      final ingredients = (ingredientsResponse as List<dynamic>)
+          .map((ingredient) => ingredient as Map<String, dynamic>)
+          .toList();
+      final instructions = (instructionsResponse as List<dynamic>)
+          .map((instruction) => instruction as Map<String, dynamic>)
+          .toList();
+
+      _showIngredientsDialog(
+        context: context,
+        mealName: meal['meal_name'].toString(),
+        mealDescription: mealDescription,
+        ingredients: ingredients,
+        instructions: instructions,
+        familyMemberCount: familyMemberCount,
+        imageUrl: imageUrl,
+        mealPlanId: meal['mealplan_id'].toString(), // Ensure it's a string
+        onCompleteMeal: onCompleteMeal,
+      );
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching meal details: $error')),
+      );
+    }
+  }
+
+  void _showIngredientsDialog({
+    required BuildContext context,
+    required String mealName,
+    required String mealDescription,
+    required List<Map<String, dynamic>> ingredients,
+    required List<Map<String, dynamic>> instructions,
+    required int familyMemberCount,
+    required String imageUrl,
+    required String mealPlanId,
+    required void Function(String mealPlanId)? onCompleteMeal,
+  }) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: SizedBox(
+            width: 600,
+            height: 400,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  Center(
+                    child: Text(
+                      mealName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Ingredients List:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                ...ingredients.map((ingredient) {
+                                  final adjustedQuantity = _adjustQuantity(
+                                      ingredient['quantity'],
+                                      familyMemberCount);
+                                  final unit = ingredient['unit'] ?? '';
+                                  final name = ingredient['name'] ??
+                                      'Unknown Ingredient';
+
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 4.0),
+                                    child: Text(
+                                      '$adjustedQuantity $unit $name',
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                  );
+                                }).toList(),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 1,
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Center(
+                                    child: Text('Image not available')),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                        ),
+                        onPressed: () {
+                          _showCookBookingDialog(context);
+                        },
+                        child: const Text('Book Cook'),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.yellow,
+                          foregroundColor: Colors.black,
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _showInstructionsDialog(
+                            context: context,
+                            mealName: mealName,
+                            mealDescription: mealDescription,
+                            instructions: instructions,
+                            imageUrl: imageUrl,
+                            mealPlanId: mealPlanId,
+                            onCompleteMeal: onCompleteMeal,
+                            familyMemberCount: familyMemberCount,
+                            ingredients: ingredients, // Pass ingredients here
+                          );
+                        },
+                        child: const Text('Proceed →'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showInstructionsDialog({
+    required BuildContext context,
+    required String mealName,
+    required String mealDescription,
+    required List<Map<String, dynamic>> instructions,
+    required String imageUrl,
+    required String mealPlanId,
+    required void Function(String mealPlanId)? onCompleteMeal,
+    required int familyMemberCount,
+    required List<Map<String, dynamic>> ingredients, // Add this parameter
+  }) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: SizedBox(
+            width: 600,
+            height: 400,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  Center(
+                    child: Text(
+                      mealName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: SingleChildScrollView(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Instructions:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                ...instructions.map((instruction) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 4.0,
+                                    ),
+                                    child: Text(
+                                      'Step ${instruction['step_number']}: ${instruction['instruction']}',
+                                      style: const TextStyle(fontSize: 14),
+                                    ),
+                                  );
+                                }).toList(),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 1,
+                          child: Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Center(
+                                    child: Text('Image not available')),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.yellow,
+                          foregroundColor: Colors.black,
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _showIngredientsDialog(
+                            context: context,
+                            mealName: mealName,
+                            mealDescription: mealDescription,
+                            ingredients:
+                                ingredients, // Pass the ingredients back
+                            instructions: instructions,
+                            imageUrl: imageUrl,
+                            familyMemberCount: familyMemberCount,
+                            mealPlanId: mealPlanId,
+                            onCompleteMeal: onCompleteMeal,
+                          );
+                        },
+                        child: const Text('Previous'),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.yellow,
+                          foregroundColor: Colors.black,
+                        ),
+                        onPressed: () {
+                          if (onCompleteMeal != null) {
+                            onCompleteMeal(mealPlanId);
+                          }
+                          Navigator.of(context).pop();
+                        },
+                        child: const Text('Complete'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Helper function to adjust the quantity
+  dynamic _adjustQuantity(dynamic quantity, int familyMemberCount) {
+    if (quantity is num) {
+      // For numeric values, multiply by familyMemberCount
+      return (quantity * familyMemberCount).toStringAsFixed(0);
+    } else if (quantity is String) {
+      // Handle string quantities (e.g., "50 grams")
+      final match = RegExp(r'^(\d+(\.\d+)?)\s*(\w+)?$').firstMatch(quantity);
+      if (match != null) {
+        final value = double.tryParse(match.group(1) ?? '0') ?? 0;
+        final unit = match.group(3) ?? '';
+        final adjustedValue = (value * familyMemberCount).toStringAsFixed(0);
+        return '$adjustedValue $unit';
+      } else if (quantity.contains('/')) {
+        // Handle fractional quantities (e.g., "1/4 cup")
+        final parts = quantity.split('/').map(int.tryParse).toList();
+        if (parts.length == 2 && parts[0] != null && parts[1] != null) {
+          // Calculate the fractional value and scale it
+          final fractionValue = parts[0]! / parts[1]!;
+          final adjustedFraction = fractionValue * familyMemberCount;
+
+          // Split into whole number and remaining fraction
+          final wholeNumber = adjustedFraction.floor();
+          final remainingFraction = adjustedFraction - wholeNumber;
+
+          if (remainingFraction == 0) {
+            return wholeNumber.toString(); // No fraction remains
+          } else {
+            // Reduce the fraction
+            final gcd = _greatestCommonDivisor(
+              (remainingFraction * parts[1]!).round(),
+              parts[1]!,
+            );
+            final numerator = (remainingFraction * parts[1]!).round() ~/ gcd;
+            final denominator = parts[1]! ~/ gcd;
+
+            if (wholeNumber > 0) {
+              return '$wholeNumber ${numerator}/${denominator}';
+            } else {
+              return '${numerator}/${denominator}';
+            }
+          }
+        }
+      }
+    }
+
+    // Return the original quantity if it can't be adjusted
+    return quantity;
+  }
+
+  // Helper function to calculate the greatest common divisor
+  int _greatestCommonDivisor(int a, int b) {
+    return b == 0 ? a.abs() : _greatestCommonDivisor(b, a % b);
+  }
+
+  // Helper function to determine age group based on age
   String? _getAgeGroup(int? age) {
     if (age == null) return null;
 
@@ -588,422 +1155,4 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
   String normalizeGender(String gender) {
     return gender[0].toUpperCase() + gender.substring(1).toLowerCase();
   }
-}
-
-Future<Map<String, dynamic>> fetchMealDetails(int recipeId) async {
-  try {
-    final response = await Supabase.instance.client
-        .from('meal')
-        .select('description, image_url, link, calories, preparation_time')
-        .eq('recipe_id', recipeId)
-        .maybeSingle();
-
-    if (response == null) {
-      return {
-        'description': 'No description available.',
-        'image_url': null,
-        'link': 'No link available.',
-        'calories': 'N/A',
-        'preparation_time': 'N/A',
-      };
-    }
-
-    return {
-      'description': response['description'] ?? 'No description available.',
-      'image_url': response['image_url'],
-      'link': response['link'] ?? 'No link available.',
-      'calories': response['calories'] ?? 'N/A',
-      'preparation_time': response['preparation_time'] ?? 'N/A',
-    };
-  } catch (error) {
-    return {
-      'description': 'Error fetching description.',
-      'image_url': null,
-      'link': 'Error fetching link.',
-      'calories': 'Error fetching data.',
-      'preparation_time': 'Error fetching data.',
-    };
-  }
-}
-
-void _showMealDetailsDialog({
-  required BuildContext context,
-  required Map<String, dynamic> meal,
-  required int familyMemberCount,
-  required void Function(String mealPlanId)? onCompleteMeal,
-}) async {
-  if (meal['recipe_id'] == null) return;
-
-  try {
-    final recipeId = meal['recipe_id'];
-
-    // Fetch meal details
-    final mealDetailsResponse = await Supabase.instance.client
-        .from('meal')
-        .select('description, image_url')
-        .eq('recipe_id', recipeId)
-        .maybeSingle();
-
-    final imageUrl = constructImageUrl(mealDetailsResponse?['image_url'] ?? '');
-
-    final ingredientsResponse = await Supabase.instance.client
-        .from('ingredients')
-        .select('name, quantity, unit')
-        .eq('recipe_id', recipeId);
-
-    final instructionsResponse = await Supabase.instance.client
-        .from('instructions')
-        .select('step_number, instruction')
-        .eq('recipe_id', recipeId)
-        .order('step_number', ascending: true);
-
-    // Process fetched data and handle types
-    final mealDescription =
-        (mealDetailsResponse?['description'] ?? 'No description available')
-            .toString();
-    final ingredients = (ingredientsResponse as List<dynamic>)
-        .map((ingredient) => ingredient as Map<String, dynamic>)
-        .toList();
-    final instructions = (instructionsResponse as List<dynamic>)
-        .map((instruction) => instruction as Map<String, dynamic>)
-        .toList();
-
-    _showIngredientsDialog(
-      context: context,
-      mealName: meal['meal_name'].toString(),
-      mealDescription: mealDescription,
-      ingredients: ingredients,
-      instructions: instructions,
-      familyMemberCount: familyMemberCount,
-      imageUrl: imageUrl,
-      mealPlanId: meal['mealplan_id'].toString(), // Ensure it's a string
-      onCompleteMeal: onCompleteMeal,
-    );
-  } catch (error) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error fetching meal details: $error')),
-    );
-  }
-}
-
-void _showIngredientsDialog({
-  required BuildContext context,
-  required String mealName,
-  required String mealDescription,
-  required List<Map<String, dynamic>> ingredients,
-  required List<Map<String, dynamic>> instructions,
-  required int familyMemberCount,
-  required String imageUrl,
-  required String mealPlanId,
-  required void Function(String mealPlanId)? onCompleteMeal,
-}) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: SizedBox(
-          width: 600,
-          height: 400,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Center(
-                  child: Text(
-                    mealName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Ingredients List:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              ...ingredients.map((ingredient) {
-                                final adjustedQuantity = _adjustQuantity(
-                                    ingredient['quantity'], familyMemberCount);
-                                final unit = ingredient['unit'] ?? '';
-                                final name =
-                                    ingredient['name'] ?? 'Unknown Ingredient';
-
-                                return Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 4.0),
-                                  child: Text(
-                                    '$adjustedQuantity $unit $name',
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                );
-                              }).toList(),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        flex: 1,
-                        child: Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Center(child: Text('Image not available')),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => CookPage(
-                              userFirstName:
-                                  'LoggedInUserFirstName', // Replace with actual data
-                              userLastName:
-                                  'LoggedInUserLastName', // Replace with actual data
-                            ),
-                          ),
-                        );
-                      },
-                      child: const Text('Book Cook'),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.yellow,
-                        foregroundColor: Colors.black,
-                      ),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        _showInstructionsDialog(
-                          context: context,
-                          mealName: mealName,
-                          mealDescription: mealDescription,
-                          instructions: instructions,
-                          imageUrl: imageUrl,
-                          mealPlanId: mealPlanId,
-                          onCompleteMeal: onCompleteMeal,
-                          familyMemberCount: familyMemberCount,
-                          ingredients: ingredients, // Pass ingredients here
-                        );
-                      },
-                      child: const Text('Proceed →'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    },
-  );
-}
-
-// Helper function to adjust the quantity
-dynamic _adjustQuantity(dynamic quantity, int familyMemberCount) {
-  if (quantity is num) {
-    // For numeric values, multiply by familyMemberCount
-    return (quantity * familyMemberCount).toStringAsFixed(0);
-  } else if (quantity is String) {
-    // Handle string quantities (e.g., "50 grams")
-    final match = RegExp(r'^(\d+(\.\d+)?)\s*(\w+)?$').firstMatch(quantity);
-    if (match != null) {
-      final value = double.tryParse(match.group(1) ?? '0') ?? 0;
-      final unit = match.group(3) ?? '';
-      final adjustedValue = (value * familyMemberCount).toStringAsFixed(0);
-      return '$adjustedValue $unit';
-    } else if (quantity.contains('/')) {
-      // Handle fractional quantities (e.g., "1/4 cup")
-      final parts = quantity.split('/').map(int.tryParse).toList();
-      if (parts.length == 2 && parts[0] != null && parts[1] != null) {
-        // Calculate the fractional value and scale it
-        final fractionValue = parts[0]! / parts[1]!;
-        final adjustedFraction = fractionValue * familyMemberCount;
-
-        // Split into whole number and remaining fraction
-        final wholeNumber = adjustedFraction.floor();
-        final remainingFraction = adjustedFraction - wholeNumber;
-
-        if (remainingFraction == 0) {
-          return wholeNumber.toString(); // No fraction remains
-        } else {
-          // Reduce the fraction
-          final gcd = _greatestCommonDivisor(
-            (remainingFraction * parts[1]!).round(),
-            parts[1]!,
-          );
-          final numerator = (remainingFraction * parts[1]!).round() ~/ gcd;
-          final denominator = parts[1]! ~/ gcd;
-
-          if (wholeNumber > 0) {
-            return '$wholeNumber ${numerator}/${denominator}';
-          } else {
-            return '${numerator}/${denominator}';
-          }
-        }
-      }
-    }
-  }
-
-  // Return the original quantity if it can't be adjusted
-  return quantity;
-}
-
-// Helper function to calculate the greatest common divisor
-int _greatestCommonDivisor(int a, int b) {
-  return b == 0 ? a.abs() : _greatestCommonDivisor(b, a % b);
-}
-
-void _showInstructionsDialog({
-  required BuildContext context,
-  required String mealName,
-  required String mealDescription,
-  required List<Map<String, dynamic>> instructions,
-  required String imageUrl,
-  required String mealPlanId,
-  required void Function(String mealPlanId)? onCompleteMeal,
-  required int familyMemberCount,
-  required List<Map<String, dynamic>> ingredients, // Add this parameter
-}) {
-  showDialog(
-    context: context,
-    builder: (BuildContext context) {
-      return Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: SizedBox(
-          width: 600,
-          height: 400,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                Center(
-                  child: Text(
-                    mealName,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 20,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 2,
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Instructions:',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              ...instructions.map((instruction) {
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 4.0,
-                                  ),
-                                  child: Text(
-                                    'Step ${instruction['step_number']}: ${instruction['instruction']}',
-                                    style: const TextStyle(fontSize: 14),
-                                  ),
-                                );
-                              }).toList(),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        flex: 1,
-                        child: Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Center(child: Text('Image not available')),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.yellow,
-                        foregroundColor: Colors.black,
-                      ),
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        _showIngredientsDialog(
-                          context: context,
-                          mealName: mealName,
-                          mealDescription: mealDescription,
-                          ingredients: ingredients, // Pass the ingredients back
-                          instructions: instructions,
-                          imageUrl: imageUrl,
-                          familyMemberCount: familyMemberCount,
-                          mealPlanId: mealPlanId,
-                          onCompleteMeal: onCompleteMeal,
-                        );
-                      },
-                      child: const Text('Previous'),
-                    ),
-                    ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.yellow,
-                        foregroundColor: Colors.black,
-                      ),
-                      onPressed: () {
-                        if (onCompleteMeal != null) {
-                          onCompleteMeal(mealPlanId);
-                        }
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text('Complete'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    },
-  );
 }
