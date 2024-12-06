@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pamealya/common/chat_room_page.dart';
+import 'package:pamealya/common/order_chat_room_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OrdersPage extends StatefulWidget {
@@ -25,20 +25,30 @@ class _OrdersPageState extends State<OrdersPage> {
       final response = await supabase
           .from('bookingrequest')
           .select('''
-          bookingrequest_id, family_head, localcookid, mealplan_id, request_date, desired_delivery_time, 
-          Local_Cook(first_name, last_name)
-        ''')
+            bookingrequest_id,
+            familymember_id,
+            localcookid,
+            mealplan_id,
+            request_date,
+            desired_delivery_time,
+            Local_Cook(first_name, last_name, user_id),
+            familymember(user_id)
+          ''')
           .eq('status', 'accepted')
           .order('desired_delivery_time', ascending: true);
 
       setState(() {
         orders = List<Map<String, dynamic>>.from(response.map((order) {
           final cook = order['Local_Cook'] ?? {};
+          final familyMember = order['familymember'] ?? {};
           return {
             ...order,
             'cook_name':
                 '${cook['first_name'] ?? 'Unknown'} ${cook['last_name'] ?? ''}'
                     .trim(),
+            'cook_user_id': cook['user_id'], // Retrieve cook's user_id
+            'family_user_id':
+                familyMember['user_id'], // Retrieve family member's user_id
           };
         }));
         isLoading = false;
@@ -50,6 +60,27 @@ class _OrdersPageState extends State<OrdersPage> {
       setState(() {
         isLoading = false;
       });
+    }
+  }
+
+  Future<String> getOrCreateChatRoom(
+      String familyUserId, String cookUserId) async {
+    try {
+      final response = await supabase.rpc(
+        'get_or_create_chat_room',
+        params: {
+          'family_member_user_id': familyUserId,
+          'cook_user_id': cookUserId,
+        },
+      );
+
+      if (response == null) {
+        throw Exception(
+            'Unable to create or retrieve chat room. Please ensure all data is valid.');
+      }
+      return response as String;
+    } catch (e) {
+      throw Exception('Error creating or retrieving chat room: $e');
     }
   }
 
@@ -93,7 +124,7 @@ class _OrdersPageState extends State<OrdersPage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                  'Family Head: ${order['family_head'] ?? 'N/A'}'),
+                                  'Family Member ID: ${order['familymember_id'] ?? 'N/A'}'),
                               Text('Cook: ${order['cook_name'] ?? 'Unknown'}'),
                               Text('Meal: ${order['mealplan_id'] ?? 'N/A'}'),
                               Text('Request Date: ${order['request_date']}'),
@@ -142,13 +173,11 @@ class _OrdersPageState extends State<OrdersPage> {
                         ),
                       ),
                       const SizedBox(height: 20),
-                      _buildDetailRow(
-                          'Family Head', order['family_head'] ?? 'Unknown'),
+                      _buildDetailRow('Family Member ID',
+                          order['familymember_id'] ?? 'N/A'),
                       _buildDetailRow(
                         'Cook',
-                        order['localcookid'] != null
-                            ? order['localcookid'].toString()
-                            : 'Unknown',
+                        order['cook_name'] ?? 'Unknown',
                       ),
                       _buildDetailRow(
                         'Meal Plan',
@@ -169,29 +198,6 @@ class _OrdersPageState extends State<OrdersPage> {
                             : 'N/A',
                       ),
                       const SizedBox(height: 20),
-                      const Text(
-                        'Ingredients:',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: Text(
-                          (order['ingredients'] as List<dynamic>?)
-                                  ?.map((ingredient) => '- $ingredient')
-                                  .join('\n') ??
-                              'No ingredients specified',
-                          style: const TextStyle(
-                              fontSize: 14, color: Colors.black87),
-                        ),
-                      ),
-                      const SizedBox(height: 30),
                       const Text(
                         'Actions:',
                         style: TextStyle(
@@ -214,19 +220,41 @@ class _OrdersPageState extends State<OrdersPage> {
                       const SizedBox(height: 20),
                       Center(
                         child: ElevatedButton.icon(
-                          onPressed: () {
-                            final chatRoomId =
-                                '${order['family_head']}_${supabase.auth.currentUser?.id}';
-                            final recipientName = order['family_head'] ?? 'N/A';
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => ChatRoomPage(
-                                  chatRoomId: chatRoomId,
-                                  recipientName: recipientName,
+                          onPressed: () async {
+                            try {
+                              final familyUserId =
+                                  order['family_user_id']?.toString();
+                              final cookUserId =
+                                  order['cook_user_id']?.toString();
+
+                              if (familyUserId == null || cookUserId == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text(
+                                          'Error: Missing user IDs for chat room')),
+                                );
+                                return;
+                              }
+
+                              final chatRoomId = await getOrCreateChatRoom(
+                                  familyUserId, cookUserId);
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => OrdersChatRoomPage(
+                                    chatRoomId: chatRoomId,
+                                    recipientName: order['cook_name'] ?? 'N/A',
+                                  ),
                                 ),
-                              ),
-                            );
+                              );
+                            } catch (e) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content:
+                                        Text('Error opening chat room: $e')),
+                              );
+                            }
                           },
                           icon: const Icon(Icons.chat, color: Colors.white),
                           label: const Text('Message'),
