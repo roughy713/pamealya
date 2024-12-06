@@ -21,11 +21,10 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
 
   Future<void> fetchBookingRequests() async {
     try {
-      // Fetch requests where the status is 'pending'
       final response = await supabase
           .from('bookingrequest')
           .select()
-          .eq('status', 'pending') // Check for 'pending' status
+          .eq('status', 'pending') // Fetch pending booking requests
           .order('request_date', ascending: false);
 
       setState(() {
@@ -33,77 +32,50 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
         isLoading = false;
       });
     } catch (e) {
-      await showErrorDialog('Error fetching booking requests: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching booking requests: $e')),
+      );
       setState(() {
         isLoading = false;
       });
     }
   }
 
-  Future<void> updateBookingStatus(String bookingId, bool isApproved) async {
+  Future<void> updateBookingStatus(String bookingId, bool isAccepted) async {
     try {
-      final updatedData = await supabase
-          .from('bookingrequest')
-          .update({
-            'status': isApproved ? 'accepted' : 'declined',
-            '_isBookingAccepted': isApproved,
-          })
-          .eq('bookingrequest_id', bookingId)
-          .select();
+      await supabase.from('bookingrequest').update({
+        'status': isAccepted ? 'accepted' : 'declined',
+        '_isBookingAccepted': isAccepted,
+      }).eq('bookingrequest_id', bookingId);
 
-      if (updatedData.isNotEmpty) {
-        // Remove the booking from the list immediately
-        setState(() {
-          bookingRequests.removeWhere(
-              (booking) => booking['bookingrequest_id'] == bookingId);
-        });
-        await showSuccessDialog(isApproved
-            ? 'Booking request successfully accepted.'
-            : 'Booking request successfully declined.');
-      } else {
-        await showErrorDialog(
-            'No booking request was updated. Please try again.');
-      }
+      setState(() {
+        bookingRequests.removeWhere(
+            (booking) => booking['bookingrequest_id'] == bookingId);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isAccepted
+                ? 'Booking request successfully accepted.'
+                : 'Booking request successfully declined.',
+          ),
+        ),
+      );
     } catch (e) {
-      await showErrorDialog('Error updating booking status: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating booking status: $e')),
+      );
     }
-  }
-
-  Future<void> showErrorDialog(String message) async {
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Error'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> showSuccessDialog(String message) async {
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Success'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Booking Requests'),
+        backgroundColor: Colors.green,
+      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : bookingRequests.isEmpty
@@ -124,35 +96,22 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                const CircleAvatar(
-                                  backgroundColor: Colors.grey,
-                                  child:
-                                      Icon(Icons.person, color: Colors.white),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    'Booking ID: ${booking['bookingrequest_id'] ?? 'N/A'}',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey[800],
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            Text(
+                              'Booking ID: ${booking['bookingrequest_id']}',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 8),
                             Text(
-                                'Family Member: ${booking['family_head'] ?? 'N/A'}'),
-                            Text('Cook: ${booking['localcook_id'] ?? 'N/A'}'),
+                                'Family Head: ${booking['family_head'] ?? 'N/A'}'),
+                            Text(
+                                'Cook: ${booking['localcookid'] ?? 'Unknown'}'),
                             Text('Meal: ${booking['mealplan_id'] ?? 'N/A'}'),
-                            Text('Date: ${booking['request_date'] ?? 'N/A'}'),
+                            Text('Request Date: ${booking['request_date']}'),
                             Text(
-                                'Time: ${booking['desired_delivery_time'] ?? 'N/A'}'),
-                            const Text(
-                                'Location: Service Location or Home Address'),
+                                'Delivery Time: ${booking['desired_delivery_time']}'),
                             const SizedBox(height: 16),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.end,
@@ -165,47 +124,18 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.green,
                                   ),
-                                  child: const Text(
-                                    'Accept',
-                                    style: TextStyle(color: Colors.black),
-                                  ),
+                                  child: const Text('Accept'),
                                 ),
                                 const SizedBox(width: 8),
                                 ElevatedButton(
                                   onPressed: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        title: const Text('Decline Booking'),
-                                        content: const Text(
-                                            'Are you sure you want to decline this booking request?'),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () => Navigator.pop(
-                                                context), // Close the dialog
-                                            child: const Text('Cancel'),
-                                          ),
-                                          TextButton(
-                                            onPressed: () {
-                                              Navigator.pop(
-                                                  context); // Close the dialog
-                                              updateBookingStatus(
-                                                  booking['bookingrequest_id'],
-                                                  false);
-                                            },
-                                            child: const Text('Decline'),
-                                          ),
-                                        ],
-                                      ),
-                                    );
+                                    updateBookingStatus(
+                                        booking['bookingrequest_id'], false);
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.red,
                                   ),
-                                  child: const Text(
-                                    'Decline',
-                                    style: TextStyle(color: Colors.black),
-                                  ),
+                                  child: const Text('Decline'),
                                 ),
                               ],
                             ),

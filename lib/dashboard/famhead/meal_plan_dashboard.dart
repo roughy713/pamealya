@@ -81,28 +81,28 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         7,
         (_) => [
           {
-            'meal_category_id': 1, // Breakfast
+            'meal_category_id': 1,
             'meal_name': null,
             'recipe_id': null,
             'mealplan_id': null,
             'is_completed': false
           },
           {
-            'meal_category_id': 2, // Lunch
+            'meal_category_id': 2,
             'meal_name': null,
             'recipe_id': null,
             'mealplan_id': null,
             'is_completed': false
           },
           {
-            'meal_category_id': 3, // Dinner
+            'meal_category_id': 3,
             'meal_name': null,
             'recipe_id': null,
             'mealplan_id': null,
             'is_completed': false
           },
           {
-            'meal_category_id': 5, // Snacks
+            'meal_category_id': 5,
             'meal_name': null,
             'recipe_id': null,
             'mealplan_id': null,
@@ -112,30 +112,34 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       );
 
       for (var meal in response) {
-        int day = (meal['day'] ?? 1) - 1; // Convert to 0-based index
-        int categoryIndex;
+        int day = (meal['day'] ?? 1) - 1; // Ensure day is int
+        String mealPlanId =
+            meal['mealplan_id'].toString(); // Ensure mealplan_id is String
 
-        // Map meal_category_id to the appropriate column in the table
+        int categoryIndex;
         switch (meal['meal_category_id']) {
-          case 1: // Breakfast
+          case 1:
             categoryIndex = 0;
             break;
-          case 2: // Lunch
+          case 2:
             categoryIndex = 1;
             break;
-          case 3: // Dinner
+          case 3:
             categoryIndex = 2;
             break;
-          case 5: // Snacks
+          case 5:
             categoryIndex = 3;
             break;
           default:
-            continue; // Skip unknown categories
+            continue;
         }
 
-        // Populate fetchedMealPlan only for valid days and categories
         if (day >= 0 && day < 7 && categoryIndex >= 0 && categoryIndex < 4) {
-          fetchedMealPlan[day][categoryIndex] = meal;
+          fetchedMealPlan[day][categoryIndex] = {
+            ...meal,
+            'mealplan_id': mealPlanId, // Convert mealplan_id to String
+            'day': day + 1 // Ensure day is a proper value
+          };
         }
       }
 
@@ -332,29 +336,93 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     }
   }
 
-  Future<void> bookCook(String cookId, DateTime desiredDeliveryTime) async {
+  Future<void> bookCook(
+      String cookId, DateTime desiredDeliveryTime, String mealPlanId) async {
     try {
+      final familyMemberResponse = await supabase
+          .from('familymember')
+          .select('familymember_id')
+          .eq('first_name', widget.userFirstName)
+          .eq('last_name', widget.userLastName)
+          .maybeSingle();
+
+      if (familyMemberResponse == null ||
+          familyMemberResponse['familymember_id'] == null) {
+        throw Exception(
+            'Family member not found for name: ${widget.userFirstName} ${widget.userLastName}');
+      }
+
+      final familyMemberId = familyMemberResponse['familymember_id'];
       final uuid = const Uuid().v4();
-      final fullName = '${widget.userFirstName} ${widget.userLastName}';
 
       await supabase.from('bookingrequest').insert({
         'bookingrequest_id': uuid,
-        'localcook_id': cookId,
-        'famhead_id': fullName,
+        'localcookid': cookId,
+        'family_head': widget.familyHeadName,
+        'familymember_id': familyMemberId,
+        'mealplan_id': mealPlanId, // Include mealPlanId
         'is_cook_booking': true,
         'request_date': DateTime.now().toIso8601String(),
         'desired_delivery_time': desiredDeliveryTime.toIso8601String(),
-        'meal_price': 0.0
-      }).select();
+        'meal_price': 0.0,
+      });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Booking successful!')),
+      await showSuccessDialog(
+        context,
+        'Booking was successful! Your cook has been booked.',
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Booking failed: $e')),
+      await showErrorDialog(
+        context,
+        'Booking failed: ${e.toString()}',
       );
     }
+  }
+
+  Future<void> showSuccessDialog(BuildContext context, String message) async {
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text(
+            'Success',
+            style: TextStyle(color: Colors.green),
+          ),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> showErrorDialog(BuildContext context, String message) async {
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text(
+            'Error',
+            style: TextStyle(color: Colors.red),
+          ),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // UI Rendering
@@ -500,6 +568,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     }
 
     bool isCompleted = meal['is_completed'] == true;
+    String? mealPlanId = meal['mealplan_id']; // Extract `mealPlanId`
 
     return Stack(
       children: [
@@ -516,14 +585,12 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                     ? SystemMouseCursors.click
                     : SystemMouseCursors.basic,
                 child: GestureDetector(
-                  onTap: !isCompleted && meal['recipe_id'] != null
-                      ? () => _showMealDetailsDialog(
-                            context: context,
-                            meal: meal,
-                            familyMemberCount: widget.familyMembers.length,
-                            onCompleteMeal: widget.onCompleteMeal,
-                          )
-                      : null,
+                  onTap: () {
+                    if (!isCompleted && mealPlanId != null) {
+                      _showCookBookingDialog(
+                          context, mealPlanId); // Pass `mealPlanId`
+                    }
+                  },
                   child: Text(
                     meal['meal_name'],
                     style: const TextStyle(
@@ -617,7 +684,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
   }
 
   // Dialog Functions
-  void _showCookBookingDialog(BuildContext context) async {
+  void _showCookBookingDialog(BuildContext context, String mealPlanId) async {
     String? userCity =
         await fetchUserCity(widget.userFirstName, widget.userLastName);
 
@@ -667,7 +734,8 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                         title:
                             Text('${cook['first_name']} ${cook['last_name']}'),
                         subtitle: Text('City: ${cook['city']}'),
-                        onTap: () => _showCookDetailsDialog(context, cook),
+                        onTap: () =>
+                            _showCookDetailsDialog(context, cook, mealPlanId),
                       );
                     },
                   ),
@@ -680,7 +748,8 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     );
   }
 
-  void _showCookDetailsDialog(BuildContext context, Map<String, dynamic> cook) {
+  void _showCookDetailsDialog(
+      BuildContext context, Map<String, dynamic> cook, String mealPlanId) {
     DateTime? selectedDateTime;
 
     showDialog(
@@ -742,7 +811,8 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                   onPressed: () {
                     if (selectedDateTime != null) {
                       Navigator.pop(context); // Close dialog
-                      bookCook(cook['localcookid'], selectedDateTime!);
+                      bookCook(
+                          cook['localcookid'], selectedDateTime!, mealPlanId);
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
@@ -918,7 +988,8 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                           foregroundColor: Colors.white,
                         ),
                         onPressed: () {
-                          _showCookBookingDialog(context);
+                          // Pass the mealPlanId to _showCookBookingDialog
+                          _showCookBookingDialog(context, mealPlanId);
                         },
                         child: const Text('Book Cook'),
                       ),

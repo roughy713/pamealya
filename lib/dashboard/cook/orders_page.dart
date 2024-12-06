@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:pamealya/common/chat_room_page.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
@@ -8,225 +10,286 @@ class OrdersPage extends StatefulWidget {
 }
 
 class _OrdersPageState extends State<OrdersPage> {
-  List<Map<String, dynamic>> orders = [
-    {
-      'bookingrequest_id': '12345',
-      'famhead_id': 'Rafael Delloson',
-      'localcook_id': 'b6fc9666-6251-41c4-8e61-092eb5c5e52f',
-      'mealplan_id': 'N/A',
-      'request_date': '2024-11-14',
-      'desired_delivery_time': '2024-11-15T00:04:00',
-      'ingredients': ['Rice', 'Chicken', 'Spices', 'Vegetables'],
-    },
-  ];
+  final supabase = Supabase.instance.client;
+  List<Map<String, dynamic>> orders = [];
+  bool isLoading = true;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: orders.length,
-        itemBuilder: (context, index) {
-          final order = orders[index];
-          return GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => OrderDetailsPage(order: order),
-                ),
-              );
-            },
-            child: Card(
-              elevation: 3,
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Booking ID: ${order['bookingrequest_id']}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text('Family Member: ${order['famhead_id']}'),
-                    Text('Cook: ${order['localcook_id']}'),
-                    Text('Meal: ${order['mealplan_id']}'),
-                    Text('Date: ${order['request_date']}'),
-                    Text('Time: ${order['desired_delivery_time']}'),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
+  void initState() {
+    super.initState();
+    fetchOrders();
   }
-}
 
-class OrderDetailsPage extends StatefulWidget {
-  final Map<String, dynamic> order;
+  Future<void> fetchOrders() async {
+    try {
+      final response = await supabase
+          .from('bookingrequest')
+          .select('''
+          bookingrequest_id, family_head, localcookid, mealplan_id, request_date, desired_delivery_time, 
+          Local_Cook(first_name, last_name)
+        ''')
+          .eq('status', 'accepted')
+          .order('desired_delivery_time', ascending: true);
 
-  const OrderDetailsPage({super.key, required this.order});
-
-  @override
-  _OrderDetailsPageState createState() => _OrderDetailsPageState();
-}
-
-class _OrderDetailsPageState extends State<OrderDetailsPage> {
-  int currentStep =
-      0; // Tracks the current step: 0 for none, 1 for preparing, etc.
+      setState(() {
+        orders = List<Map<String, dynamic>>.from(response.map((order) {
+          final cook = order['Local_Cook'] ?? {};
+          return {
+            ...order,
+            'cook_name':
+                '${cook['first_name'] ?? 'Unknown'} ${cook['last_name'] ?? ''}'
+                    .trim(),
+          };
+        }));
+        isLoading = false;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching orders: $e')),
+      );
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Order Details'),
-        backgroundColor: Colors.green[600],
-        centerTitle: true,
+        title: const Text('Orders'),
+        backgroundColor: Colors.green,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Card(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          elevation: 4,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Column(
-                    children: [
-                      Text(
-                        'Booking ID: ${widget.order['bookingrequest_id']}',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : orders.isEmpty
+              ? const Center(child: Text('No orders found.'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: orders.length,
+                  itemBuilder: (context, index) {
+                    final order = orders[index];
+                    return GestureDetector(
+                      onTap: () {
+                        _showOrderDetailsDialog(context, order);
+                      },
+                      child: Card(
+                        elevation: 3,
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Booking ID: ${order['bookingrequest_id']}',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                  'Family Head: ${order['family_head'] ?? 'N/A'}'),
+                              Text('Cook: ${order['cook_name'] ?? 'Unknown'}'),
+                              Text('Meal: ${order['mealplan_id'] ?? 'N/A'}'),
+                              Text('Request Date: ${order['request_date']}'),
+                              Text(
+                                  'Delivery Time: ${order['desired_delivery_time']}'),
+                            ],
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      const Divider(thickness: 1, color: Colors.grey),
+                    );
+                  },
+                ),
+    );
+  }
+
+  void _showOrderDetailsDialog(
+      BuildContext context, Map<String, dynamic> order) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        int currentStep = 0; // Initialize the current step
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              'Booking ID: ${order['bookingrequest_id'].toString()}',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const Divider(thickness: 1, color: Colors.grey),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildDetailRow(
+                          'Family Head', order['family_head'] ?? 'Unknown'),
+                      _buildDetailRow(
+                        'Cook',
+                        order['localcookid'] != null
+                            ? order['localcookid'].toString()
+                            : 'Unknown',
+                      ),
+                      _buildDetailRow(
+                        'Meal Plan',
+                        order['mealplan_id'] != null
+                            ? order['mealplan_id'].toString()
+                            : 'N/A',
+                      ),
+                      _buildDetailRow(
+                        'Request Date',
+                        order['request_date'] != null
+                            ? order['request_date'].toString()
+                            : 'N/A',
+                      ),
+                      _buildDetailRow(
+                        'Delivery Time',
+                        order['desired_delivery_time'] != null
+                            ? order['desired_delivery_time'].toString()
+                            : 'N/A',
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
+                        'Ingredients:',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: Text(
+                          (order['ingredients'] as List<dynamic>?)
+                                  ?.map((ingredient) => '- $ingredient')
+                                  .join('\n') ??
+                              'No ingredients specified',
+                          style: const TextStyle(
+                              fontSize: 14, color: Colors.black87),
+                        ),
+                      ),
+                      const SizedBox(height: 30),
+                      const Text(
+                        'Actions:',
+                        style: TextStyle(
+                            fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _buildStepCircle(context, 1, 'Preparing',
+                              Icons.fastfood, currentStep, setState),
+                          _buildDashedLine(),
+                          _buildStepCircle(context, 2, 'On Delivery',
+                              Icons.delivery_dining, currentStep, setState),
+                          _buildDashedLine(),
+                          _buildStepCircle(context, 3, 'Done',
+                              Icons.check_circle, currentStep, setState),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Center(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            final chatRoomId =
+                                '${order['family_head']}_${supabase.auth.currentUser?.id}';
+                            final recipientName = order['family_head'] ?? 'N/A';
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ChatRoomPage(
+                                  chatRoomId: chatRoomId,
+                                  recipientName: recipientName,
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.chat, color: Colors.white),
+                          label: const Text('Message'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.deepOrange,
+                            padding: const EdgeInsets.symmetric(
+                                vertical: 14, horizontal: 24),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            textStyle: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Center(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text(
+                            'Close',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 20),
-                _buildDetailRow('Family Member', widget.order['famhead_id']),
-                const SizedBox(height: 10),
-                _buildDetailRow('Cook', widget.order['localcook_id']),
-                const SizedBox(height: 10),
-                _buildDetailRow('Meal Plan', widget.order['mealplan_id']),
-                const SizedBox(height: 10),
-                _buildDetailRow('Request Date', widget.order['request_date']),
-                const SizedBox(height: 10),
-                _buildDetailRow(
-                  'Delivery Time',
-                  widget.order['desired_delivery_time'],
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Ingredients:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[300]!),
-                  ),
-                  child: Text(
-                    widget.order['ingredients']
-                        .map((ingredient) => '- $ingredient')
-                        .join('\n'),
-                    style: const TextStyle(fontSize: 14, color: Colors.black87),
-                  ),
-                ),
-                const SizedBox(height: 30),
-                const Text(
-                  'Actions:',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildStepCircle(1, 'Preparing', Icons.fastfood),
-                    _buildDashedLine(),
-                    _buildStepCircle(2, 'On Delivery', Icons.delivery_dining),
-                    _buildDashedLine(),
-                    _buildStepCircle(3, 'Done', Icons.check_circle),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Center(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      // Navigate to chat page
-                    },
-                    icon: const Icon(Icons.chat, color: Colors.white),
-                    label: const Text('Message'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepOrange,
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 14, horizontal: 24),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      textStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
   Widget _buildDetailRow(String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          '$label:',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(
-            value,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        children: [
+          Text(
+            '$label: ',
             style: const TextStyle(
               fontSize: 16,
-              color: Colors.black87,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        ),
-      ],
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 16),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildStepCircle(int step, String label, IconData icon) {
+  Widget _buildStepCircle(BuildContext context, int step, String label,
+      IconData icon, int currentStep, Function setState) {
     final isActive = step == currentStep + 1 || step <= currentStep;
 
     return Column(
@@ -234,7 +297,15 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
         GestureDetector(
           onTap: isActive
               ? () {
-                  _confirmAction(step, label);
+                  setState(() {
+                    currentStep = step;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('$label marked as complete!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
                 }
               : () {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -272,40 +343,6 @@ class _OrderDetailsPageState extends State<OrderDetailsPage> {
       width: 40,
       height: 2,
       color: Colors.grey[400],
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-    );
-  }
-
-  void _confirmAction(int step, String label) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Confirm $label'),
-        content: Text('Are you sure you want to mark this step as "$label"?'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                currentStep = step;
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Step "$label" marked as completed!'),
-                  backgroundColor: Colors.green,
-                ),
-              );
-            },
-            child: const Text('Confirm'),
-          ),
-        ],
-      ),
     );
   }
 }
