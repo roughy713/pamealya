@@ -25,15 +25,16 @@ class _OrdersPageState extends State<OrdersPage> {
       final response = await supabase
           .from('bookingrequest')
           .select('''
-            bookingrequest_id,
-            familymember_id,
-            localcookid,
-            mealplan_id,
-            request_date,
-            desired_delivery_time,
-            Local_Cook(first_name, last_name, user_id),
-            familymember(user_id)
-          ''')
+          bookingrequest_id,
+          familymember_id,
+          localcookid,
+          mealplan_id,
+          request_date,
+          desired_delivery_time,
+          delivery_status(status_name),
+          Local_Cook(first_name, last_name, user_id),
+          familymember(user_id)
+        ''')
           .eq('status', 'accepted')
           .order('desired_delivery_time', ascending: true);
 
@@ -41,14 +42,17 @@ class _OrdersPageState extends State<OrdersPage> {
         orders = List<Map<String, dynamic>>.from(response.map((order) {
           final cook = order['Local_Cook'] ?? {};
           final familyMember = order['familymember'] ?? {};
+          final deliveryStatus = order['delivery_status'] ?? {};
           return {
             ...order,
             'cook_name':
                 '${cook['first_name'] ?? 'Unknown'} ${cook['last_name'] ?? ''}'
                     .trim(),
-            'cook_user_id': cook['user_id'], // Retrieve cook's user_id
+            'cook_user_id': cook['user_id'], // Cook's user ID
             'family_user_id':
-                familyMember['user_id'], // Retrieve family member's user_id
+                familyMember['user_id'], // Family member's user ID
+            'delivery_status':
+                deliveryStatus['status_name'] ?? 'Unknown', // Delivery status
           };
         }));
         isLoading = false;
@@ -291,6 +295,23 @@ class _OrdersPageState extends State<OrdersPage> {
         );
       },
     );
+  }
+
+  Future<void> updateDeliveryStatus(
+      int bookingRequestId, int newStatusId) async {
+    try {
+      await supabase
+          .from('bookingrequest')
+          .update({'delivery_status_id': newStatusId}).eq(
+              'bookingrequest_id', bookingRequestId);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Delivery status updated successfully!')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating delivery status: $e')),
+      );
+    }
   }
 
   Widget _buildDetailRow(String label, String value) {

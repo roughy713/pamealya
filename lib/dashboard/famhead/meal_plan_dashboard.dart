@@ -25,7 +25,7 @@ class MealPlanDashboard extends StatefulWidget {
   final String userFirstName;
   final String userLastName;
 
-  MealPlanDashboard({
+  const MealPlanDashboard({
     super.key,
     required this.mealPlanData,
     required this.familyMembers,
@@ -289,7 +289,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Meal regenerated successfully!')),
+        const SnackBar(content: Text('Meal regenerated successfully!')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -359,8 +359,8 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         'bookingrequest_id': uuid,
         'localcookid': cookId,
         'family_head': widget.familyHeadName,
-        'familymember_id': familyMemberId,
-        'mealplan_id': mealPlanId, // Include mealPlanId
+        'familymember_id': familyMemberId, // Use the retrieved familymember_id
+        'mealplan_id': mealPlanId,
         'is_cook_booking': true,
         'request_date': DateTime.now().toIso8601String(),
         'desired_delivery_time': desiredDeliveryTime.toIso8601String(),
@@ -621,10 +621,10 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                   ),
                 ),
               if (isCompleted)
-                Tooltip(
+                const Tooltip(
                   message: 'Meal Completed',
-                  child: const Icon(Icons.check_circle,
-                      color: Colors.white, size: 16),
+                  child:
+                      Icon(Icons.check_circle, color: Colors.white, size: 16),
                 ),
             ],
           ),
@@ -655,8 +655,8 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         portionKey != null ? widget.portionSizeData[portionKey] : null;
 
     if (portion == null) {
-      return Padding(
-        padding: const EdgeInsets.all(8.0),
+      return const Padding(
+        padding: EdgeInsets.all(8.0),
         child: Text('N/A', textAlign: TextAlign.center),
       );
     }
@@ -708,39 +708,88 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       context: context,
       builder: (context) {
         return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: SizedBox(
+            width: 500,
             height: 500,
-            child: Column(
-              children: [
-                const Padding(
-                  padding: EdgeInsets.all(16.0),
-                  child: Text(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  const Text(
                     'Available cooks near you',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: cooks.length,
-                    itemBuilder: (context, index) {
-                      final cook = cooks[index];
-                      return ListTile(
-                        title:
-                            Text('${cook['first_name']} ${cook['last_name']}'),
-                        subtitle: Text('City: ${cook['city']}'),
-                        onTap: () =>
-                            _showCookDetailsDialog(context, cook, mealPlanId),
-                      );
-                    },
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: cooks.length,
+                      itemBuilder: (context, index) {
+                        final cook = cooks[index];
+                        final firstName = cook['first_name'] ?? 'N/A';
+                        final lastName = cook['last_name'] ?? 'N/A';
+                        final city = cook['city'] ?? 'N/A';
+                        final rating =
+                            cook['rating'] ?? 4; // Placeholder rating
+
+                        return Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 4,
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              radius: 24,
+                              backgroundColor: Colors.green,
+                              child: Text(
+                                firstName.isNotEmpty
+                                    ? firstName[0].toUpperCase()
+                                    : 'C',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              '$firstName $lastName',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('City: $city'),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    for (int i = 1; i <= 5; i++)
+                                      Icon(
+                                        Icons.star,
+                                        size: 16,
+                                        color: i <= rating
+                                            ? Colors.orangeAccent
+                                            : Colors.grey,
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            onTap: () => _showCookDetailsDialog(
+                                context, cook, mealPlanId),
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -752,79 +801,270 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       BuildContext context, Map<String, dynamic> cook, String mealPlanId) {
     DateTime? selectedDateTime;
 
+    final firstName = cook['first_name'] ?? 'N/A';
+    final lastName = cook['last_name'] ?? 'N/A';
+    final city = cook['city'] ?? 'N/A';
+    final phone = cook['phone'] ?? 'N/A';
+    final address = cook['address_line1'] ?? 'N/A';
+    final barangay = cook['barangay'] ?? 'N/A';
+    final availabilityDaysStr =
+        cook['availability_days'] ?? 'N/A'; // e.g. "Monday,Wednesday,Friday"
+    final timeFromStr = cook['time_available_from'] ?? '8:00 AM';
+    final timeToStr = cook['time_available_to'] ?? '8:00 PM';
+    final rating = cook['rating'] ?? 4; // Placeholder rating
+
+    // Convert availability days to a set of weekday names
+    final availabilityDays =
+        availabilityDaysStr.split(',').map((d) => d.trim()).toSet();
+
+    // Function to check if selectedDateTime is within availability
+    bool isWithinAvailability(DateTime dateTime) {
+      // Check day
+      final dayName = DateFormat('EEEE').format(dateTime); // e.g. "Monday"
+      if (!availabilityDays.contains(dayName)) {
+        return false;
+      }
+
+      // Parse times
+      final timeFormatter = DateFormat('h:mm a');
+      final parsedFrom = timeFormatter.parse(timeFromStr);
+      final parsedTo = timeFormatter.parse(timeToStr);
+
+      // Combine parsed times with the selected date
+      final fromTime = DateTime(dateTime.year, dateTime.month, dateTime.day,
+          parsedFrom.hour, parsedFrom.minute);
+      final toTime = DateTime(dateTime.year, dateTime.month, dateTime.day,
+          parsedTo.hour, parsedTo.minute);
+
+      // Check time range
+      return dateTime.isAfter(fromTime) && dateTime.isBefore(toTime) ||
+          dateTime.isAtSameMomentAs(fromTime) ||
+          dateTime.isAtSameMomentAs(toTime);
+    }
+
+    bool isTimeValid = false;
+
     showDialog(
       context: context,
       builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              title: Text('${cook['first_name']} ${cook['last_name']}'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('Phone: ${cook['phone']}'),
-                  Text('City: ${cook['city']}'),
-                  Text('Available From: ${cook['time_available_from']}'),
-                  Text('Available To: ${cook['time_available_to']}'),
-                  const SizedBox(height: 10),
-                  TextButton(
-                    onPressed: () async {
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 30)),
-                      );
-                      if (date != null) {
-                        final time = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.now(),
-                        );
-                        if (time != null) {
-                          final combinedDateTime = DateTime(
-                            date.year,
-                            date.month,
-                            date.day,
-                            time.hour,
-                            time.minute,
-                          );
-                          setState(() {
-                            selectedDateTime = combinedDateTime;
-                          });
-                        }
-                      }
-                    },
-                    child: Text(
-                      selectedDateTime == null
-                          ? 'Select Delivery Date and Time'
-                          : 'Selected: ${DateFormat('MM-dd-yyyy – HH:mm').format(selectedDateTime!)}',
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    if (selectedDateTime != null) {
-                      Navigator.pop(context); // Close dialog
-                      bookCook(
-                          cook['localcookid'], selectedDateTime!, mealPlanId);
-                    } else {
+        return Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              void pickDateTime() async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime.now().add(const Duration(days: 30)),
+                );
+                if (date != null) {
+                  final time = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+                  if (time != null) {
+                    final combinedDateTime = DateTime(
+                      date.year,
+                      date.month,
+                      date.day,
+                      time.hour,
+                      time.minute,
+                    );
+                    final valid = isWithinAvailability(combinedDateTime);
+                    setState(() {
+                      selectedDateTime = combinedDateTime;
+                      isTimeValid = valid;
+                    });
+                    if (!valid) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                            content: Text('Select a delivery time.')),
+                            content: Text(
+                                'Selected time is not within cook\'s availability.')),
                       );
                     }
-                  },
-                  child: const Text('Book'),
+                  }
+                }
+              }
+
+              return SizedBox(
+                width: 500,
+                height: 500,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Text(
+                          '$firstName $lastName',
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 30,
+                            backgroundColor: Colors.green,
+                            child: Text(
+                              firstName.isNotEmpty
+                                  ? firstName[0].toUpperCase()
+                                  : 'C',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: DefaultTextStyle(
+                              style: const TextStyle(
+                                  fontSize: 14, color: Colors.black),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  RichText(
+                                    text: TextSpan(
+                                      style: const TextStyle(
+                                          fontSize: 14, color: Colors.black),
+                                      children: [
+                                        const TextSpan(
+                                            text: 'Phone: ',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold)),
+                                        TextSpan(text: phone),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  RichText(
+                                    text: TextSpan(
+                                      style: const TextStyle(
+                                          fontSize: 14, color: Colors.black),
+                                      children: [
+                                        const TextSpan(
+                                            text: 'City: ',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold)),
+                                        TextSpan(text: city),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  RichText(
+                                    text: TextSpan(
+                                      style: const TextStyle(
+                                          fontSize: 14, color: Colors.black),
+                                      children: [
+                                        const TextSpan(
+                                            text: 'Address: ',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold)),
+                                        TextSpan(text: '$address, $barangay'),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  RichText(
+                                    text: TextSpan(
+                                      style: const TextStyle(
+                                          fontSize: 14, color: Colors.black),
+                                      children: [
+                                        const TextSpan(
+                                            text: 'Availability Days: ',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold)),
+                                        TextSpan(text: availabilityDaysStr),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  RichText(
+                                    text: TextSpan(
+                                      style: const TextStyle(
+                                          fontSize: 14, color: Colors.black),
+                                      children: [
+                                        const TextSpan(
+                                            text: 'Time: ',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold)),
+                                        TextSpan(
+                                            text: '$timeFromStr - $timeToStr'),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    children: [
+                                      const Text('Rating: ',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold)),
+                                      for (int i = 1; i <= 5; i++)
+                                        Icon(
+                                          Icons.star,
+                                          size: 20,
+                                          color: i <= rating
+                                              ? Colors.orangeAccent
+                                              : Colors.grey,
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  GestureDetector(
+                                    onTap: pickDateTime,
+                                    child: Text(
+                                      selectedDateTime == null
+                                          ? 'Select Delivery Date and Time'
+                                          : 'Selected: ${DateFormat('MM-dd-yyyy – HH:mm').format(selectedDateTime!)}',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.blue,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cancel'),
+                          ),
+                          ElevatedButton(
+                            onPressed: (selectedDateTime != null && isTimeValid)
+                                ? () {
+                                    Navigator.pop(context); // Close dialog
+                                    bookCook(cook['localcookid'],
+                                        selectedDateTime!, mealPlanId);
+                                  }
+                                : null,
+                            child: const Text('Book'),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ],
-            );
-          },
+              );
+            },
+          ),
         );
       },
     );
@@ -959,7 +1199,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                       style: const TextStyle(fontSize: 14),
                                     ),
                                   );
-                                }).toList(),
+                                }),
                               ],
                             ),
                           ),
@@ -1087,7 +1327,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                       style: const TextStyle(fontSize: 14),
                                     ),
                                   );
-                                }).toList(),
+                                }),
                               ],
                             ),
                           ),
@@ -1193,9 +1433,9 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
             final denominator = parts[1]! ~/ gcd;
 
             if (wholeNumber > 0) {
-              return '$wholeNumber ${numerator}/${denominator}';
+              return '$wholeNumber $numerator/$denominator';
             } else {
-              return '${numerator}/${denominator}';
+              return '$numerator/$denominator';
             }
           }
         }
