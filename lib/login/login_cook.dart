@@ -29,6 +29,7 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
     final password = _passwordController.text;
 
     try {
+      // Authenticate the user
       final response = await Supabase.instance.client.auth.signInWithPassword(
         email: email,
         password: password,
@@ -40,7 +41,34 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
         return;
       }
 
-      _redirectToDashboard(response.user!);
+      // Query the `Local_Cook` table to verify the user is a cook
+      final cookResponse = await Supabase.instance.client
+          .from('Local_Cook')
+          .select('first_name, last_name, is_accepted')
+          .eq('user_id', response.user!.id)
+          .maybeSingle(); // Returns `null` if no matching record is found
+
+      if (cookResponse == null) {
+        _showWarning('This account is not registered as a cook.');
+        return;
+      }
+
+      if (cookResponse['is_accepted'] != true) {
+        _showWarning('Your account has not been approved by the admin.');
+        return;
+      }
+
+      // Redirect to the cook dashboard
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => CookDashboard(
+            firstName: cookResponse['first_name'],
+            lastName: cookResponse['last_name'],
+            currentUserId: response.user!.id,
+            currentUserUsername: email,
+          ),
+        ),
+      );
     } catch (e) {
       _showWarning('Error during login: $e');
     } finally {

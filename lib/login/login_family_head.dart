@@ -25,48 +25,43 @@ class _LoginDialogState extends State<LoginDialog> {
     final password = _passwordController.text;
 
     try {
-      // Use Supabase Auth to sign in with username (email) and password
+      // Authenticate the user
       final response = await Supabase.instance.client.auth.signInWithPassword(
-        email: username, // Use username as the email field
+        email: username,
         password: password,
       );
 
-      // Check if the user is successfully authenticated
       if (response.user == null) {
-        // If there's no user returned, handle error
         _showWarning(
-            'Error: Authentication failed, please check your credentials');
+            'Error: Authentication failed. Please check your credentials.');
         return;
       }
 
-      // Login successful, redirect to the Family Head Dashboard
-      final user = response.user;
+      // Query the `familymember` table to verify the user is a family head
+      final familyHeadResponse = await Supabase.instance.client
+          .from('familymember')
+          .select('first_name, last_name, user_id')
+          .eq('user_id', response.user!.id)
+          .maybeSingle(); // Returns `null` if no matching record is found
 
-      if (user != null) {
-        // Fetch the user's details from the "familymember" table
-        final familyHeadResponse = await Supabase.instance.client
-            .from('familymember')
-            .select('first_name, last_name, user_id')
-            .eq('user_id',
-                user.id) // Assuming the `user_id` is stored in the table
-            .single();
-
-        final firstName = familyHeadResponse['first_name'];
-        final lastName = familyHeadResponse['last_name'];
-        final userId = familyHeadResponse['user_id'];
-
-        // Redirect to the Family Head Dashboard
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (context) => FamHeadDashboard(
-              firstName: firstName,
-              lastName: lastName,
-              currentUserUsername: lastName + ', ' + firstName,
-              currentUserId: userId, // Pass the user ID here
-            ),
-          ),
-        );
+      if (familyHeadResponse == null) {
+        _showWarning('This account is not registered as a family head.');
+        return;
       }
+
+      // Redirect to the Family Head Dashboard
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => FamHeadDashboard(
+            firstName: familyHeadResponse['first_name'],
+            lastName: familyHeadResponse['last_name'],
+            currentUserUsername: familyHeadResponse['last_name'] +
+                ', ' +
+                familyHeadResponse['first_name'],
+            currentUserId: familyHeadResponse['user_id'],
+          ),
+        ),
+      );
     } catch (e) {
       _showWarning('Error occurred while logging in: $e');
     }
