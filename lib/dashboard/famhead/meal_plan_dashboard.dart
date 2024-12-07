@@ -114,9 +114,11 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       for (var meal in response) {
         int day = (meal['day'] ?? 1) - 1; // Ensure day is int
         String mealPlanId =
-            meal['mealplan_id'].toString(); // Ensure mealplan_id is String
+            meal['mealplan_id']?.toString() ?? ''; // Ensure it's a string
 
-        int categoryIndex;
+        if (meal['meal_category_id'] is! int) continue; // Validate category ID
+        int categoryIndex = -1;
+
         switch (meal['meal_category_id']) {
           case 1:
             categoryIndex = 0;
@@ -136,9 +138,13 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
         if (day >= 0 && day < 7 && categoryIndex >= 0 && categoryIndex < 4) {
           fetchedMealPlan[day][categoryIndex] = {
-            ...meal,
-            'mealplan_id': mealPlanId, // Convert mealplan_id to String
-            'day': day + 1 // Ensure day is a proper value
+            'meal_category_id': meal['meal_category_id'],
+            'meal_name':
+                meal['meal_name']?.toString() ?? 'N/A', // Ensure it's a string
+            'recipe_id': meal['recipe_id']?.toString() ?? '',
+            'mealplan_id': mealPlanId,
+            'is_completed': meal['is_completed'] ?? false,
+            'day': day + 1, // Add 1 to match the day index
           };
         }
       }
@@ -557,6 +563,8 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
   Widget _buildMealCell(BuildContext context, Map<String, dynamic>? meal,
       int dayIndex, int mealCategoryId) {
+    print('Meal Data: $meal'); // Log meal data for debugging
+
     if (meal == null || meal['meal_name'] == null) {
       return const Padding(
         padding: EdgeInsets.all(8.0),
@@ -567,8 +575,9 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       );
     }
 
+    String? mealPlanId =
+        meal['mealplan_id']?.toString(); // Ensure it's a string
     bool isCompleted = meal['is_completed'] == true;
-    String? mealPlanId = meal['mealplan_id']; // Extract `mealPlanId`
 
     return Stack(
       children: [
@@ -1187,6 +1196,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                   final adjustedQuantity = _adjustQuantity(
                                       ingredient['quantity'],
                                       familyMemberCount);
+
                                   final unit = ingredient['unit'] ?? '';
                                   final name = ingredient['name'] ??
                                       'Unknown Ingredient';
