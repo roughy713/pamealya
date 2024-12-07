@@ -21,14 +21,51 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
 
   Future<void> fetchBookingRequests() async {
     try {
+      // Get the logged-in user's ID
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
+      // Fetch only booking requests for the logged-in cook
       final response = await supabase
           .from('bookingrequest')
-          .select()
+          .select('''
+          bookingrequest_id,
+          familymember_id,
+          mealplan_id,
+          request_date,
+          desired_delivery_time,
+          status,
+          Local_Cook(first_name, last_name, user_id),
+          familymember(first_name, last_name, user_id)
+        ''')
           .eq('status', 'pending') // Fetch pending booking requests
+          .eq('Local_Cook.user_id', userId) // Filter by logged-in user's ID
           .order('request_date', ascending: false);
 
+      // Filter out results with null Local_Cook data
+      final filteredRequests = response.where((booking) {
+        final cook = booking['Local_Cook'];
+        return cook != null && cook['user_id'] == userId;
+      }).toList();
+
+      // Update the state with the filtered booking requests
       setState(() {
-        bookingRequests = List<Map<String, dynamic>>.from(response);
+        bookingRequests =
+            List<Map<String, dynamic>>.from(filteredRequests.map((booking) {
+          final cook = booking['Local_Cook'] ?? {};
+          final familyHead = booking['familymember'] ?? {};
+          return {
+            ...booking,
+            'cook_name':
+                '${cook['first_name'] ?? 'Unknown'} ${cook['last_name'] ?? ''}'
+                    .trim(),
+            'family_head_name':
+                '${familyHead['first_name'] ?? 'Unknown'} ${familyHead['last_name'] ?? ''}'
+                    .trim(),
+          };
+        }));
         isLoading = false;
       });
     } catch (e) {
@@ -45,7 +82,6 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
     try {
       await supabase.from('bookingrequest').update({
         'status': isAccepted ? 'accepted' : 'declined',
-        '_isBookingAccepted': isAccepted,
       }).eq('bookingrequest_id', bookingId);
 
       setState(() {
@@ -72,10 +108,6 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Booking Requests'),
-        backgroundColor: Colors.green,
-      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : bookingRequests.isEmpty
@@ -105,9 +137,8 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
                             ),
                             const SizedBox(height: 8),
                             Text(
-                                'Family Head: ${booking['family_head'] ?? 'N/A'}'),
-                            Text(
-                                'Cook: ${booking['localcookid'] ?? 'Unknown'}'),
+                                'Family Head: ${booking['family_head_name'] ?? 'N/A'}'),
+                            Text('Cook: ${booking['cook_name'] ?? 'Unknown'}'),
                             Text('Meal: ${booking['mealplan_id'] ?? 'N/A'}'),
                             Text('Request Date: ${booking['request_date']}'),
                             Text(

@@ -23,36 +23,83 @@ class _DashboardPageState extends State<DashboardPage> {
     final supabase = Supabase.instance.client;
 
     try {
-      // Fetch Accepted Count
+      // Fetch the logged-in user's `localcookid`
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception("No user is currently logged in.");
+      }
+
+      final localCookResponse = await supabase
+          .from('Local_Cook')
+          .select('localcookid')
+          .eq('user_id', userId)
+          .single();
+
+      if (localCookResponse == null ||
+          localCookResponse['localcookid'] == null) {
+        throw Exception(
+            "No matching `localcookid` found for the current user. Make sure the user is a cook.");
+      }
+
+      final localCookId = localCookResponse['localcookid'];
+      print("Fetched localcookid: $localCookId");
+
+      // Fetch Accepted Bookings Count
       final acceptedResponse = await supabase
           .from('bookingrequest')
-          .select()
-          .eq('_isBookingAccepted', true)
-          .eq('is_cook_booking', true);
+          .select('bookingrequest_id, localcookid, _isBookingAccepted')
+          .eq('localcookid', localCookId)
+          .eq('_isBookingAccepted', true);
+
+      print("Accepted Bookings Response: $acceptedResponse");
 
       // Fetch Booking Requests Count
       final bookingRequestsResponse = await supabase
           .from('bookingrequest')
-          .select()
+          .select('bookingrequest_id, localcookid, _isBookingAccepted, status')
+          .eq('localcookid', localCookId)
           .eq('_isBookingAccepted', false)
-          .eq('is_cook_booking', true);
+          .eq('status', 'pending');
+
+      print("Booking Requests Response: $bookingRequestsResponse");
 
       // Fetch Upcoming Bookings
       final upcomingResponse = await supabase
           .from('bookingrequest')
-          .select()
+          .select('''
+            bookingrequest_id,
+            localcookid,
+            desired_delivery_time,
+            familymember_id,
+            familymember(first_name, last_name)
+        ''') // Fetch family member details
+          .eq('localcookid', localCookId)
           .eq('_isBookingAccepted', true)
           .order('desired_delivery_time', ascending: true);
 
+      print("Upcoming Bookings Response: $upcomingResponse");
+
       setState(() {
+        // Populate counts and bookings
         acceptedCount = acceptedResponse.length;
         bookingRequestsCount = bookingRequestsResponse.length;
-        upcomingBookings = List<Map<String, dynamic>>.from(upcomingResponse);
+        upcomingBookings =
+            List<Map<String, dynamic>>.from(upcomingResponse.map((booking) {
+          final familyMember = booking['familymember'] ?? {};
+          return {
+            ...booking,
+            'family_head':
+                '${familyMember['first_name'] ?? 'Unknown'} ${familyMember['last_name'] ?? ''}'
+                    .trim(),
+          };
+        }));
       });
     } catch (e) {
+      // Handle and display errors
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching data: $e')),
       );
+      print('Error fetching data: $e');
     }
   }
 

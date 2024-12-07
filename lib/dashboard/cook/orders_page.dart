@@ -22,42 +22,60 @@ class _OrdersPageState extends State<OrdersPage> {
 
   Future<void> fetchOrders() async {
     try {
+      // Get the logged-in user's ID
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('User not logged in');
+      }
+
+      // Fetch only the orders where the logged-in user is the booked cook
       final response = await supabase
           .from('bookingrequest')
           .select('''
-          bookingrequest_id,
-          familymember_id,
-          localcookid,
-          mealplan_id,
-          request_date,
-          desired_delivery_time,
-          delivery_status(status_name),
-          Local_Cook(first_name, last_name, user_id),
-          familymember(user_id)
-        ''')
-          .eq('status', 'accepted')
+      bookingrequest_id,
+      delivery_status_id,
+      familymember_id,
+      mealplan_id,
+      request_date,
+      desired_delivery_time,
+      Local_Cook(first_name, last_name, user_id),
+      familymember(first_name, last_name, user_id)
+    ''')
+          .eq('status', 'accepted') // Fetch only accepted bookings
+          .eq('Local_Cook.user_id', userId) // Ensure only this user's bookings
           .order('desired_delivery_time', ascending: true);
 
+      // Debug: print the response to verify data
+      print('Filtered Orders Response: $response');
+
+      // Filter out results with null Local_Cook data
+      final filteredOrders = response.where((order) {
+        final cook = order['Local_Cook'];
+        return cook != null && cook['user_id'] == userId;
+      }).toList();
+
+      // Parse and update state with the filtered orders
       setState(() {
-        orders = List<Map<String, dynamic>>.from(response.map((order) {
+        orders = List<Map<String, dynamic>>.from(filteredOrders.map((order) {
           final cook = order['Local_Cook'] ?? {};
           final familyMember = order['familymember'] ?? {};
-          final deliveryStatus = order['delivery_status'] ?? {};
           return {
             ...order,
             'cook_name':
                 '${cook['first_name'] ?? 'Unknown'} ${cook['last_name'] ?? ''}'
                     .trim(),
-            'cook_user_id': cook['user_id'], // Cook's user ID
-            'family_user_id':
-                familyMember['user_id'], // Family member's user ID
-            'delivery_status':
-                deliveryStatus['status_name'] ?? 'Unknown', // Delivery status
+            'family_head_name':
+                '${familyMember['first_name'] ?? 'Unknown'} ${familyMember['last_name'] ?? ''}'
+                    .trim(),
+            'cook_user_id': cook['user_id'],
+            'family_user_id': familyMember['user_id'],
           };
         }));
         isLoading = false;
       });
     } catch (e) {
+      // Debug: log the error
+      print('Error fetching orders: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching orders: $e')),
       );
@@ -128,7 +146,7 @@ class _OrdersPageState extends State<OrdersPage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                  'Family Member ID: ${order['familymember_id'] ?? 'N/A'}'),
+                                  'Family Head: ${order['family_head_name'] ?? 'N/A'}'),
                               Text('Cook: ${order['cook_name'] ?? 'Unknown'}'),
                               Text('Meal: ${order['mealplan_id'] ?? 'N/A'}'),
                               Text('Request Date: ${order['request_date']}'),
@@ -156,9 +174,11 @@ class _OrdersPageState extends State<OrdersPage> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: SingleChildScrollView(
+              child: SizedBox(
+                width: 700,
+                height: 600,
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -176,50 +196,85 @@ class _OrdersPageState extends State<OrdersPage> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      _buildDetailRow('Family Member ID',
-                          order['familymember_id'] ?? 'N/A'),
-                      _buildDetailRow(
-                        'Cook',
-                        order['cook_name'] ?? 'Unknown',
-                      ),
-                      _buildDetailRow(
-                        'Meal Plan',
-                        order['mealplan_id'] != null
-                            ? order['mealplan_id'].toString()
-                            : 'N/A',
-                      ),
-                      _buildDetailRow(
-                        'Request Date',
-                        order['request_date'] != null
-                            ? order['request_date'].toString()
-                            : 'N/A',
-                      ),
-                      _buildDetailRow(
-                        'Delivery Time',
-                        order['desired_delivery_time'] != null
-                            ? order['desired_delivery_time'].toString()
-                            : 'N/A',
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Actions:',
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildStepCircle(context, 1, 'Preparing',
-                              Icons.fastfood, currentStep, setState),
-                          _buildDashedLine(),
-                          _buildStepCircle(context, 2, 'On Delivery',
-                              Icons.delivery_dining, currentStep, setState),
-                          _buildDashedLine(),
-                          _buildStepCircle(context, 3, 'Done',
-                              Icons.check_circle, currentStep, setState),
-                        ],
+                      const SizedBox(height: 10),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildDetailRow('Family Head',
+                                  order['family_head_name'] ?? 'N/A'),
+                              _buildDetailRow(
+                                  'Cook', order['cook_name'] ?? 'Unknown'),
+                              _buildDetailRow(
+                                'Meal Plan',
+                                order['mealplan_id'] != null
+                                    ? order['mealplan_id'].toString()
+                                    : 'N/A',
+                              ),
+                              _buildDetailRow(
+                                'Request Date',
+                                order['request_date'] != null
+                                    ? order['request_date'].toString()
+                                    : 'N/A',
+                              ),
+                              _buildDetailRow(
+                                'Delivery Time',
+                                order['desired_delivery_time'] != null
+                                    ? order['desired_delivery_time'].toString()
+                                    : 'N/A',
+                              ),
+                              const SizedBox(height: 10),
+                              const Text(
+                                'Actions:',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 20),
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  _buildStepCircle(
+                                    context,
+                                    1,
+                                    'Preparing',
+                                    Icons.fastfood,
+                                    currentStep,
+                                    setState,
+                                    order['bookingrequest_id'],
+                                    order[
+                                        'delivery_status_id'], // Pass deliveryStatusId here
+                                  ),
+                                  _buildDashedLine(),
+                                  _buildStepCircle(
+                                    context,
+                                    2,
+                                    'On Delivery',
+                                    Icons.delivery_dining,
+                                    currentStep,
+                                    setState,
+                                    order['bookingrequest_id'],
+                                    order[
+                                        'delivery_status_id'], // Pass deliveryStatusId here
+                                  ),
+                                  _buildDashedLine(),
+                                  _buildStepCircle(
+                                    context,
+                                    3,
+                                    'Done',
+                                    Icons.check_circle,
+                                    currentStep,
+                                    setState,
+                                    order['bookingrequest_id'],
+                                    order[
+                                        'delivery_status_id'], // Pass deliveryStatusId here
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 20),
                       Center(
@@ -234,8 +289,9 @@ class _OrdersPageState extends State<OrdersPage> {
                               if (familyUserId == null || cookUserId == null) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                      content: Text(
-                                          'Error: Missing user IDs for chat room')),
+                                    content: Text(
+                                        'Error: Missing user IDs for chat room'),
+                                  ),
                                 );
                                 return;
                               }
@@ -261,9 +317,12 @@ class _OrdersPageState extends State<OrdersPage> {
                             }
                           },
                           icon: const Icon(Icons.chat, color: Colors.white),
-                          label: const Text('Message'),
+                          label: const Text(
+                            'Message',
+                            style: TextStyle(color: Colors.white),
+                          ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.deepOrange,
+                            backgroundColor: Colors.green,
                             padding: const EdgeInsets.symmetric(
                                 vertical: 14, horizontal: 24),
                             shape: RoundedRectangleBorder(
@@ -297,23 +356,6 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  Future<void> updateDeliveryStatus(
-      int bookingRequestId, int newStatusId) async {
-    try {
-      await supabase
-          .from('bookingrequest')
-          .update({'delivery_status_id': newStatusId}).eq(
-              'bookingrequest_id', bookingRequestId);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Delivery status updated successfully!')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating delivery status: $e')),
-      );
-    }
-  }
-
   Widget _buildDetailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
@@ -337,24 +379,49 @@ class _OrdersPageState extends State<OrdersPage> {
     );
   }
 
-  Widget _buildStepCircle(BuildContext context, int step, String label,
-      IconData icon, int currentStep, Function setState) {
+  Widget _buildStepCircle(
+      BuildContext context,
+      int step,
+      String label,
+      IconData icon,
+      int currentStep,
+      Function setState,
+      String bookingRequestId,
+      int deliveryStatusId) {
     final isActive = step == currentStep + 1 || step <= currentStep;
+    final isCompleted = step <= deliveryStatusId;
 
     return Column(
       children: [
         GestureDetector(
           onTap: isActive
-              ? () {
-                  setState(() {
-                    currentStep = step;
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('$label marked as complete!'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
+              ? () async {
+                  final confirmed =
+                      await _showConfirmationDialog(context, label);
+                  if (confirmed) {
+                    setState(() {
+                      currentStep = step;
+                    });
+
+                    final statusUpdated =
+                        await _updateOrderStatus(step, bookingRequestId);
+                    if (statusUpdated) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('$label marked as complete!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content:
+                              Text('Failed to update status in the database'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
                 }
               : () {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -366,11 +433,10 @@ class _OrdersPageState extends State<OrdersPage> {
                 },
           child: CircleAvatar(
             radius: 30,
-            backgroundColor:
-                step <= currentStep ? Colors.green : Colors.grey[300],
+            backgroundColor: isCompleted ? Colors.green : Colors.grey[300],
             child: Icon(
               icon,
-              color: step <= currentStep ? Colors.white : Colors.grey[600],
+              color: isCompleted ? Colors.white : Colors.grey[600],
             ),
           ),
         ),
@@ -380,11 +446,69 @@ class _OrdersPageState extends State<OrdersPage> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.bold,
-            color: step <= currentStep ? Colors.green : Colors.grey,
+            color: isCompleted ? Colors.green : Colors.grey,
           ),
         ),
       ],
     );
+  }
+
+  Future<bool> _showConfirmationDialog(
+      BuildContext context, String label) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: const Text('Confirm Action'),
+              content: Text('Are you sure you want to mark this as $label?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('Confirm'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  Future<bool> _updateOrderStatus(int step, String bookingRequestId) async {
+    try {
+      int statusId;
+
+      // Map the step to the corresponding delivery_status_id
+      if (step == 1) {
+        statusId = 2; // "Preparing"
+      } else if (step == 2) {
+        statusId = 3; // "On Delivery"
+      } else if (step == 3) {
+        statusId = 4; // "Delivered"
+      } else {
+        return false;
+      }
+
+      // Update the delivery_status_id in the database
+      final response = await Supabase.instance.client
+          .from('bookingrequest')
+          .update({'delivery_status_id': statusId})
+          .eq('bookingrequest_id', bookingRequestId)
+          .select();
+
+      if (response.isNotEmpty) {
+        return true; // Successfully updated
+      } else {
+        print('Database error: No rows affected.');
+        return false;
+      }
+    } catch (e) {
+      print('Error updating order status: $e');
+      return false;
+    }
   }
 
   Widget _buildDashedLine() {
