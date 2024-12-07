@@ -156,9 +156,6 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bookings'),
-      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
