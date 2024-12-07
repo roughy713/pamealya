@@ -41,7 +41,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     'Dashboard',
     'My Family',
     'Chat',
-    'Cook',
+    'Bookings',
     'Notifications',
     'Transactions',
   ];
@@ -223,10 +223,13 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           initialLastName: widget.lastName,
         ),
         FamHeadChatPage(
-          currentUserId: widget.currentUserId,
+          currentUserId: widget.currentUserId, // Pass family head ID
         ),
-        const NotificationsPage(),
-        const TransactionPage(),
+        MyBookingsPage(
+          currentUserId: widget.currentUserId, // Ensure this parameter exists
+        ),
+        const NotificationsPage(), // Ensure these widgets don't need the parameter
+        const TransactionPage(), // Ensure these widgets don't need the parameter
       ];
 
   @override

@@ -115,14 +115,19 @@ class CustomDrawer extends StatelessWidget {
               onTap: () => onItemTap(2),
             ),
             SidebarMenuItem(
-              title: 'Notifications',
+              title: 'My Boookings',
               isSelected: selectedIndex == 3,
               onTap: () => onItemTap(3),
             ),
             SidebarMenuItem(
-              title: 'Transactions',
+              title: 'Notifications',
               isSelected: selectedIndex == 4,
               onTap: () => onItemTap(4),
+            ),
+            SidebarMenuItem(
+              title: 'Transactions',
+              isSelected: selectedIndex == 5,
+              onTap: () => onItemTap(5),
             ),
             const Spacer(),
             Padding(
