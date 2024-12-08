@@ -82,6 +82,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
     try {
       await supabase.from('bookingrequest').update({
         'status': isAccepted ? 'accepted' : 'declined',
+        '_isBookingAccepted': isAccepted, // Update _isBookingAccepted field
       }).eq('bookingrequest_id', bookingId);
 
       setState(() {

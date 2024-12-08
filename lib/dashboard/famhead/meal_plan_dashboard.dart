@@ -563,8 +563,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
   Widget _buildMealCell(BuildContext context, Map<String, dynamic>? meal,
       int dayIndex, int mealCategoryId) {
-    print('Meal Data: $meal'); // Log meal data for debugging
-
     if (meal == null || meal['meal_name'] == null) {
       return const Padding(
         padding: EdgeInsets.all(8.0),

@@ -33,7 +33,7 @@ class _DashboardPageState extends State<DashboardPage> {
           .from('Local_Cook')
           .select('localcookid')
           .eq('user_id', userId)
-          .single();
+          .maybeSingle(); // Use `maybeSingle` to fetch a single row safely
 
       if (localCookResponse == null ||
           localCookResponse['localcookid'] == null) {
@@ -44,19 +44,19 @@ class _DashboardPageState extends State<DashboardPage> {
       final localCookId = localCookResponse['localcookid'];
       print("Fetched localcookid: $localCookId");
 
-      // Fetch Accepted Bookings Count
+      // Fetch Accepted Bookings
       final acceptedResponse = await supabase
           .from('bookingrequest')
-          .select('bookingrequest_id, localcookid, _isBookingAccepted')
+          .select('bookingrequest_id')
           .eq('localcookid', localCookId)
           .eq('_isBookingAccepted', true);
 
       print("Accepted Bookings Response: $acceptedResponse");
 
-      // Fetch Booking Requests Count
+      // Fetch Booking Requests
       final bookingRequestsResponse = await supabase
           .from('bookingrequest')
-          .select('bookingrequest_id, localcookid, _isBookingAccepted, status')
+          .select('bookingrequest_id')
           .eq('localcookid', localCookId)
           .eq('_isBookingAccepted', false)
           .eq('status', 'pending');
@@ -67,22 +67,27 @@ class _DashboardPageState extends State<DashboardPage> {
       final upcomingResponse = await supabase
           .from('bookingrequest')
           .select('''
-            bookingrequest_id,
-            localcookid,
-            desired_delivery_time,
-            familymember_id,
-            familymember(first_name, last_name)
-        ''') // Fetch family member details
+          bookingrequest_id,
+          localcookid,
+          desired_delivery_time,
+          familymember_id,
+          familymember(first_name, last_name)
+      ''')
           .eq('localcookid', localCookId)
           .eq('_isBookingAccepted', true)
           .order('desired_delivery_time', ascending: true);
 
       print("Upcoming Bookings Response: $upcomingResponse");
 
+      // Update state
       setState(() {
-        // Populate counts and bookings
+        // Count all rows for accepted bookings
         acceptedCount = acceptedResponse.length;
+
+        // Count all rows for pending booking requests
         bookingRequestsCount = bookingRequestsResponse.length;
+
+        // Populate upcoming bookings
         upcomingBookings =
             List<Map<String, dynamic>>.from(upcomingResponse.map((booking) {
           final familyMember = booking['familymember'] ?? {};
@@ -95,7 +100,7 @@ class _DashboardPageState extends State<DashboardPage> {
         }));
       });
     } catch (e) {
-      // Handle and display errors
+      // Handle errors
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching data: $e')),
       );

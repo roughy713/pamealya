@@ -387,9 +387,12 @@ class _OrdersPageState extends State<OrdersPage> {
       int currentStep,
       Function setState,
       String bookingRequestId,
-      int deliveryStatusId) {
-    final isActive = step == currentStep + 1 || step <= currentStep;
-    final isCompleted = step <= deliveryStatusId;
+      int? deliveryStatusId) {
+    // Determine if the step is completed based on deliveryStatusId
+    final isCompleted = deliveryStatusId != null && step <= deliveryStatusId;
+
+    // Determine if the step is active (only the next step is active)
+    final isActive = deliveryStatusId != null && step == deliveryStatusId + 1;
 
     return Column(
       children: [
