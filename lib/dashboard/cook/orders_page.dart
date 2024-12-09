@@ -36,7 +36,6 @@ class _OrdersPageState extends State<OrdersPage> {
       delivery_status_id,
       familymember_id,
       mealplan:mealplan_id(meal_name),
-
       request_date,
       desired_delivery_time,
       Local_Cook(first_name, last_name, user_id),
@@ -202,12 +201,6 @@ class _OrdersPageState extends State<OrdersPage> {
                                   order['family_head_name'] ?? 'N/A'),
                               _buildDetailRow(
                                   'Cook', order['cook_name'] ?? 'Unknown'),
-                              _buildDetailRow(
-                                'Meal Plan',
-                                order['mealplan_id'] != null
-                                    ? order['mealplan_id'].toString()
-                                    : 'N/A',
-                              ),
                               _buildDetailRow(
                                 'Request Date',
                                 order['request_date'] != null
