@@ -121,7 +121,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Chat with ${widget.recipientName}'),
+        title: Text('${widget.recipientName}'),
       ),
       body: Column(
         children: [

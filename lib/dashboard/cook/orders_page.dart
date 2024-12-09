@@ -143,7 +143,6 @@ class _OrdersPageState extends State<OrdersPage> {
                               const SizedBox(height: 8),
                               Text(
                                   'Family Head: ${order['family_head_name'] ?? 'N/A'}'),
-                              Text('Cook: ${order['cook_name'] ?? 'Unknown'}'),
                               Text('Meal: ${order['mealplan_id'] ?? 'N/A'}'),
                               Text('Request Date: ${order['request_date']}'),
                               Text(

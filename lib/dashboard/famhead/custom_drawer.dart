@@ -115,7 +115,7 @@ class CustomDrawer extends StatelessWidget {
               onTap: () => onItemTap(2),
             ),
             SidebarMenuItem(
-              title: 'My Boookings',
+              title: 'My Bookings',
               isSelected: selectedIndex == 3,
               onTap: () => onItemTap(3),
             ),

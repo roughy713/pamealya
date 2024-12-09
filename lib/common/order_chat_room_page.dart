@@ -101,7 +101,7 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Chat with ${widget.recipientName}'),
+        title: Text('${widget.recipientName}'),
         backgroundColor: Colors.green,
       ),
       body: Column(
