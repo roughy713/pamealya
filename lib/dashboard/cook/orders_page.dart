@@ -35,10 +35,10 @@ class _OrdersPageState extends State<OrdersPage> {
       bookingrequest_id,
       delivery_status_id,
       familymember_id,
-      mealplan:mealplan_id(meal_name),
+      mealplan:mealplan_id(meal_name, mealplan_id),
       request_date,
       desired_delivery_time,
-      Local_Cook(first_name, last_name, user_id),
+      Local_Cook!inner(first_name, last_name, user_id),
       familymember(first_name, last_name, user_id)
     ''')
           .eq('status', 'accepted') // Fetch only accepted bookings
@@ -170,7 +170,7 @@ class _OrdersPageState extends State<OrdersPage> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: SizedBox(
-                width: 700,
+                width: 600,
                 height: 600,
                 child: Padding(
                   padding: const EdgeInsets.all(20),
@@ -203,19 +203,43 @@ class _OrdersPageState extends State<OrdersPage> {
                                   'Cook', order['cook_name'] ?? 'Unknown'),
                               _buildDetailRow(
                                 'Request Date',
-                                order['request_date'] != null
-                                    ? order['request_date'].toString()
-                                    : 'N/A',
+                                order['request_date']?.toString() ?? 'N/A',
                               ),
                               _buildDetailRow(
                                 'Meal Name',
                                 order['mealplan']?['meal_name'] ?? 'N/A',
                               ),
-                              const SizedBox(height: 10),
+                              const SizedBox(height: 20),
+                              Center(
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    final mealplanId =
+                                        order['mealplan']?['mealplan_id'];
+                                    if (mealplanId != null) {
+                                      _showIngredientsDialog(mealplanId);
+                                    } else {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'No meal plan ID available.'),
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                  ),
+                                  child: const Text('Show Ingredients'),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
                               const Text(
                                 'Actions:',
                                 style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.bold),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                               const SizedBox(height: 20),
                               Row(
@@ -228,7 +252,6 @@ class _OrdersPageState extends State<OrdersPage> {
                                     'Preparing',
                                     Icons.fastfood,
                                     (newStep) {
-                                      // Update delivery status to "Preparing"
                                       _updateOrderStatus(newStep,
                                           order['bookingrequest_id'], context);
                                     },
@@ -242,7 +265,6 @@ class _OrdersPageState extends State<OrdersPage> {
                                     'On Delivery',
                                     Icons.delivery_dining,
                                     (newStep) {
-                                      // Update delivery status to "On Delivery"
                                       _updateOrderStatus(newStep,
                                           order['bookingrequest_id'], context);
                                     },
@@ -256,7 +278,6 @@ class _OrdersPageState extends State<OrdersPage> {
                                     'Completed',
                                     Icons.check_circle,
                                     (newStep) {
-                                      // Update delivery status to "Completed"
                                       _updateOrderStatus(newStep,
                                           order['bookingrequest_id'], context);
                                     },
@@ -348,6 +369,173 @@ class _OrdersPageState extends State<OrdersPage> {
         );
       },
     );
+  }
+
+  Future<void> _showIngredientsDialog(int mealplanId) async {
+    try {
+      final mealplanResponse = await supabase
+          .from('mealplan')
+          .select('recipe_id')
+          .eq('mealplan_id', mealplanId)
+          .single();
+
+      if (mealplanResponse == null || mealplanResponse.isEmpty) {
+        throw Exception('No recipe linked to this meal.');
+      }
+
+      final recipeId = mealplanResponse['recipe_id'];
+
+      final ingredientsResponse = await supabase
+          .from('ingredients')
+          .select('name, quantity, unit')
+          .eq('recipe_id', recipeId);
+
+      if (ingredientsResponse.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('No ingredients found for this recipe.')),
+        );
+        return;
+      }
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: SizedBox(
+              width: 600,
+              height: 600,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Ingredients',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Divider(thickness: 1, color: Colors.grey),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: ingredientsResponse.length,
+                        itemBuilder: (context, index) {
+                          final ingredient = ingredientsResponse[index];
+                          return ListTile(
+                            title: Text(ingredient['name'] ?? 'Unknown'),
+                            subtitle: Text(
+                              '${ingredient['quantity'] ?? 'N/A'} ${ingredient['unit'] ?? ''}',
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _showInstructionsDialog(recipeId);
+                          },
+                          child: const Text('Show Instructions'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Close'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching ingredients: $e')),
+      );
+    }
+  }
+
+  Future<void> _showInstructionsDialog(int recipeId) async {
+    try {
+      final instructionsResponse = await supabase
+          .from('instructions')
+          .select('step_number, instruction')
+          .eq('recipe_id', recipeId)
+          .order('step_number', ascending: true);
+
+      if (instructionsResponse.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('No instructions found for this recipe.')),
+        );
+        return;
+      }
+
+      showDialog(
+        context: context,
+        builder: (context) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: SizedBox(
+              width: 600,
+              height: 600,
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Instructions',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Divider(thickness: 1, color: Colors.grey),
+                    Expanded(
+                      child: ListView.builder(
+                        itemCount: instructionsResponse.length,
+                        itemBuilder: (context, index) {
+                          final step = instructionsResponse[index];
+                          return ListTile(
+                            title: Text('Step ${step['step_number']}'),
+                            subtitle: Text(step['instruction'] ?? 'N/A'),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Center(
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Close'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error fetching instructions: $e')),
+      );
+    }
   }
 
   Widget _buildDetailRow(String label, String value) {
