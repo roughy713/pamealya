@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../home_page.dart';
+
 import '../dashboard/famhead/famhead_dashboard.dart'; // Import FamHeadDashboard
 
 class SignUpFormDialog extends StatefulWidget {
@@ -13,6 +13,37 @@ class SignUpFormDialog extends StatefulWidget {
 
 class SignUpFormDialogState extends State<SignUpFormDialog> {
   final _formKey = GlobalKey<FormState>();
+  final String _passwordPattern =
+      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$';
+  final ValueNotifier<bool> _isPasswordMatch = ValueNotifier<bool>(true);
+
+  final ValueNotifier<Map<String, bool>> _passwordRequirements = ValueNotifier({
+    'length': false,
+    'uppercase': false,
+    'lowercase': false,
+    'number': false,
+    'specialChar': false,
+  });
+
+  Widget _buildRequirementRow(String text, bool isValid) {
+    return Row(
+      children: [
+        Icon(
+          isValid ? Icons.check_circle : Icons.cancel,
+          color: isValid ? Colors.green : Colors.red,
+          size: 20,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            color: isValid ? Colors.green : Colors.red,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
 
   // Controllers to handle form input
   final TextEditingController _firstNameController = TextEditingController();
@@ -140,6 +171,31 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
         SnackBar(content: Text('Error: $e')),
       );
     }
+  }
+
+  void _validatePasswordRealTime(String value) {
+    _passwordRequirements.value = {
+      'length': value.length >= 8,
+      'uppercase': RegExp(r'[A-Z]').hasMatch(value),
+      'lowercase': RegExp(r'[a-z]').hasMatch(value),
+      'number': RegExp(r'\d').hasMatch(value),
+      'specialChar': RegExp(r'[@$!%*?&]').hasMatch(value),
+    };
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Password is required';
+    }
+    if (!RegExp(_passwordPattern).hasMatch(value)) {
+      return 'Password must include:\n'
+          '- At least 8 characters\n'
+          '- One uppercase letter\n'
+          '- One lowercase letter\n'
+          '- One number\n'
+          '- One special character';
+    }
+    return null;
   }
 
   Future<void> _showSuccessDialog({required VoidCallback onSuccess}) async {
@@ -548,7 +604,34 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           labelText: 'Password',
                           border: OutlineInputBorder(),
                         ),
+                        onChanged:
+                            _validatePasswordRealTime, // Real-time validation
+                        validator:
+                            _validatePassword, // Validation for form submission
                       ),
+// Add this after the password TextFormField
+                      ValueListenableBuilder<Map<String, bool>>(
+                        valueListenable: _passwordRequirements,
+                        builder: (context, value, child) {
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildRequirementRow(
+                                  'At least 8 characters', value['length']!),
+                              _buildRequirementRow(
+                                  'One uppercase letter', value['uppercase']!),
+                              _buildRequirementRow(
+                                  'One lowercase letter', value['lowercase']!),
+                              _buildRequirementRow(
+                                  'One number', value['number']!),
+                              _buildRequirementRow(
+                                  'One special character (@\$!%*?&)',
+                                  value['specialChar']!),
+                            ],
+                          );
+                        },
+                      ),
+
                       const SizedBox(height: 10),
                       TextFormField(
                         controller: _confirmPasswordController,
@@ -557,7 +640,45 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           labelText: 'Confirm Password',
                           border: OutlineInputBorder(),
                         ),
+                        onChanged: (value) {
+                          _isPasswordMatch.value =
+                              value == _passwordController.text;
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Confirm Password is required';
+                          }
+                          if (value != _passwordController.text) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
                       ),
+                      ValueListenableBuilder<bool>(
+                        valueListenable: _isPasswordMatch,
+                        builder: (context, isMatch, child) {
+                          return Row(
+                            children: [
+                              Icon(
+                                isMatch ? Icons.check_circle : Icons.cancel,
+                                color: isMatch ? Colors.green : Colors.red,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                isMatch
+                                    ? 'Passwords match'
+                                    : 'Passwords do not match',
+                                style: TextStyle(
+                                  color: isMatch ? Colors.green : Colors.red,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+
                       const SizedBox(height: 10),
                       Row(
                         children: [
