@@ -108,15 +108,22 @@ Future<void> generateMealPlan(
                 meal['meal_category_id'] == 7)) // Lunch & Dinner
         .toList();
 
+    List snacks = filteredMeals
+        .where((meal) =>
+            meal['recipe_id'] != null && meal['meal_category_id'] == 5) // Snack
+        .toList();
+
     // Validate that there are enough unique meals in each category
     if (breakfasts.length < 7) throw 'Not enough breakfast meals.';
     if (lunches.length < 7) throw 'Not enough lunch meals.';
     if (dinners.length < 7) throw 'Not enough dinner meals.';
+    if (snacks.length < 7) throw 'Not enough snack meals.';
 
     // Shuffle and select 7 meals from each category
     breakfasts.shuffle();
     lunches.shuffle();
     dinners.shuffle();
+    snacks.shuffle();
 
     List<List<Map<String, dynamic>>> newMealPlan = List.generate(
         7,
@@ -124,6 +131,7 @@ Future<void> generateMealPlan(
               breakfasts[index],
               lunches[index],
               dinners[index],
+              snacks[index],
             ]);
 
     // Save meal plan to the database
@@ -135,6 +143,8 @@ Future<void> generateMealPlan(
           day + 1, 2, dailyMeals[1], familyHeadName); // Lunch
       await _saveMealToDatabase(
           day + 1, 3, dailyMeals[2], familyHeadName); // Dinner
+      await _saveMealToDatabase(
+          day + 1, 5, dailyMeals[3], familyHeadName); // Snack
     }
 
     // Show success dialog
