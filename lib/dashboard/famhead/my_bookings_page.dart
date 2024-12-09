@@ -171,19 +171,24 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildStatusCard(
-                        label: 'Pending',
-                        count: pendingCount,
-                        icon: Icons.pending_actions,
-                        onTap: () =>
-                            showBookingDetails('Pending', pendingBookings),
+                      Expanded(
+                        child: _buildStatusCard(
+                          label: 'Pending',
+                          count: pendingCount,
+                          icon: Icons.pending_actions,
+                          onTap: () =>
+                              showBookingDetails('Pending', pendingBookings),
+                        ),
                       ),
-                      _buildStatusCard(
-                        label: 'Accepted',
-                        count: acceptedCount,
-                        icon: Icons.check_circle,
-                        onTap: () =>
-                            showBookingDetails('Accepted', acceptedBookings),
+                      const SizedBox(width: 20), // Adjust spacing between cards
+                      Expanded(
+                        child: _buildStatusCard(
+                          label: 'Accepted',
+                          count: acceptedCount,
+                          icon: Icons.check_circle,
+                          onTap: () =>
+                              showBookingDetails('Accepted', acceptedBookings),
+                        ),
                       ),
                     ],
                   ),
@@ -205,25 +210,38 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: SizedBox(
-          width: 150,
-          height: 150,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 40, color: Colors.green),
-              const SizedBox(height: 10),
-              Text(
-                label,
-                style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                '$count',
-                style:
-                    const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-            ],
+          width: 500, // Set the desired width
+          height: 200, // Adjusted height for alignment
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(vertical: 20.0, horizontal: 16.0),
+            child: Row(
+              children: [
+                Icon(icon, size: 64, color: Colors.green), // Adjusted size
+                const SizedBox(width: 20), // Space between icon and text
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 28, // Font size for the label
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '$count',
+                      style: const TextStyle(
+                        fontSize: 32, // Font size for the count
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
