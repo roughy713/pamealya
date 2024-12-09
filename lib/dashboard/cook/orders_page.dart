@@ -109,10 +109,6 @@ class _OrdersPageState extends State<OrdersPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Orders'),
-        backgroundColor: Colors.green,
-      ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : orders.isEmpty
