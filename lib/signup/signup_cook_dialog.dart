@@ -15,6 +15,39 @@ class SignUpCookDialog extends StatefulWidget {
 class SignUpCookDialogState extends State<SignUpCookDialog> {
   final formKey = GlobalKey<FormState>();
 
+  final _formKey = GlobalKey<FormState>();
+  final String _passwordPattern =
+      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$';
+  final ValueNotifier<bool> _isPasswordMatch = ValueNotifier<bool>(true);
+
+  final ValueNotifier<Map<String, bool>> _passwordRequirements = ValueNotifier({
+    'length': false,
+    'uppercase': false,
+    'lowercase': false,
+    'number': false,
+    'specialChar': false,
+  });
+
+  Widget _buildRequirementRow(String text, bool isValid) {
+    return Row(
+      children: [
+        Icon(
+          isValid ? Icons.check_circle : Icons.cancel,
+          color: isValid ? Colors.green : Colors.red,
+          size: 20,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          text,
+          style: TextStyle(
+            color: isValid ? Colors.green : Colors.red,
+            fontSize: 14,
+          ),
+        ),
+      ],
+    );
+  }
+
   final TextEditingController firstNameController = TextEditingController();
   final TextEditingController lastNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
@@ -134,6 +167,31 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
         }
       }
     }
+  }
+
+  void _validatePasswordRealTime(String value) {
+    _passwordRequirements.value = {
+      'length': value.length >= 8,
+      'uppercase': RegExp(r'[A-Z]').hasMatch(value),
+      'lowercase': RegExp(r'[a-z]').hasMatch(value),
+      'number': RegExp(r'\d').hasMatch(value),
+      'specialChar': RegExp(r'[@$!%*?&]').hasMatch(value),
+    };
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Password is required';
+    }
+    if (!RegExp(_passwordPattern).hasMatch(value)) {
+      return 'Password must include:\n'
+          '- At least 8 characters\n'
+          '- One uppercase letter\n'
+          '- One lowercase letter\n'
+          '- One number\n'
+          '- One special character';
+    }
+    return null;
   }
 
   // Show success dialog
@@ -581,13 +639,34 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                               labelText: 'Password',
                               border: OutlineInputBorder(),
                             ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter your password';
-                              }
-                              return null;
+                            onChanged:
+                                _validatePasswordRealTime, // Real-time validation
+                            validator:
+                                _validatePassword, // Validation for form submission
+                          ),
+// Add this after the password TextFormField
+                          ValueListenableBuilder<Map<String, bool>>(
+                            valueListenable: _passwordRequirements,
+                            builder: (context, value, child) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildRequirementRow('At least 8 characters',
+                                      value['length']!),
+                                  _buildRequirementRow('One uppercase letter',
+                                      value['uppercase']!),
+                                  _buildRequirementRow('One lowercase letter',
+                                      value['lowercase']!),
+                                  _buildRequirementRow(
+                                      'One number', value['number']!),
+                                  _buildRequirementRow(
+                                      'One special character (@\$!%*?&)',
+                                      value['specialChar']!),
+                                ],
+                              );
                             },
                           ),
+
                           const SizedBox(height: 10),
                           TextFormField(
                             controller: confirmPasswordController,
@@ -596,14 +675,43 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                               labelText: 'Confirm Password',
                               border: OutlineInputBorder(),
                             ),
+                            onChanged: (value) {
+                              _isPasswordMatch.value =
+                                  value == passwordController.text;
+                            },
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'Please confirm your password';
+                                return 'Confirm Password is required';
                               }
                               if (value != passwordController.text) {
                                 return 'Passwords do not match';
                               }
                               return null;
+                            },
+                          ),
+                          ValueListenableBuilder<bool>(
+                            valueListenable: _isPasswordMatch,
+                            builder: (context, isMatch, child) {
+                              return Row(
+                                children: [
+                                  Icon(
+                                    isMatch ? Icons.check_circle : Icons.cancel,
+                                    color: isMatch ? Colors.green : Colors.red,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    isMatch
+                                        ? 'Passwords match'
+                                        : 'Passwords do not match',
+                                    style: TextStyle(
+                                      color:
+                                          isMatch ? Colors.green : Colors.red,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ],
+                              );
                             },
                           ),
                           const SizedBox(height: 10),

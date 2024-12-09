@@ -678,7 +678,6 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           );
                         },
                       ),
-
                       const SizedBox(height: 10),
                       Row(
                         children: [
