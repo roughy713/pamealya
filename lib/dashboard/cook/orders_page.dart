@@ -35,7 +35,8 @@ class _OrdersPageState extends State<OrdersPage> {
       bookingrequest_id,
       delivery_status_id,
       familymember_id,
-      mealplan_id,
+      mealplan:mealplan_id(meal_name),
+
       request_date,
       desired_delivery_time,
       Local_Cook(first_name, last_name, user_id),
@@ -143,7 +144,8 @@ class _OrdersPageState extends State<OrdersPage> {
                               const SizedBox(height: 8),
                               Text(
                                   'Family Head: ${order['family_head_name'] ?? 'N/A'}'),
-                              Text('Meal: ${order['mealplan_id'] ?? 'N/A'}'),
+                              Text(
+                                  'Meal: ${order['mealplan']?['meal_name'] ?? 'N/A'}'),
                               Text('Request Date: ${order['request_date']}'),
                               Text(
                                   'Delivery Time: ${order['desired_delivery_time']}'),
@@ -213,10 +215,8 @@ class _OrdersPageState extends State<OrdersPage> {
                                     : 'N/A',
                               ),
                               _buildDetailRow(
-                                'Delivery Time',
-                                order['desired_delivery_time'] != null
-                                    ? order['desired_delivery_time'].toString()
-                                    : 'N/A',
+                                'Meal Name',
+                                order['mealplan']?['meal_name'] ?? 'N/A',
                               ),
                               const SizedBox(height: 10),
                               const Text(

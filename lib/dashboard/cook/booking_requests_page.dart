@@ -27,7 +27,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
         throw Exception('User not logged in');
       }
 
-      // Fetch only booking requests for the logged-in cook
+      // Fetch booking requests for the logged-in cook
       final response = await supabase
           .from('bookingrequest')
           .select('''
@@ -38,7 +38,8 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
           desired_delivery_time,
           status,
           Local_Cook(first_name, last_name, user_id),
-          familymember(first_name, last_name, user_id)
+          familymember(first_name, last_name, user_id),
+          mealplan(meal_name) -- Join mealplan table to fetch meal_name
         ''')
           .eq('status', 'pending') // Fetch pending booking requests
           .eq('Local_Cook.user_id', userId) // Filter by logged-in user's ID
@@ -64,6 +65,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
             'family_head_name':
                 '${familyHead['first_name'] ?? 'Unknown'} ${familyHead['last_name'] ?? ''}'
                     .trim(),
+            'meal_name': booking['mealplan']?['meal_name'] ?? 'N/A',
           };
         }));
         isLoading = false;
@@ -140,7 +142,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
                             Text(
                                 'Family Head: ${booking['family_head_name'] ?? 'N/A'}'),
                             Text('Cook: ${booking['cook_name'] ?? 'Unknown'}'),
-                            Text('Meal: ${booking['mealplan_id'] ?? 'N/A'}'),
+                            Text('Meal: ${booking['meal_name'] ?? 'N/A'}'),
                             Text('Request Date: ${booking['request_date']}'),
                             Text(
                                 'Delivery Time: ${booking['desired_delivery_time']}'),
