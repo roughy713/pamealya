@@ -102,7 +102,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
             'is_completed': false
           },
           {
-            'meal_category_id': 5,
+            'meal_category_id': 4,
             'meal_name': null,
             'recipe_id': null,
             'mealplan_id': null,
@@ -129,7 +129,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           case 3:
             categoryIndex = 2;
             break;
-          case 5:
+          case 4:
             categoryIndex = 3;
             break;
           default:
@@ -555,7 +555,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
         // Snacks cell
         _buildMealCell(
-            context, meals.length > 3 ? meals[3] : null, dayIndex, 5),
+            context, meals.length > 3 ? meals[3] : null, dayIndex, 4),
         // Only meal cell for Snacks
       ],
     );

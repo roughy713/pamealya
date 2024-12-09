@@ -110,7 +110,7 @@ Future<void> generateMealPlan(
 
     List snacks = filteredMeals
         .where((meal) =>
-            meal['recipe_id'] != null && meal['meal_category_id'] == 5) // Snack
+            meal['recipe_id'] != null && meal['meal_category_id'] == 4) // Snack
         .toList();
 
     // Validate that there are enough unique meals in each category
@@ -144,7 +144,7 @@ Future<void> generateMealPlan(
       await _saveMealToDatabase(
           day + 1, 3, dailyMeals[2], familyHeadName); // Dinner
       await _saveMealToDatabase(
-          day + 1, 5, dailyMeals[3], familyHeadName); // Snack
+          day + 1, 4, dailyMeals[3], familyHeadName); // Snack
     }
 
     // Show success dialog
