@@ -163,7 +163,6 @@ class _OrdersPageState extends State<OrdersPage> {
     showDialog(
       context: context,
       builder: (context) {
-        int currentStep = 0; // Initialize the current step
         return StatefulBuilder(
           builder: (context, setState) {
             return Dialog(
@@ -182,7 +181,7 @@ class _OrdersPageState extends State<OrdersPage> {
                         child: Column(
                           children: [
                             Text(
-                              'Booking ID: ${order['bookingrequest_id'].toString()}',
+                              'Booking ID: ${order['bookingrequest_id']}',
                               style: const TextStyle(
                                 fontSize: 20,
                                 fontWeight: FontWeight.bold,
@@ -233,38 +232,44 @@ class _OrdersPageState extends State<OrdersPage> {
                                 children: [
                                   _buildStepCircle(
                                     context,
-                                    1,
+                                    2,
                                     'Preparing',
                                     Icons.fastfood,
-                                    currentStep,
-                                    setState,
+                                    (newStep) {
+                                      // Update delivery status to "Preparing"
+                                      _updateOrderStatus(newStep,
+                                          order['bookingrequest_id'], context);
+                                    },
                                     order['bookingrequest_id'],
-                                    order[
-                                        'delivery_status_id'], // Pass deliveryStatusId here
-                                  ),
-                                  _buildDashedLine(),
-                                  _buildStepCircle(
-                                    context,
-                                    2,
-                                    'On Delivery',
-                                    Icons.delivery_dining,
-                                    currentStep,
-                                    setState,
-                                    order['bookingrequest_id'],
-                                    order[
-                                        'delivery_status_id'], // Pass deliveryStatusId here
+                                    order['delivery_status_id'],
                                   ),
                                   _buildDashedLine(),
                                   _buildStepCircle(
                                     context,
                                     3,
-                                    'Done',
-                                    Icons.check_circle,
-                                    currentStep,
-                                    setState,
+                                    'On Delivery',
+                                    Icons.delivery_dining,
+                                    (newStep) {
+                                      // Update delivery status to "On Delivery"
+                                      _updateOrderStatus(newStep,
+                                          order['bookingrequest_id'], context);
+                                    },
                                     order['bookingrequest_id'],
-                                    order[
-                                        'delivery_status_id'], // Pass deliveryStatusId here
+                                    order['delivery_status_id'],
+                                  ),
+                                  _buildDashedLine(),
+                                  _buildStepCircle(
+                                    context,
+                                    4,
+                                    'Completed',
+                                    Icons.check_circle,
+                                    (newStep) {
+                                      // Update delivery status to "Completed"
+                                      _updateOrderStatus(newStep,
+                                          order['bookingrequest_id'], context);
+                                    },
+                                    order['bookingrequest_id'],
+                                    order['delivery_status_id'],
                                   ),
                                 ],
                               ),
@@ -300,7 +305,8 @@ class _OrdersPageState extends State<OrdersPage> {
                                 MaterialPageRoute(
                                   builder: (context) => OrdersChatRoomPage(
                                     chatRoomId: chatRoomId,
-                                    recipientName: order['cook_name'] ?? 'N/A',
+                                    recipientName: order['family_head_name'] ??
+                                        'N/A', // Chat is with family head
                                   ),
                                 ),
                               );
@@ -376,14 +382,14 @@ class _OrdersPageState extends State<OrdersPage> {
   }
 
   Widget _buildStepCircle(
-      BuildContext context,
-      int step,
-      String label,
-      IconData icon,
-      int currentStep,
-      Function setState,
-      String bookingRequestId,
-      int? deliveryStatusId) {
+    BuildContext context,
+    int step,
+    String label,
+    IconData icon,
+    Function(int) onStepClick,
+    String bookingRequestId,
+    int? deliveryStatusId,
+  ) {
     // Determine if the step is completed based on deliveryStatusId
     final isCompleted = deliveryStatusId != null && step <= deliveryStatusId;
 
@@ -398,28 +404,7 @@ class _OrdersPageState extends State<OrdersPage> {
                   final confirmed =
                       await _showConfirmationDialog(context, label);
                   if (confirmed) {
-                    setState(() {
-                      currentStep = step;
-                    });
-
-                    final statusUpdated =
-                        await _updateOrderStatus(step, bookingRequestId);
-                    if (statusUpdated) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('$label marked as complete!'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content:
-                              Text('Failed to update status in the database'),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                    }
+                    onStepClick(step);
                   }
                 }
               : () {
@@ -476,29 +461,46 @@ class _OrdersPageState extends State<OrdersPage> {
         false;
   }
 
-  Future<bool> _updateOrderStatus(int step, String bookingRequestId) async {
+  Future<bool> _updateOrderStatus(
+      int step, String bookingRequestId, BuildContext context) async {
     try {
       int statusId;
 
       // Map the step to the corresponding delivery_status_id
-      if (step == 1) {
+      if (step == 2) {
         statusId = 2; // "Preparing"
-      } else if (step == 2) {
-        statusId = 3; // "On Delivery"
       } else if (step == 3) {
-        statusId = 4; // "Delivered"
+        statusId = 3; // "On Delivery"
+      } else if (step == 4) {
+        statusId = 4; // "Completed"
       } else {
         return false;
       }
 
       // Update the delivery_status_id in the database
-      final response = await Supabase.instance.client
+      final response = await supabase
           .from('bookingrequest')
           .update({'delivery_status_id': statusId})
           .eq('bookingrequest_id', bookingRequestId)
           .select();
 
       if (response.isNotEmpty) {
+        await fetchOrders(); // Fetch updated orders immediately after update
+
+        // Check if the dialog is still mounted
+        if (mounted) {
+          final updatedOrder = orders.firstWhere(
+            (order) => order['bookingrequest_id'] == bookingRequestId,
+            orElse: () => {},
+          );
+
+          // Reopen the dialog with updated data
+          if (updatedOrder.isNotEmpty) {
+            Navigator.pop(context); // Close current dialog
+            _showOrderDetailsDialog(context, updatedOrder);
+          }
+        }
+
         return true; // Successfully updated
       } else {
         print('Database error: No rows affected.');

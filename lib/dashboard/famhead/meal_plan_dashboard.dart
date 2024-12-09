@@ -593,9 +593,19 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                     : SystemMouseCursors.basic,
                 child: GestureDetector(
                   onTap: () {
-                    if (!isCompleted && mealPlanId != null) {
-                      _showCookBookingDialog(
-                          context, mealPlanId); // Pass `mealPlanId`
+                    if (meal['recipe_id'] != null) {
+                      _showMealDetailsDialog(
+                        context: context,
+                        meal: meal,
+                        familyMemberCount: widget.familyMembers.length,
+                        onCompleteMeal: widget.onCompleteMeal,
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content:
+                                Text('No details available for this meal.')),
+                      );
                     }
                   },
                   child: Text(
@@ -1089,7 +1099,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       final recipeId = meal['recipe_id'];
 
       // Fetch meal details
-      final mealDetailsResponse = await Supabase.instance.client
+      final mealDetailsResponse = await supabase
           .from('meal')
           .select('description, image_url')
           .eq('recipe_id', recipeId)
@@ -1098,28 +1108,27 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       final imageUrl =
           constructImageUrl(mealDetailsResponse?['image_url'] ?? '');
 
-      final ingredientsResponse = await Supabase.instance.client
+      final ingredientsResponse = await supabase
           .from('ingredients')
           .select('name, quantity, unit')
           .eq('recipe_id', recipeId);
 
-      final instructionsResponse = await Supabase.instance.client
+      final instructionsResponse = await supabase
           .from('instructions')
           .select('step_number, instruction')
           .eq('recipe_id', recipeId)
           .order('step_number', ascending: true);
 
-      // Process fetched data and handle types
+      // Process fetched data
       final mealDescription =
           (mealDetailsResponse?['description'] ?? 'No description available')
               .toString();
-      final ingredients = (ingredientsResponse as List<dynamic>)
-          .map((ingredient) => ingredient as Map<String, dynamic>)
-          .toList();
-      final instructions = (instructionsResponse as List<dynamic>)
-          .map((instruction) => instruction as Map<String, dynamic>)
-          .toList();
+      final ingredients =
+          List<Map<String, dynamic>>.from(ingredientsResponse ?? []);
+      final instructions =
+          List<Map<String, dynamic>>.from(instructionsResponse ?? []);
 
+      // Show Ingredients Dialog
       _showIngredientsDialog(
         context: context,
         mealName: meal['meal_name'].toString(),
