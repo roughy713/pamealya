@@ -102,7 +102,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
             'is_completed': false
           },
           {
-            'meal_category_id': 4,
+            'meal_category_id': 4, // Adjust for Snacks
             'meal_name': null,
             'recipe_id': null,
             'mealplan_id': null,
@@ -111,47 +111,62 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         ],
       );
 
-      for (var meal in response) {
-        int day = (meal['day'] ?? 1) - 1; // Ensure day is int
-        String mealPlanId =
-            meal['mealplan_id']?.toString() ?? ''; // Ensure it's a string
-
-        if (meal['meal_category_id'] is! int) continue; // Validate category ID
-        int categoryIndex = -1;
-
-        switch (meal['meal_category_id']) {
-          case 1:
-            categoryIndex = 0;
-            break;
-          case 2:
-            categoryIndex = 1;
-            break;
-          case 3:
-            categoryIndex = 2;
-            break;
-          case 4:
-            categoryIndex = 3;
-            break;
-          default:
+      for (var meal in response ?? []) {
+        try {
+          if (meal == null) {
+            print('Skipping null meal entry');
             continue;
-        }
+          }
+          int day = (meal['day'] ?? 1) - 1; // Default to day 1 if null
+          if (day < 0 || day >= 7) {
+            print('Invalid day value: ${meal['day']}');
+            continue;
+          }
 
-        if (day >= 0 && day < 7 && categoryIndex >= 0 && categoryIndex < 4) {
+          int categoryIndex = -1;
+          switch (meal['meal_category_id']) {
+            case 1:
+              categoryIndex = 0;
+              break;
+            case 2:
+              categoryIndex = 1;
+              break;
+            case 3:
+              categoryIndex = 2;
+              break;
+            case 4:
+              categoryIndex = 3;
+              break;
+            default:
+              print('Invalid meal_category_id: ${meal['meal_category_id']}');
+              continue;
+          }
+
+          if (categoryIndex < 0 ||
+              categoryIndex >= fetchedMealPlan[day].length) {
+            print('Invalid categoryIndex: $categoryIndex for day: $day');
+            continue;
+          }
+
           fetchedMealPlan[day][categoryIndex] = {
             'meal_category_id': meal['meal_category_id'],
-            'meal_name':
-                meal['meal_name']?.toString() ?? 'N/A', // Ensure it's a string
+            'meal_name': meal['meal_name']?.toString() ?? 'N/A',
             'recipe_id': meal['recipe_id']?.toString() ?? '',
-            'mealplan_id': mealPlanId,
+            'mealplan_id': meal['mealplan_id']?.toString() ?? '',
             'is_completed': meal['is_completed'] ?? false,
-            'day': day + 1, // Add 1 to match the day index
+            'day': day + 1,
           };
+        } catch (e) {
+          print('Error processing meal: $meal, Error: $e');
+          continue;
         }
       }
 
       setState(() {
         mealPlanData = fetchedMealPlan;
       });
+
+      print('Final fetchedMealPlan: $mealPlanData');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching meal plan: $e')),
@@ -652,14 +667,15 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
   Widget _buildServingCell(Map<String, dynamic> member, int mealCategoryId) {
     String? portionKey;
+    String? imageUrl;
 
-    // Check for special conditions first
+    // Prioritize pregnant and lactating
     if (member['is_pregnant'] == true) {
       portionKey = 'Pregnant';
     } else if (member['is_lactating'] == true) {
       portionKey = 'Lactating';
     } else {
-      // Construct key for non-special conditions
+      // Construct key for age and gender
       final String? ageGroup = _getAgeGroup(member['age']);
       final String? gender = member['gender'];
       if (ageGroup != null && gender != null) {
@@ -667,9 +683,10 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       }
     }
 
-    // Retrieve portion size data
+    // Retrieve portion size data and image URL
     final portion =
         portionKey != null ? widget.portionSizeData[portionKey] : null;
+    imageUrl = portion?['image_url'];
 
     if (portion == null) {
       return const Padding(
@@ -688,15 +705,43 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       riceType = portion['Rice_dinner'];
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Text(
-        'Rice: $riceType\n'
-        'Protein: ${portion['Proteins_per_meal']}\n'
-        'Fruits: ${portion['FruitsVegetables_per_meal']}\n'
-        'Water: ${portion['Water_per_meal']}',
-        textAlign: TextAlign.center,
+    return GestureDetector(
+      onTap: () {
+        _showImageDialog(context, imageUrl);
+      },
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Text(
+          'Rice: $riceType\n'
+          'Protein: ${portion['Proteins_per_meal']}\n'
+          'Fruits: ${portion['FruitsVegetables_per_meal']}\n'
+          'Water: ${portion['Water_per_meal']}',
+          textAlign: TextAlign.center,
+        ),
       ),
+    );
+  }
+
+  void _showImageDialog(BuildContext context, String? imageUrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          content: imageUrl != null && imageUrl.isNotEmpty
+              ? Image.network(
+                  imageUrl,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Text('Image not available'),
+                )
+              : const Text('Image not available'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
     );
   }
 

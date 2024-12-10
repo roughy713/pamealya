@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Import intl package
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '/home_page.dart';
 import 'meal_plan_dashboard.dart';
@@ -14,14 +14,14 @@ class FamHeadDashboard extends StatefulWidget {
   final String firstName;
   final String lastName;
   final String currentUserUsername;
-  final String currentUserId; // New parameter added
+  final String currentUserId;
 
   const FamHeadDashboard({
     Key? key,
     required this.firstName,
     required this.lastName,
     required this.currentUserUsername,
-    required this.currentUserId, // Marked as required
+    required this.currentUserId,
   }) : super(key: key);
 
   @override
@@ -54,7 +54,6 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     fetchPortionSizeData();
   }
 
-  // Helper function to format dates as MM/DD/YYYY
   String formatDate(String? dateString) {
     try {
       final parsedDate = DateTime.parse(dateString!);
@@ -74,42 +73,35 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           .order('day', ascending: true)
           .order('meal_category_id', ascending: true);
 
+      // Initialize a 7x4 grid for the week (7 days, 4 categories per day)
       List<List<Map<String, dynamic>>> fetchedMealPlan = List.generate(
-          7,
-          (_) => [
-                {
-                  'meal_category_id': 1,
-                  'meal_name': null,
-                  'recipe_id': null,
-                  'mealplan_id': null,
-                  'is_completed': false,
-                },
-                {
-                  'meal_category_id': 2,
-                  'meal_name': null,
-                  'recipe_id': null,
-                  'mealplan_id': null,
-                  'is_completed': false,
-                },
-                {
-                  'meal_category_id': 3,
-                  'meal_name': null,
-                  'recipe_id': null,
-                  'mealplan_id': null,
-                  'is_completed': false,
-                },
-              ]);
+        7,
+        (_) => List.generate(
+          4,
+          (categoryId) => {
+            'meal_category_id': categoryId + 1,
+            'meal_name': null,
+            'recipe_id': null,
+            'mealplan_id': null,
+            'is_completed': false,
+          },
+        ),
+      );
 
+      // Process response and populate the meal plan
       for (var meal in response) {
-        int day = meal['day'] - 1;
+        int day = (meal['day'] ?? 1) - 1;
+        int categoryIndex = (meal['meal_category_id'] ?? 1) - 1;
 
-        if (day < 0 || day >= 7) continue;
-
-        fetchedMealPlan[day][meal['meal_category_id'] - 1] = {
-          ...meal,
-          'formatted_date':
-              formatDate(meal['day'].toString()), // Format the day
-        };
+        if (day >= 0 && day < 7 && categoryIndex >= 0 && categoryIndex < 4) {
+          fetchedMealPlan[day][categoryIndex] = {
+            'meal_category_id': meal['meal_category_id'],
+            'meal_name': meal['meal_name'] ?? 'N/A',
+            'recipe_id': meal['recipe_id'] ?? null,
+            'mealplan_id': meal['mealplan_id'],
+            'is_completed': meal['is_completed'] ?? false,
+          };
+        }
       }
 
       setState(() {
@@ -215,21 +207,21 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           portionSizeData: portionSizeData,
           familyHeadName: '${widget.firstName} ${widget.lastName}',
           onCompleteMeal: markMealAsCompleted,
-          userFirstName: widget.firstName, // Pass user's first name
-          userLastName: widget.lastName, // Pass user's last name
+          userFirstName: widget.firstName,
+          userLastName: widget.lastName,
         ),
         MyFamilyPage(
           initialFirstName: widget.firstName,
           initialLastName: widget.lastName,
         ),
         FamHeadChatPage(
-          currentUserId: widget.currentUserId, // Pass family head ID
+          currentUserId: widget.currentUserId,
         ),
         MyBookingsPage(
-          currentUserId: widget.currentUserId, // Ensure this parameter exists
+          currentUserId: widget.currentUserId,
         ),
-        const NotificationsPage(), // Ensure these widgets don't need the parameter
-        const TransactionPage(), // Ensure these widgets don't need the parameter
+        const NotificationsPage(),
+        const TransactionPage(),
       ];
 
   @override

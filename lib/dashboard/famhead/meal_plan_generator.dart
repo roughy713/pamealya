@@ -87,7 +87,7 @@ Future<void> generateMealPlan(
         .where((meal) =>
             meal['recipe_id'] != null &&
             (meal['meal_category_id'] == 1 || // Breakfast
-                meal['meal_category_id'] == 4 || // All
+                meal['meal_category_id'] == 5 || // All
                 meal['meal_category_id'] == 6)) // Breakfast & Lunch
         .toList();
 
@@ -95,7 +95,7 @@ Future<void> generateMealPlan(
         .where((meal) =>
             meal['recipe_id'] != null &&
             (meal['meal_category_id'] == 2 || // Lunch
-                meal['meal_category_id'] == 4 || // All
+                meal['meal_category_id'] == 5 || // All
                 meal['meal_category_id'] == 6 || // Breakfast & Lunch
                 meal['meal_category_id'] == 7)) // Lunch & Dinner
         .toList();
@@ -104,7 +104,7 @@ Future<void> generateMealPlan(
         .where((meal) =>
             meal['recipe_id'] != null &&
             (meal['meal_category_id'] == 3 || // Dinner
-                meal['meal_category_id'] == 4 || // All
+                meal['meal_category_id'] == 5 || // All
                 meal['meal_category_id'] == 7)) // Lunch & Dinner
         .toList();
 
