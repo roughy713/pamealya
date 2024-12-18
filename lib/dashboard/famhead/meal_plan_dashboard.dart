@@ -726,47 +726,181 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       };
     }
 
-    // Split value and units (e.g., "1 glass (250 ml)" -> "1 glass" + "(250 ml)")
-    Widget buildSplitText(String label, String value) {
-      final RegExp unitPattern = RegExp(r'(.+?)\s*\((.+?)\)');
-      final match = unitPattern.firstMatch(value);
+    // Log the URLs for debugging
+    print("Pie URL: ${portion['pie']}");
+    print("Pyramid URL: ${portion['pyramid']}");
 
-      String mainText = value;
-      String unitText = '';
-
-      if (match != null) {
-        mainText = match.group(1) ?? value;
-        unitText = match.group(2) ?? '';
-      }
-
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 2.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$label: $mainText',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+    // Dialog to display Pyramid and Pie images
+    void showPortionDialog() {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16.0),
             ),
-            if (unitText.isNotEmpty)
-              Text(
-                '($unitText)',
-                style: const TextStyle(fontSize: 14, color: Colors.grey),
+            child: SizedBox(
+              width: 600, // Increased width
+              height: 500, // Increased height
+              child: DefaultTabController(
+                length: 2,
+                child: Column(
+                  children: [
+                    const TabBar(
+                      labelColor: Colors.green,
+                      indicatorColor: Colors.green,
+                      tabs: [
+                        Tab(icon: Icon(Icons.pie_chart), text: 'Pie'),
+                        Tab(icon: Icon(Icons.area_chart), text: 'Pyramid'),
+                      ],
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          // Pie Image
+                          Center(
+                            child: portion['pie'] != null &&
+                                    portion['pie'].isNotEmpty
+                                ? Image.network(
+                                    portion['pie'],
+                                    fit: BoxFit.contain,
+                                    errorBuilder: (context, error,
+                                            stackTrace) =>
+                                        const Text('Pie Image not available'),
+                                  )
+                                : const Text('Pie Image not available'),
+                          ),
+                          // Pyramid Image
+                          Center(
+                            child: portion['pyramid'] != null &&
+                                    portion['pyramid'].isNotEmpty
+                                ? Image.network(
+                                    portion['pyramid'],
+                                    fit: BoxFit.contain,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            const Text(
+                                                'Pyramid Image not available'),
+                                  )
+                                : const Text('Pyramid Image not available'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
-          ],
-        ),
+            ),
+          );
+        },
       );
     }
 
-    // Render serving details
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: filteredPortion.entries.map((entry) {
-          return buildSplitText(entry.key, entry.value);
-        }).toList(),
+    // Render serving details with clickable container
+    return InkWell(
+      onTap: showPortionDialog,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: filteredPortion.entries.map((entry) {
+            final RegExp unitPattern = RegExp(r'(.+?)\s*\((.+?)\)');
+            final match = unitPattern.firstMatch(entry.value);
+
+            String mainText = entry.value;
+            String unitText = '';
+
+            if (match != null) {
+              mainText = match.group(1) ?? entry.value;
+              unitText = match.group(2) ?? '';
+            }
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${entry.key}: $mainText',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                if (unitText.isNotEmpty)
+                  Text(
+                    '($unitText)',
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+              ],
+            );
+          }).toList(),
+        ),
       ),
+    );
+  }
+
+  Future<String?> fetchPortionImage(String imageType, String portionKey) async {
+    try {
+      final response = await supabase
+          .from('PortionSize')
+          .select(imageType)
+          .eq('pyramid', portionKey)
+          .maybeSingle();
+
+      return response?[imageType] != null
+          ? constructImageUrl(response?[imageType])
+          : null;
+    } catch (e) {
+      print('Error fetching $imageType image: $e');
+      return null;
+    }
+  }
+
+  void _showPortionImageDialog(
+      BuildContext context, String? pyramidUrl, String? pieUrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: SizedBox(
+            width: 500,
+            height: 500,
+            child: DefaultTabController(
+              length: 2,
+              child: Column(
+                children: [
+                  const TabBar(
+                    indicatorColor: Colors.green,
+                    tabs: [
+                      Tab(icon: Icon(Icons.pie_chart), text: 'Pie'),
+                      Tab(icon: Icon(Icons.category), text: 'Pyramid'),
+                    ],
+                  ),
+                  Expanded(
+                    child: TabBarView(
+                      children: [
+                        _buildImageView(pieUrl, 'Pie Image'),
+                        _buildImageView(pyramidUrl, 'Pyramid Image'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildImageView(String? imageUrl, String placeholder) {
+    return Center(
+      child: imageUrl != null
+          ? Image.network(
+              imageUrl,
+              errorBuilder: (context, error, stackTrace) =>
+                  Text('$placeholder not available'),
+            )
+          : Text('$placeholder not available'),
     );
   }
 
