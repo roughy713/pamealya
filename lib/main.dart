@@ -182,8 +182,6 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-
-
 //mao ni sya and para sa admin login
 // import 'package:flutter/material.dart';
 // import 'package:pamealya/login/login_admin.dart';

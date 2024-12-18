@@ -319,16 +319,16 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     }
   }
 
-  Future<String?> fetchUserCity(String firstName, String lastName) async {
+  Future<String?> fetchUserCity(String familyHeadName) async {
     try {
       final response = await supabase
           .from('familymember')
           .select('city')
-          .eq('first_name', firstName)
-          .eq('last_name', lastName)
+          .eq('family_head', familyHeadName)
+          .limit(1)
           .maybeSingle();
 
-      return response != null ? response['city'] as String : null;
+      return response?['city'] as String?;
     } catch (e) {
       print('Error fetching user city: $e');
       return null;
@@ -337,18 +337,10 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
   Future<List<Map<String, dynamic>>> fetchCooks(String userCity) async {
     try {
-      final response = await supabase
-          .from('Local_Cook')
-          .select(
-            '''
-          localcookid, first_name, last_name, age, gender, dateofbirth, phone,
-          address_line1, barangay, city, province, postal_code,
-          availability_days, time_available_from, time_available_to,
-          certifications
-          ''',
-          )
-          .eq('is_accepted', true)
-          .eq('city', userCity);
+      final response = await supabase.from('Local_Cook').select('''
+      localcookid, first_name, last_name, city, phone, availability_days,
+      time_available_from, time_available_to, address_line1, barangay
+    ''').eq('is_accepted', true).eq('city', userCity);
 
       return response != null ? List<Map<String, dynamic>>.from(response) : [];
     } catch (e) {
@@ -609,7 +601,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                 child: GestureDetector(
                   onTap: () {
                     if (meal['recipe_id'] != null) {
-                      _showMealDetailsDialog(
+                      _showMealDetailsTabsDialog(
                         context: context,
                         meal: meal,
                         familyMemberCount: widget.familyMembers.length,
@@ -618,8 +610,8 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                     } else {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                            content:
-                                Text('No details available for this meal.')),
+                          content: Text('No details available for this meal.'),
+                        ),
                       );
                     }
                   },
@@ -667,7 +659,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
   Widget _buildServingCell(Map<String, dynamic> member, int mealCategoryId) {
     String? portionKey;
-    String? imageUrl;
 
     // Prioritize pregnant and lactating
     if (member['is_pregnant'] == true) {
@@ -683,41 +674,98 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       }
     }
 
-    // Retrieve portion size data and image URL
+    // Retrieve portion size data
     final portion =
         portionKey != null ? widget.portionSizeData[portionKey] : null;
-    imageUrl = portion?['image_url'];
 
     if (portion == null) {
-      return const Padding(
-        padding: EdgeInsets.all(8.0),
-        child: Text('N/A', textAlign: TextAlign.center),
+      return Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: const Text(
+          'N/A',
+          style: TextStyle(fontSize: 14),
+          textAlign: TextAlign.left,
+        ),
       );
     }
 
-    // Determine rice type based on meal category
-    String riceType = '';
+    // Filter data based on mealCategoryId
+    Map<String, String> filteredPortion = {};
     if (mealCategoryId == 1) {
-      riceType = portion['Rice_breakfast'];
+      filteredPortion = {
+        'Water': portion['Water_Breakfast'] ?? 'N/A',
+        'Rice': portion['Rice_Breakfast'] ?? 'N/A',
+        'Fruits': portion['Fruits_Breakfast'] ?? 'N/A',
+        'Vegetables': portion['Vegetables_Breakfast'] ?? 'N/A',
+        'Milk': portion['Milk_Breakfast'] ?? 'N/A',
+        'Egg': portion['Egg_Breakfast'] ?? 'N/A',
+        'Fats': portion['Fats_Breakfast'] ?? 'N/A',
+      };
     } else if (mealCategoryId == 2) {
-      riceType = portion['Rice_lunch'];
+      filteredPortion = {
+        'Water': portion['Water_Lunch'] ?? 'N/A',
+        'Rice': portion['Rice_Lunch'] ?? 'N/A',
+        'Vegetables': portion['Vegetables_Lunch'] ?? 'N/A',
+        'Fish/Meat': portion['FishMeat_Lunch'] ?? 'N/A',
+        'Sugar': portion['Sugar_Lunch'] ?? 'N/A',
+        'Fats': portion['Fats_Lunch'] ?? 'N/A',
+      };
     } else if (mealCategoryId == 3) {
-      riceType = portion['Rice_dinner'];
+      filteredPortion = {
+        'Water': portion['Water_Dinner'] ?? 'N/A',
+        'Rice': portion['Rice_Dinner'] ?? 'N/A',
+        'Vegetables': portion['Vegetables_Dinner'] ?? 'N/A',
+        'Fish/Meat': portion['FishMeat_Dinner'] ?? 'N/A',
+        'Fats': portion['Fats_Dinner'] ?? 'N/A',
+      };
+    } else if (mealCategoryId == 4) {
+      filteredPortion = {
+        'Water': portion['Water_PM_Snack'] ?? 'N/A',
+        'Fruits': portion['Fruits_PM_Snack'] ?? 'N/A',
+        'Sugar': portion['Sugar_PM_Snack'] ?? 'N/A',
+      };
     }
 
-    return GestureDetector(
-      onTap: () {
-        _showImageDialog(context, imageUrl);
-      },
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Text(
-          'Rice: $riceType\n'
-          'Protein: ${portion['Proteins_per_meal']}\n'
-          'Fruits: ${portion['FruitsVegetables_per_meal']}\n'
-          'Water: ${portion['Water_per_meal']}',
-          textAlign: TextAlign.center,
+    // Split value and units (e.g., "1 glass (250 ml)" -> "1 glass" + "(250 ml)")
+    Widget buildSplitText(String label, String value) {
+      final RegExp unitPattern = RegExp(r'(.+?)\s*\((.+?)\)');
+      final match = unitPattern.firstMatch(value);
+
+      String mainText = value;
+      String unitText = '';
+
+      if (match != null) {
+        mainText = match.group(1) ?? value;
+        unitText = match.group(2) ?? '';
+      }
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '$label: $mainText',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            if (unitText.isNotEmpty)
+              Text(
+                '($unitText)',
+                style: const TextStyle(fontSize: 14, color: Colors.grey),
+              ),
+          ],
         ),
+      );
+    }
+
+    // Render serving details
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: filteredPortion.entries.map((entry) {
+          return buildSplitText(entry.key, entry.value);
+        }).toList(),
       ),
     );
   }
@@ -745,10 +793,147 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     );
   }
 
-  // Dialog Functions
+  Widget _buildIngredientsTab(List<Map<String, dynamic>> ingredients,
+      int familyMemberCount, String imageUrl) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Ingredients List
+          Expanded(
+            flex: 2,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Ingredients List:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  ...ingredients.map((ingredient) {
+                    final adjustedQuantity = _adjustQuantity(
+                        ingredient['quantity'], familyMemberCount);
+                    final unit = ingredient['unit'] ?? '';
+                    final name = ingredient['name'] ?? 'Unknown Ingredient';
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Text(
+                        '$adjustedQuantity $unit $name',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Image
+          Expanded(
+            flex: 1,
+            child: imageUrl.isNotEmpty
+                ? Image.network(
+                    imageUrl,
+                    height: 200,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Text('Image not available'),
+                  )
+                : const Text('No Image Available'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInstructionsTab(
+      List<Map<String, dynamic>> instructions, String imageUrl) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Instructions List
+          Expanded(
+            flex: 2,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Cooking Instructions:',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 8),
+                  ...instructions.map((instruction) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: Text(
+                        'Step ${instruction['step_number']}: ${instruction['instruction']}',
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          // Image
+          Expanded(
+            flex: 1,
+            child: imageUrl.isNotEmpty
+                ? Image.network(
+                    imageUrl,
+                    height: 200,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Text('Image not available'),
+                  )
+                : const Text('No Image Available'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdditionalsTab(String mealDescription, String imageUrl) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Text(
+            'Additional Notes',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            mealDescription,
+            style: const TextStyle(fontSize: 14),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          imageUrl.isNotEmpty
+              ? Image.network(
+                  imageUrl,
+                  height: 200,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      const Text('Image not available'),
+                )
+              : const Text('No Image Available'),
+        ],
+      ),
+    );
+  }
+
   void _showCookBookingDialog(BuildContext context, String mealPlanId) async {
-    String? userCity =
-        await fetchUserCity(widget.userFirstName, widget.userLastName);
+    String? userCity = await fetchUserCity(widget.familyHeadName);
 
     if (userCity == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -795,8 +980,17 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                         final firstName = cook['first_name'] ?? 'N/A';
                         final lastName = cook['last_name'] ?? 'N/A';
                         final city = cook['city'] ?? 'N/A';
-                        final rating =
-                            cook['rating'] ?? 4; // Placeholder rating
+
+                        // Define formattedAddress
+                        final addressLine1 =
+                            cook['address_line1']?.toString().trim();
+                        final barangay = cook['barangay']?.toString().trim();
+                        final formattedAddress =
+                            (addressLine1 != null && addressLine1.isNotEmpty)
+                                ? (barangay != null && barangay.isNotEmpty
+                                    ? '$addressLine1, $barangay'
+                                    : addressLine1)
+                                : 'No address provided';
 
                         return Card(
                           shape: RoundedRectangleBorder(
@@ -824,24 +1018,12 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                               style:
                                   const TextStyle(fontWeight: FontWeight.bold),
                             ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('City: $city'),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    for (int i = 1; i <= 5; i++)
-                                      Icon(
-                                        Icons.star,
-                                        size: 16,
-                                        color: i <= rating
-                                            ? Colors.orangeAccent
-                                            : Colors.grey,
-                                      ),
-                                  ],
-                                ),
-                              ],
+                            subtitle: Text(
+                              'City: $city\n'
+                              'Address: $formattedAddress\n'
+                              'Availability: ${cook['availability_days'] ?? 'N/A'} '
+                              '(${cook['time_available_from'] ?? 'N/A'} - ${cook['time_available_to'] ?? 'N/A'})',
+                              style: const TextStyle(fontSize: 14),
                             ),
                             onTap: () => _showCookDetailsDialog(
                                 context, cook, mealPlanId),
@@ -867,8 +1049,15 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     final lastName = cook['last_name'] ?? 'N/A';
     final city = cook['city'] ?? 'N/A';
     final phone = cook['phone'] ?? 'N/A';
-    final address = cook['address_line1'] ?? 'N/A';
-    final barangay = cook['barangay'] ?? 'N/A';
+    final addressLine1 = cook['address_line1']?.toString().trim();
+    final barangay = cook['barangay']?.toString().trim();
+
+    final formattedAddress = (addressLine1 != null && addressLine1.isNotEmpty)
+        ? (barangay != null && barangay.isNotEmpty
+            ? '$addressLine1, $barangay'
+            : addressLine1)
+        : 'No address provided';
+
     final availabilityDaysStr =
         cook['availability_days'] ?? 'N/A'; // e.g. "Monday,Wednesday,Friday"
     final timeFromStr = cook['time_available_from'] ?? '8:00 AM';
@@ -1027,10 +1216,11 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                           fontSize: 14, color: Colors.black),
                                       children: [
                                         const TextSpan(
-                                            text: 'Address: ',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.bold)),
-                                        TextSpan(text: '$address, $barangay'),
+                                          text: 'Address: ',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold),
+                                        ),
+                                        TextSpan(text: formattedAddress),
                                       ],
                                     ),
                                   ),
@@ -1132,16 +1322,15 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     );
   }
 
-  void _showMealDetailsDialog({
+  void _showMealDetailsTabsDialog({
     required BuildContext context,
     required Map<String, dynamic> meal,
     required int familyMemberCount,
     required void Function(String mealPlanId)? onCompleteMeal,
   }) async {
-    if (meal['recipe_id'] == null) return;
-
     try {
       final recipeId = meal['recipe_id'];
+      if (recipeId == null) return;
 
       // Fetch meal details
       final mealDetailsResponse = await supabase
@@ -1149,9 +1338,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           .select('description, image_url')
           .eq('recipe_id', recipeId)
           .maybeSingle();
-
-      final imageUrl =
-          constructImageUrl(mealDetailsResponse?['image_url'] ?? '');
 
       final ingredientsResponse = await supabase
           .from('ingredients')
@@ -1164,298 +1350,105 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           .eq('recipe_id', recipeId)
           .order('step_number', ascending: true);
 
-      // Process fetched data
+      // Extract data
+      final mealName = meal['meal_name'].toString();
       final mealDescription =
-          (mealDetailsResponse?['description'] ?? 'No description available')
-              .toString();
-      final ingredients =
-          List<Map<String, dynamic>>.from(ingredientsResponse ?? []);
+          mealDetailsResponse?['description'] ?? 'No description available';
+      final imageUrl = constructImageUrl(mealDetailsResponse?['image_url']);
+      final ingredients = List<Map<String, dynamic>>.from(ingredientsResponse);
       final instructions =
-          List<Map<String, dynamic>>.from(instructionsResponse ?? []);
+          List<Map<String, dynamic>>.from(instructionsResponse);
 
-      // Show Ingredients Dialog
-      _showIngredientsDialog(
+      // Show the dialog
+      showDialog(
         context: context,
-        mealName: meal['meal_name'].toString(),
-        mealDescription: mealDescription,
-        ingredients: ingredients,
-        instructions: instructions,
-        familyMemberCount: familyMemberCount,
-        imageUrl: imageUrl,
-        mealPlanId: meal['mealplan_id'].toString(), // Ensure it's a string
-        onCompleteMeal: onCompleteMeal,
+        builder: (BuildContext context) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: SizedBox(
+              width: 500, // Fixed size
+              height: 500,
+              child: DefaultTabController(
+                length: 3, // Three tabs
+                child: Column(
+                  children: [
+                    // Meal Title
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        mealName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    // TabBar
+                    const TabBar(
+                      indicatorColor: Colors.green,
+                      tabs: [
+                        Tab(icon: Icon(Icons.list), text: 'Ingredients'),
+                        Tab(icon: Icon(Icons.receipt), text: 'Instructions'),
+                        Tab(icon: Icon(Icons.add_circle), text: 'Additionals'),
+                      ],
+                    ),
+                    // TabBarView
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          _buildIngredientsTab(
+                              ingredients, familyMemberCount, imageUrl),
+                          _buildInstructionsTab(instructions, imageUrl),
+                          _buildAdditionalsTab(mealDescription, imageUrl),
+                        ],
+                      ),
+                    ),
+                    // Buttons Row
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          ElevatedButton(
+                            onPressed: () => _showCookBookingDialog(
+                                context, meal['mealplan_id']),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Book Cook'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {
+                              if (onCompleteMeal != null) {
+                                onCompleteMeal(meal['mealplan_id']);
+                              }
+                              Navigator.of(context).pop();
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.yellow,
+                              foregroundColor: Colors.black,
+                            ),
+                            child: const Text('Complete'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
       );
     } catch (error) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching meal details: $error')),
+        SnackBar(content: Text('Error loading meal details: $error')),
       );
     }
-  }
-
-  void _showIngredientsDialog({
-    required BuildContext context,
-    required String mealName,
-    required String mealDescription,
-    required List<Map<String, dynamic>> ingredients,
-    required List<Map<String, dynamic>> instructions,
-    required int familyMemberCount,
-    required String imageUrl,
-    required String mealPlanId,
-    required void Function(String mealPlanId)? onCompleteMeal,
-  }) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: SizedBox(
-            width: 600,
-            height: 400,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Center(
-                    child: Text(
-                      mealName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Ingredients List:',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                ...ingredients.map((ingredient) {
-                                  final adjustedQuantity = _adjustQuantity(
-                                      ingredient['quantity'],
-                                      familyMemberCount);
-
-                                  final unit = ingredient['unit'] ?? '';
-                                  final name = ingredient['name'] ??
-                                      'Unknown Ingredient';
-
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 4.0),
-                                    child: Text(
-                                      '$adjustedQuantity $unit $name',
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                  );
-                                }),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 1,
-                          child: Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Center(
-                                    child: Text('Image not available')),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                          foregroundColor: Colors.white,
-                        ),
-                        onPressed: () {
-                          // Pass the mealPlanId to _showCookBookingDialog
-                          _showCookBookingDialog(context, mealPlanId);
-                        },
-                        child: const Text('Book Cook'),
-                      ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.yellow,
-                          foregroundColor: Colors.black,
-                        ),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          _showInstructionsDialog(
-                            context: context,
-                            mealName: mealName,
-                            mealDescription: mealDescription,
-                            instructions: instructions,
-                            imageUrl: imageUrl,
-                            mealPlanId: mealPlanId,
-                            onCompleteMeal: onCompleteMeal,
-                            familyMemberCount: familyMemberCount,
-                            ingredients: ingredients, // Pass ingredients here
-                          );
-                        },
-                        child: const Text('Proceed →'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showInstructionsDialog({
-    required BuildContext context,
-    required String mealName,
-    required String mealDescription,
-    required List<Map<String, dynamic>> instructions,
-    required String imageUrl,
-    required String mealPlanId,
-    required void Function(String mealPlanId)? onCompleteMeal,
-    required int familyMemberCount,
-    required List<Map<String, dynamic>> ingredients, // Add this parameter
-  }) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: SizedBox(
-            width: 600,
-            height: 400,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  Center(
-                    child: Text(
-                      mealName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          flex: 2,
-                          child: SingleChildScrollView(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Instructions:',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                ...instructions.map((instruction) {
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 4.0,
-                                    ),
-                                    child: Text(
-                                      'Step ${instruction['step_number']}: ${instruction['instruction']}',
-                                      style: const TextStyle(fontSize: 14),
-                                    ),
-                                  );
-                                }),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 1,
-                          child: Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) =>
-                                const Center(
-                                    child: Text('Image not available')),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.yellow,
-                          foregroundColor: Colors.black,
-                        ),
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          _showIngredientsDialog(
-                            context: context,
-                            mealName: mealName,
-                            mealDescription: mealDescription,
-                            ingredients:
-                                ingredients, // Pass the ingredients back
-                            instructions: instructions,
-                            imageUrl: imageUrl,
-                            familyMemberCount: familyMemberCount,
-                            mealPlanId: mealPlanId,
-                            onCompleteMeal: onCompleteMeal,
-                          );
-                        },
-                        child: const Text('Previous'),
-                      ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.yellow,
-                          foregroundColor: Colors.black,
-                        ),
-                        onPressed: () {
-                          if (onCompleteMeal != null) {
-                            onCompleteMeal(mealPlanId);
-                          }
-                          Navigator.of(context).pop();
-                        },
-                        child: const Text('Complete'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
   }
 
   // Helper function to adjust the quantity
