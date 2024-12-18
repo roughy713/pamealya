@@ -666,7 +666,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     } else if (member['is_lactating'] == true) {
       portionKey = 'Lactating';
     } else {
-      // Construct key for age and gender
       final String? ageGroup = _getAgeGroup(member['age']);
       final String? gender = member['gender'];
       if (ageGroup != null && gender != null) {
@@ -726,26 +725,26 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       };
     }
 
-    // Log the URLs for debugging
-    print("Pie URL: ${portion['pie']}");
-    print("Pyramid URL: ${portion['pyramid']}");
-
-    // Dialog to display Pyramid and Pie images
+    // Show dialog to display Pie and Pyramid images
     void showPortionDialog() {
+      final String? pieUrl = portion['pie'];
+      final String? pyramidUrl = portion['pyramid'];
+
       showDialog(
         context: context,
         builder: (BuildContext context) {
           return Dialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.0),
+              borderRadius: BorderRadius.circular(16),
             ),
             child: SizedBox(
-              width: 600, // Increased width
-              height: 500, // Increased height
+              width: 600, // Adjust dialog size
+              height: 500,
               child: DefaultTabController(
                 length: 2,
                 child: Column(
                   children: [
+                    // Tab Bar
                     const TabBar(
                       labelColor: Colors.green,
                       indicatorColor: Colors.green,
@@ -754,15 +753,15 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                         Tab(icon: Icon(Icons.area_chart), text: 'Pyramid'),
                       ],
                     ),
+                    // Tab Views
                     Expanded(
                       child: TabBarView(
                         children: [
                           // Pie Image
                           Center(
-                            child: portion['pie'] != null &&
-                                    portion['pie'].isNotEmpty
+                            child: pieUrl != null && pieUrl.isNotEmpty
                                 ? Image.network(
-                                    portion['pie'],
+                                    pieUrl,
                                     fit: BoxFit.contain,
                                     errorBuilder: (context, error,
                                             stackTrace) =>
@@ -772,10 +771,9 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                           ),
                           // Pyramid Image
                           Center(
-                            child: portion['pyramid'] != null &&
-                                    portion['pyramid'].isNotEmpty
+                            child: pyramidUrl != null && pyramidUrl.isNotEmpty
                                 ? Image.network(
-                                    portion['pyramid'],
+                                    pyramidUrl,
                                     fit: BoxFit.contain,
                                     errorBuilder:
                                         (context, error, stackTrace) =>
