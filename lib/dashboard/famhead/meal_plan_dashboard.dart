@@ -1034,7 +1034,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     );
   }
 
-  Widget _buildAdditionalsTab() {
+  Widget _buildAdditionalsTab(int mealCategoryId) {
     // Initialize totals
     Map<String, double> totalPortions = {
       'Water_Breakfast': 0,
@@ -1111,6 +1111,46 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       });
     }
 
+    // Filter keys based on mealCategoryId
+    List<String> filteredKeys = [];
+    String title = '';
+
+    switch (mealCategoryId) {
+      case 1:
+        filteredKeys = [
+          'Water_Breakfast',
+          'Rice_Breakfast',
+          'Fruits_Breakfast',
+          'Vegetables_Breakfast',
+          'Milk_Breakfast',
+          'Egg_Breakfast',
+          'Fats_Breakfast',
+        ];
+        title = 'Breakfast Totals';
+        break;
+      case 2:
+        filteredKeys = [
+          'Water_Lunch',
+          'Rice_Lunch',
+          'Vegetables_Lunch',
+          'FishMeat_Lunch',
+          'Sugar_Lunch',
+          'Fats_Lunch',
+        ];
+        title = 'Lunch Totals';
+        break;
+      case 3:
+        filteredKeys = [
+          'Water_Dinner',
+          'Rice_Dinner',
+          'Vegetables_Dinner',
+          'FishMeat_Dinner',
+          'Fats_Dinner',
+        ];
+        title = 'Dinner Totals';
+        break;
+    }
+
     // Build a table to display totals with units
     Widget buildTotalTable(String title, List<String> keys) {
       return Column(
@@ -1140,35 +1180,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          buildTotalTable('Breakfast Totals', [
-            'Water_Breakfast',
-            'Rice_Breakfast',
-            'Fruits_Breakfast',
-            'Vegetables_Breakfast',
-            'Milk_Breakfast',
-            'Egg_Breakfast',
-            'Fats_Breakfast',
-          ]),
-          buildTotalTable('Lunch Totals', [
-            'Water_Lunch',
-            'Rice_Lunch',
-            'Vegetables_Lunch',
-            'FishMeat_Lunch',
-            'Sugar_Lunch',
-            'Fats_Lunch',
-          ]),
-          buildTotalTable('Dinner Totals', [
-            'Water_Dinner',
-            'Rice_Dinner',
-            'Vegetables_Dinner',
-            'FishMeat_Dinner',
-            'Fats_Dinner',
-          ]),
-        ],
-      ),
+      child: buildTotalTable(title, filteredKeys),
     );
   }
 
@@ -1570,6 +1582,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
   }) async {
     try {
       final recipeId = meal['recipe_id'];
+      final mealCategoryId = meal['meal_category_id']; // Add this line
       if (recipeId == null) return;
 
       // Fetch meal details
@@ -1642,7 +1655,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                           _buildIngredientsTab(
                               ingredients, familyMemberCount, imageUrl),
                           _buildInstructionsTab(instructions, imageUrl),
-                          _buildAdditionalsTab(),
+                          _buildAdditionalsTab(mealCategoryId), // Pass category
                         ],
                       ),
                     ),
