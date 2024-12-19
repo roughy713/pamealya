@@ -1055,6 +1055,9 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       'Vegetables_Dinner': 0,
       'FishMeat_Dinner': 0,
       'Fats_Dinner': 0,
+      'Water_PM_Snack': 0,
+      'Fruits_PM_Snack': 0,
+      'Sugar_PM_Snack': 0,
     };
 
     Map<String, String> portionUnits = {
@@ -1076,6 +1079,9 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       'Vegetables_Dinner': 'grams',
       'FishMeat_Dinner': 'grams',
       'Fats_Dinner': 'tsp',
+      'Water_PM_Snack': 'glasses',
+      'Fruits_PM_Snack': 'slices',
+      'Sugar_PM_Snack': 'tsp',
     };
 
     // Sum up portions for all family members
@@ -1148,6 +1154,16 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           'Fats_Dinner',
         ];
         title = 'Dinner Totals';
+        break;
+      case 4:
+        filteredKeys = [
+          'Water_PM_Snack',
+          'Fruits_PM_Snack',
+          'Sugar_PM_Snack',
+        ];
+        title = 'Snacks Totals';
+        break;
+      default:
         break;
     }
 
