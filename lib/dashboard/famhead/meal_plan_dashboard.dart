@@ -1032,33 +1032,139 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     );
   }
 
-  Widget _buildAdditionalsTab(String mealDescription, String imageUrl) {
+  Widget _buildAdditionalsTab() {
+    // Initialize totals
+    Map<String, double> totalPortions = {
+      'Water_Breakfast': 0,
+      'Rice_Breakfast': 0,
+      'Fruits_Breakfast': 0,
+      'Vegetables_Breakfast': 0,
+      'Milk_Breakfast': 0,
+      'Egg_Breakfast': 0,
+      'Fats_Breakfast': 0,
+      'Water_Lunch': 0,
+      'Rice_Lunch': 0,
+      'Vegetables_Lunch': 0,
+      'FishMeat_Lunch': 0,
+      'Sugar_Lunch': 0,
+      'Fats_Lunch': 0,
+      'Water_Dinner': 0,
+      'Rice_Dinner': 0,
+      'Vegetables_Dinner': 0,
+      'FishMeat_Dinner': 0,
+      'Fats_Dinner': 0,
+    };
+
+    Map<String, String> portionUnits = {
+      'Water_Breakfast': 'glasses',
+      'Rice_Breakfast': 'cups',
+      'Fruits_Breakfast': 'slices',
+      'Vegetables_Breakfast': 'grams',
+      'Milk_Breakfast': 'glasses',
+      'Egg_Breakfast': 'pieces',
+      'Fats_Breakfast': 'tsp',
+      'Water_Lunch': 'glasses',
+      'Rice_Lunch': 'cups',
+      'Vegetables_Lunch': 'grams',
+      'FishMeat_Lunch': 'grams',
+      'Sugar_Lunch': 'tsp',
+      'Fats_Lunch': 'tsp',
+      'Water_Dinner': 'glasses',
+      'Rice_Dinner': 'cups',
+      'Vegetables_Dinner': 'grams',
+      'FishMeat_Dinner': 'grams',
+      'Fats_Dinner': 'tsp',
+    };
+
+    // Sum up portions for all family members
+    for (var member in widget.familyMembers) {
+      String? portionKey;
+
+      if (member['is_pregnant'] == true) {
+        portionKey = 'Pregnant';
+      } else if (member['is_lactating'] == true) {
+        portionKey = 'Lactating';
+      } else {
+        final ageGroup = _getAgeGroup(member['age']);
+        final gender = member['gender'];
+        if (ageGroup != null && gender != null) {
+          portionKey = '$ageGroup$gender';
+        }
+      }
+
+      final portion = portionKey != null
+          ? Map<String, dynamic>.from(widget.portionSizeData[portionKey] ?? {})
+          : null;
+
+      if (portion == null) continue;
+
+      totalPortions.forEach((key, value) {
+        if (portion.containsKey(key)) {
+          final portionValue = double.tryParse(
+              (portion[key]?.toString().split(' ').first) ?? '0');
+          if (portionValue != null) {
+            totalPortions[key] = value + portionValue;
+          }
+        }
+      });
+    }
+
+    // Build a table to display totals with units
+    Widget buildTotalTable(String title, List<String> keys) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          ...keys.map((key) {
+            final label = key.split('_')[0]; // Get the base name
+            final unit = portionUnits[key] ?? ''; // Fetch the unit
+            final value = totalPortions[key]?.toStringAsFixed(0) ?? 'N/A';
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2.0),
+              child: Text(
+                '$label: $value $unit',
+                style: const TextStyle(fontSize: 14),
+              ),
+            );
+          }).toList(),
+          const SizedBox(height: 16),
+        ],
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Additional Notes',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            mealDescription,
-            style: const TextStyle(fontSize: 14),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          imageUrl.isNotEmpty
-              ? Image.network(
-                  imageUrl,
-                  height: 200,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      const Text('Image not available'),
-                )
-              : const Text('No Image Available'),
+          buildTotalTable('Breakfast Totals', [
+            'Water_Breakfast',
+            'Rice_Breakfast',
+            'Fruits_Breakfast',
+            'Vegetables_Breakfast',
+            'Milk_Breakfast',
+            'Egg_Breakfast',
+            'Fats_Breakfast',
+          ]),
+          buildTotalTable('Lunch Totals', [
+            'Water_Lunch',
+            'Rice_Lunch',
+            'Vegetables_Lunch',
+            'FishMeat_Lunch',
+            'Sugar_Lunch',
+            'Fats_Lunch',
+          ]),
+          buildTotalTable('Dinner Totals', [
+            'Water_Dinner',
+            'Rice_Dinner',
+            'Vegetables_Dinner',
+            'FishMeat_Dinner',
+            'Fats_Dinner',
+          ]),
         ],
       ),
     );
@@ -1534,7 +1640,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                           _buildIngredientsTab(
                               ingredients, familyMemberCount, imageUrl),
                           _buildInstructionsTab(instructions, imageUrl),
-                          _buildAdditionalsTab(mealDescription, imageUrl),
+                          _buildAdditionalsTab(),
                         ],
                       ),
                     ),
