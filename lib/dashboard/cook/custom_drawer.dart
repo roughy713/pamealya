@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:pamealya/home_page.dart';
 import 'package:pamealya/shared/sidebar_menu_item.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class CustomDrawer extends StatelessWidget {
   final int selectedIndex;
@@ -61,7 +63,14 @@ class CustomDrawer extends StatelessWidget {
     );
 
     if (shouldLogout == true) {
-      onLogoutTap();
+      // Perform logout
+      await Supabase.instance.client.auth.signOut();
+
+      // Redirect to the HomePage and clear the navigation stack
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const HomePage()),
+        (route) => false,
+      );
     }
   }
 
