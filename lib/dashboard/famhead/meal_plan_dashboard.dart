@@ -326,7 +326,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           .select('city')
           .eq('family_head', familyHeadName)
           .limit(1)
-          .maybeSingle();
+          .single(); // Use single() instead of maybeSingle
 
       return response?['city'] as String?;
     } catch (e) {
@@ -357,6 +357,8 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           .select('familymember_id')
           .eq('first_name', widget.userFirstName)
           .eq('last_name', widget.userLastName)
+          .eq('family_head',
+              widget.familyHeadName) // Ensure the query is unique
           .maybeSingle();
 
       if (familyMemberResponse == null ||
