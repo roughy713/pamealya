@@ -319,28 +319,42 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     }
   }
 
-  Future<String?> fetchUserCity(String familyHeadName) async {
+  Future<Map<String, String>?> fetchUserCity(String familyHeadName) async {
     try {
       final response = await supabase
           .from('familymember')
-          .select('city')
+          .select('city, barangay')
           .eq('family_head', familyHeadName)
           .limit(1)
-          .single(); // Use single() instead of maybeSingle
+          .single();
 
-      return response?['city'] as String?;
+      if (response != null) {
+        return {
+          'city': response['city'] as String,
+          'barangay': response['barangay'] as String,
+        };
+      }
+      return null;
     } catch (e) {
-      print('Error fetching user city: $e');
+      print('Error fetching user city and barangay: $e');
       return null;
     }
   }
 
-  Future<List<Map<String, dynamic>>> fetchCooks(String userCity) async {
+  Future<List<Map<String, dynamic>>> fetchCooks(
+      String userCity, String? userBarangay) async {
     try {
-      final response = await supabase.from('Local_Cook').select('''
-      localcookid, first_name, last_name, city, phone, availability_days,
-      time_available_from, time_available_to, address_line1, barangay
+      var query = supabase.from('Local_Cook').select('''
+      localcookid, first_name, last_name, city, barangay, phone, availability_days,
+      time_available_from, time_available_to, address_line1
     ''').eq('is_accepted', true).eq('city', userCity);
+
+      // Add barangay filter if provided
+      if (userBarangay != null && userBarangay.isNotEmpty) {
+        query = query.eq('barangay', userBarangay);
+      }
+
+      final response = await query;
 
       return response != null ? List<Map<String, dynamic>>.from(response) : [];
     } catch (e) {
@@ -1196,21 +1210,32 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     );
   }
 
-  void _showCookBookingDialog(BuildContext context, String mealPlanId) async {
-    String? userCity = await fetchUserCity(widget.familyHeadName);
+  Future<String?> _getUserBarangay() async {
+    // You could fetch the barangay from another table or prompt the user to input it.
+    // For now, return a placeholder or fetch logic.
+    return 'Sample Barangay'; // Replace with actual barangay fetching logic
+  }
 
-    if (userCity == null) {
+  void _showCookBookingDialog(BuildContext context, String mealPlanId) async {
+    final userLocation = await fetchUserCity(widget.familyHeadName);
+
+    if (userLocation == null ||
+        userLocation['city'] == null ||
+        userLocation['barangay'] == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User city not found.')),
+        const SnackBar(content: Text('User location not found.')),
       );
       return;
     }
 
-    List<Map<String, dynamic>> cooks = await fetchCooks(userCity);
+    final userCity = userLocation['city']!;
+    final userBarangay = userLocation['barangay']!;
+
+    final cooks = await fetchCooks(userCity, userBarangay);
 
     if (cooks.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No cooks available in your city.')),
+        const SnackBar(content: Text('No cooks available in your area.')),
       );
       return;
     }
@@ -1283,7 +1308,8 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                   const TextStyle(fontWeight: FontWeight.bold),
                             ),
                             subtitle: Text(
-                              'City: $city\n'
+                              'City: ${cook['city'] ?? 'N/A'}\n'
+                              'Barangay: ${cook['barangay'] ?? 'N/A'}\n'
                               'Address: $formattedAddress\n'
                               'Availability: ${cook['availability_days'] ?? 'N/A'} '
                               '(${cook['time_available_from'] ?? 'N/A'} - ${cook['time_available_to'] ?? 'N/A'})',

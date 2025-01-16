@@ -255,9 +255,9 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Intellectual Property
+                        // Data Privacy Act - Expanded content
                         Text(
-                          'Intellectual Property',
+                          'Data Privacy Act',
                           style: Theme.of(context)
                               .textTheme
                               .titleMedium!
@@ -265,55 +265,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                         ),
                         const SizedBox(height: 8),
                         const Text(
-                          'All content within the paMEALya application, including but not limited to text, graphics, logos, and software, is the property of the paMEALya team and is protected by copyright, trademark, and other intellectual property laws. Unauthorized reproduction, distribution, or modification of any part of this application is strictly prohibited without prior written permission from the paMEALya team.',
-                          textAlign: TextAlign.justify,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // License to Use
-                        Text(
-                          'License to Use',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium!
-                              .copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'paMEALya grants users a limited, non-exclusive, non-transferable license to use the application for personal, non-commercial purposes. You may not modify, copy, distribute, transmit, display, perform, reproduce, publish, license, or create derivative works from the app or any part of it without express permission from the paMEALya team.',
-                          textAlign: TextAlign.justify,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // User Obligations
-                        Text(
-                          'User Obligations',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium!
-                              .copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'By using paMEALya, you agree to:\n'
-                          '- Provide Accurate Information: Users must provide accurate and complete health, dietary, and personal information to enable the app to generate appropriate meal plans.\n'
-                          '- Use the App Responsibly: The app must be used only for its intended purpose. Any misuse, including falsifying information, unauthorized access, or attempting to hack or modify the app, is strictly prohibited.\n'
-                          '- Assume Responsibility for Booking Services: When booking a cook through the app, users are responsible for verifying the safety and suitability of the chosen cook. paMEALya does not guarantee or assume liability for the services provided by individual cooks.',
-                          textAlign: TextAlign.justify,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Limitation of Liability
-                        Text(
-                          'Limitation of Liability',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium!
-                              .copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'paMEALya is provided on an "as is" basis without any warranties, either express or implied. paMEALya disclaims all liability for any damages, direct or indirect, arising from the use of the app, including but not limited to dietary health outcomes, issues with booking cooks, or technical issues within the app. Users agree to use the app at their own risk.',
+                          'In compliance with the Data Privacy Act of 2012 (Republic Act No. 10173), paMEALya is committed to ensuring that your personal data is handled with the utmost care and security. This law mandates the protection of personal information collected from users to ensure that it is used fairly, lawfully, and transparently. The Data Privacy Act of 2012 outlines the rights of individuals in relation to their personal data, such as the right to access, correct, and request the deletion of data, as well as the requirement for data controllers to implement appropriate security measures to safeguard against unauthorized access, alteration, or destruction of personal information.',
                           textAlign: TextAlign.justify,
                         ),
                         const SizedBox(height: 16),
@@ -321,21 +273,6 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                         // Privacy Policy
                         Text(
                           'Privacy Policy',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium!
-                              .copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'At paMEALya, we respect your privacy and are committed to protecting your personal information. This Privacy Policy outlines what information we collect, how we use it, and your rights regarding your data.',
-                          textAlign: TextAlign.justify,
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Information We Collect
-                        Text(
-                          'Information We Collect',
                           style: Theme.of(context)
                               .textTheme
                               .titleMedium!
@@ -445,6 +382,69 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                         const SizedBox(height: 8),
                         const Text(
                           'We may update this Privacy Policy periodically. Changes will be posted on this page, and users are encouraged to review the policy regularly. Continued use of paMEALya after changes have been posted constitutes acceptance of the updated policy.',
+                          textAlign: TextAlign.justify,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Intellectual Property
+                        Text(
+                          'Intellectual Property',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium!
+                              .copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'All content within the paMEALya application, including but not limited to text, graphics, logos, and software, is the property of the paMEALya team and is protected by copyright, trademark, and other intellectual property laws. Unauthorized reproduction, distribution, or modification of any part of this application is strictly prohibited without prior written permission from the paMEALya team.',
+                          textAlign: TextAlign.justify,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // License to Use
+                        Text(
+                          'License to Use',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium!
+                              .copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'paMEALya grants users a limited, non-exclusive, non-transferable license to use the application for personal, non-commercial purposes. You may not modify, copy, distribute, transmit, display, perform, reproduce, publish, license, or create derivative works from the app or any part of it without express permission from the paMEALya team.',
+                          textAlign: TextAlign.justify,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // User Obligations
+                        Text(
+                          'User Obligations',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium!
+                              .copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'By using paMEALya, you agree to:\n'
+                          '- Provide Accurate Information: Users must provide accurate and complete health, dietary, and personal information to enable the app to generate appropriate meal plans.\n'
+                          '- Use the App Responsibly: The app must be used only for its intended purpose. Any misuse, including falsifying information, unauthorized access, or attempting to hack or modify the app, is strictly prohibited.\n'
+                          '- Assume Responsibility for Booking Services: When booking a cook through the app, users are responsible for verifying the safety and suitability of the chosen cook. paMEALya does not guarantee or assume liability for the services provided by individual cooks.',
+                          textAlign: TextAlign.justify,
+                        ),
+                        const SizedBox(height: 16),
+
+                        // Limitation of Liability
+                        Text(
+                          'Limitation of Liability',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleMedium!
+                              .copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'paMEALya is provided on an "as is" basis without any warranties, either express or implied. paMEALya disclaims all liability for any damages, direct or indirect, arising from the use of the app, including but not limited to dietary health outcomes, issues with booking cooks, or technical issues within the app. Users agree to use the app at their own risk.',
                           textAlign: TextAlign.justify,
                         ),
                       ],
