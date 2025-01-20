@@ -8,6 +8,7 @@ import 'famhead_chat_page.dart';
 import 'my_bookings_page.dart';
 import 'notifications_page.dart';
 import 'transactions_page.dart';
+import 'meal_completion_handler.dart';
 import 'custom_drawer.dart';
 
 class FamHeadDashboard extends StatefulWidget {
@@ -52,6 +53,37 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     fetchMealPlan();
     fetchFamilyMembers();
     fetchPortionSizeData();
+
+    // Add this to check completion after fetching meal plan
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      checkMealPlanCompletion();
+    });
+  }
+
+  void checkMealPlanCompletion() async {
+    if (mealPlanData.isEmpty) return;
+
+    bool allCompleted = true;
+    for (var dayMeals in mealPlanData) {
+      for (var meal in dayMeals) {
+        if (meal['mealplan_id'] != null && meal['is_completed'] != true) {
+          allCompleted = false;
+          break;
+        }
+      }
+      if (!allCompleted) break;
+    }
+
+    print('Checking meal plan completion...');
+    print('All meals completed: $allCompleted');
+
+    if (allCompleted && mounted) {
+      print('Showing completion dialog');
+      MealPlanCompletionHandler.showCompletionDialog(
+        context,
+        '${widget.firstName} ${widget.lastName}',
+      );
+    }
   }
 
   String formatDate(String? dateString) {
@@ -107,6 +139,9 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
       setState(() {
         mealPlanData = fetchedMealPlan;
       });
+
+      // Add this line to check completion after fetching
+      checkMealPlanCompletion();
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching meal plan: $e')),
@@ -190,10 +225,45 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         }
       });
 
+      // Debug prints
+      print('Current Meal Plan Status:');
+      for (int i = 0; i < mealPlanData.length; i++) {
+        for (int j = 0; j < mealPlanData[i].length; j++) {
+          print(
+              'Day ${i + 1}, Meal ${j + 1}: ${mealPlanData[i][j]['is_completed']}');
+        }
+      }
+
+      // Check completion status
+      bool allCompleted = true;
+      int totalMeals = 0;
+      int completedMeals = 0;
+
+      for (var dayMeals in mealPlanData) {
+        for (var meal in dayMeals) {
+          if (meal['mealplan_id'] != null) {
+            totalMeals++;
+            if (meal['is_completed'] == true) {
+              completedMeals++;
+            } else {
+              allCompleted = false;
+            }
+          }
+        }
+      }
+
+      print('Total meals: $totalMeals');
+      print('Completed meals: $completedMeals');
+      print('All completed? $allCompleted');
+
+      // Check completion after updating state
+      checkMealPlanCompletion();
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Meal marked as completed!')),
       );
     } catch (e) {
+      print('Error in markMealAsCompleted: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to mark meal as completed: $e')),
       );
