@@ -105,6 +105,8 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           .order('day', ascending: true)
           .order('meal_category_id', ascending: true);
 
+      if (!mounted) return;
+
       // Initialize a 7x4 grid for the week (7 days, 4 categories per day)
       List<List<Map<String, dynamic>>> fetchedMealPlan = List.generate(
         7,
@@ -121,18 +123,20 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
       );
 
       // Process response and populate the meal plan
-      for (var meal in response) {
-        int day = (meal['day'] ?? 1) - 1;
-        int categoryIndex = (meal['meal_category_id'] ?? 1) - 1;
+      if (response != null) {
+        for (var meal in response) {
+          int day = (meal['day'] ?? 1) - 1;
+          int categoryIndex = (meal['meal_category_id'] ?? 1) - 1;
 
-        if (day >= 0 && day < 7 && categoryIndex >= 0 && categoryIndex < 4) {
-          fetchedMealPlan[day][categoryIndex] = {
-            'meal_category_id': meal['meal_category_id'],
-            'meal_name': meal['meal_name'] ?? 'N/A',
-            'recipe_id': meal['recipe_id'] ?? null,
-            'mealplan_id': meal['mealplan_id'],
-            'is_completed': meal['is_completed'] ?? false,
-          };
+          if (day >= 0 && day < 7 && categoryIndex >= 0 && categoryIndex < 4) {
+            fetchedMealPlan[day][categoryIndex] = {
+              'meal_category_id': meal['meal_category_id'],
+              'meal_name': meal['meal_name'] ?? 'N/A',
+              'recipe_id': meal['recipe_id'] ?? null,
+              'mealplan_id': meal['mealplan_id'],
+              'is_completed': meal['is_completed'] ?? false,
+            };
+          }
         }
       }
 
@@ -140,12 +144,30 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         mealPlanData = fetchedMealPlan;
       });
 
-      // Add this line to check completion after fetching
-      checkMealPlanCompletion();
+      // Check if all meals are completed
+      bool allCompleted = true;
+      for (var dayMeals in mealPlanData) {
+        for (var meal in dayMeals) {
+          if (meal['mealplan_id'] != null && meal['is_completed'] != true) {
+            allCompleted = false;
+            break;
+          }
+        }
+        if (!allCompleted) break;
+      }
+
+      if (allCompleted && mounted) {
+        MealPlanCompletionHandler.showCompletionDialog(
+          context,
+          '${widget.firstName} ${widget.lastName}',
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching meal plan: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching meal plan: $e')),
+        );
+      }
     }
   }
 
@@ -211,10 +233,12 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
 
   Future<void> markMealAsCompleted(String mealPlanId) async {
     try {
+      // Update in database
       await Supabase.instance.client
           .from('mealplan')
           .update({'is_completed': true}).eq('mealplan_id', mealPlanId);
 
+      // Update local state
       setState(() {
         for (var dayMeals in mealPlanData) {
           for (var meal in dayMeals) {
@@ -225,48 +249,53 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         }
       });
 
-      // Debug prints
-      print('Current Meal Plan Status:');
-      for (int i = 0; i < mealPlanData.length; i++) {
-        for (int j = 0; j < mealPlanData[i].length; j++) {
-          print(
-              'Day ${i + 1}, Meal ${j + 1}: ${mealPlanData[i][j]['is_completed']}');
-        }
-      }
-
-      // Check completion status
+      // Check if all meals are completed
       bool allCompleted = true;
-      int totalMeals = 0;
-      int completedMeals = 0;
-
       for (var dayMeals in mealPlanData) {
         for (var meal in dayMeals) {
-          if (meal['mealplan_id'] != null) {
-            totalMeals++;
-            if (meal['is_completed'] == true) {
-              completedMeals++;
-            } else {
-              allCompleted = false;
-            }
+          if (meal['mealplan_id'] != null && meal['is_completed'] != true) {
+            allCompleted = false;
+            break;
           }
         }
+        if (!allCompleted) break;
       }
 
-      print('Total meals: $totalMeals');
-      print('Completed meals: $completedMeals');
-      print('All completed? $allCompleted');
+      if (mounted) {
+        // Show completion message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Meal marked as completed!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
 
-      // Check completion after updating state
-      checkMealPlanCompletion();
+        if (allCompleted) {
+          MealPlanCompletionHandler.showCompletionDialog(
+            context,
+            '${widget.firstName} ${widget.lastName}',
+          );
+        }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Meal marked as completed!')),
-      );
+        // Refresh the page in place
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FamHeadDashboard(
+              firstName: widget.firstName,
+              lastName: widget.lastName,
+              currentUserUsername: widget.currentUserUsername,
+              currentUserId: widget.currentUserId,
+            ),
+          ),
+        );
+      }
     } catch (e) {
-      print('Error in markMealAsCompleted: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to mark meal as completed: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to mark meal as completed: $e')),
+        );
+      }
     }
   }
 

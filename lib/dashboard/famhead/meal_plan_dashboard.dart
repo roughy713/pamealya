@@ -596,8 +596,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       );
     }
 
-    String? mealPlanId =
-        meal['mealplan_id']?.toString(); // Ensure it's a string
+    String? mealPlanId = meal['mealplan_id']?.toString();
     bool isCompleted = meal['is_completed'] == true;
 
     return Stack(
@@ -609,36 +608,33 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           child: Align(
             alignment: Alignment.topLeft,
             child: Tooltip(
-              message: !isCompleted ? 'View Meal Details' : '',
-              child: MouseRegion(
-                cursor: !isCompleted
-                    ? SystemMouseCursors.click
-                    : SystemMouseCursors.basic,
-                child: GestureDetector(
-                  onTap: () {
-                    if (meal['recipe_id'] != null) {
-                      _showMealDetailsTabsDialog(
-                        context: context,
-                        meal: meal,
-                        familyMemberCount: widget.familyMembers.length,
-                        onCompleteMeal: widget.onCompleteMeal,
-                      );
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('No details available for this meal.'),
-                        ),
-                      );
-                    }
-                  },
-                  child: Text(
-                    meal['meal_name'],
-                    style: const TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
+              message: isCompleted ? 'Meal Completed' : 'View Meal Details',
+              child: AbsorbPointer(
+                absorbing: isCompleted,
+                child: MouseRegion(
+                  cursor: !isCompleted
+                      ? SystemMouseCursors.click
+                      : SystemMouseCursors.basic,
+                  child: GestureDetector(
+                    onTap: !isCompleted && meal['recipe_id'] != null
+                        ? () async {
+                            await _showMealDetailsTabsDialog(
+                              context: context,
+                              meal: meal,
+                              familyMemberCount: widget.familyMembers.length,
+                              onCompleteMeal: widget.onCompleteMeal,
+                            );
+                          }
+                        : null,
+                    child: Text(
+                      meal['meal_name'],
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: isCompleted ? Colors.black : Colors.black,
+                      ),
+                      textAlign: TextAlign.left,
                     ),
-                    textAlign: TextAlign.left,
                   ),
                 ),
               ),
@@ -650,8 +646,9 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           bottom: 4,
           right: 4,
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              if (!isCompleted)
+              if (!isCompleted && meal['recipe_id'] != null)
                 Tooltip(
                   message: 'Regenerate Meal',
                   child: IconButton(
@@ -1612,15 +1609,19 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     );
   }
 
-  void _showMealDetailsTabsDialog({
+  Future<void> _showMealDetailsTabsDialog({
     required BuildContext context,
     required Map<String, dynamic> meal,
     required int familyMemberCount,
     required void Function(String mealPlanId)? onCompleteMeal,
   }) async {
+    if (meal['is_completed'] == true) {
+      return;
+    }
+
     try {
       final recipeId = meal['recipe_id'];
-      final mealCategoryId = meal['meal_category_id']; // Add this line
+      final mealCategoryId = meal['meal_category_id'];
       if (recipeId == null) return;
 
       // Fetch meal details
@@ -1650,22 +1651,23 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       final instructions =
           List<Map<String, dynamic>>.from(instructionsResponse);
 
-      // Show the dialog
+      if (!context.mounted) return;
+
       showDialog(
         context: context,
+        barrierDismissible: false,
         builder: (BuildContext context) {
           return Dialog(
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
             child: SizedBox(
-              width: 500, // Fixed size
+              width: 500,
               height: 500,
               child: DefaultTabController(
-                length: 3, // Three tabs
+                length: 3,
                 child: Column(
                   children: [
-                    // Meal Title
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: Text(
@@ -1677,7 +1679,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                         textAlign: TextAlign.center,
                       ),
                     ),
-                    // TabBar
                     const TabBar(
                       indicatorColor: Colors.green,
                       tabs: [
@@ -1686,26 +1687,26 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                         Tab(icon: Icon(Icons.add_circle), text: 'Additionals'),
                       ],
                     ),
-                    // TabBarView
                     Expanded(
                       child: TabBarView(
                         children: [
                           _buildIngredientsTab(
                               ingredients, familyMemberCount, imageUrl),
                           _buildInstructionsTab(instructions, imageUrl),
-                          _buildAdditionalsTab(mealCategoryId), // Pass category
+                          _buildAdditionalsTab(mealCategoryId),
                         ],
                       ),
                     ),
-                    // Buttons Row
                     Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           ElevatedButton(
-                            onPressed: () => _showCookBookingDialog(
-                                context, meal['mealplan_id']),
+                            onPressed: () {
+                              _showCookBookingDialog(
+                                  context, meal['mealplan_id']);
+                            },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
                               foregroundColor: Colors.white,
@@ -1713,12 +1714,12 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                             child: const Text('Book Cook'),
                           ),
                           ElevatedButton(
-                            onPressed: () {
-                              if (onCompleteMeal != null) {
-                                onCompleteMeal(meal['mealplan_id']);
-                              }
-                              Navigator.of(context).pop();
-                            },
+                            onPressed: onCompleteMeal != null
+                                ? () {
+                                    Navigator.of(context).pop();
+                                    onCompleteMeal(meal['mealplan_id']);
+                                  }
+                                : null,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.yellow,
                               foregroundColor: Colors.black,
@@ -1736,9 +1737,11 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         },
       );
     } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading meal details: $error')),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading meal details: $error')),
+        );
+      }
     }
   }
 
