@@ -101,7 +101,7 @@ class MealPlanCompletionHandler {
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text(
                     'Close',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: Colors.black),
                   ),
                 ),
                 ElevatedButton(
