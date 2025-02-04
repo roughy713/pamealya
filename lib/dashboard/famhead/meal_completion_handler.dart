@@ -184,37 +184,89 @@ class MealPlanCompletionHandler {
       // Remove loading indicator
       Navigator.of(context).pop();
 
-      // Generate new meal plan
-      await generateMealPlan(context, familyHeadName);
-
       // Close the completion dialog
       Navigator.of(context).pop();
 
-      // Split the family head name into first and last name
-      final names = familyHeadName.split(' ');
-      final firstName = names[0];
-      final lastName = names.length > 1 ? names[1] : '';
+      // Generate new meal plan
+      await generateMealPlan(context, familyHeadName);
 
-      // Refresh the dashboard
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => FamHeadDashboard(
-            firstName: firstName,
-            lastName: lastName,
-            currentUserUsername: '', // Add appropriate value
-            currentUserId: '', // Add appropriate value
+      // Show success dialog
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Row(
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                  size: 40,
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'Success!',
+                  style: TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                  ),
+                ),
+              ],
+            ),
+            content: const Text(
+              'Your new 7-day meal plan has been successfully generated!',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  // Split the family head name into first and last name
+                  final names = familyHeadName.split(' ');
+                  final firstName = names[0];
+                  final lastName = names.length > 1 ? names[1] : '';
+
+                  // Refresh the dashboard
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => FamHeadDashboard(
+                        firstName: firstName,
+                        lastName: lastName,
+                        currentUserUsername: '', // Add appropriate value
+                        currentUserId: '', // Add appropriate value
+                      ),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'View Meal Plan',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-      );
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('New meal plan generated successfully!'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
-        ),
-      );
+        );
+      }
     } catch (e) {
       // Remove loading indicator if it's still showing
       if (context.mounted) {

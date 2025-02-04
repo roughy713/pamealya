@@ -54,11 +54,123 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
         });
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content: Text('Error fetching family members: ${e.toString()}')),
-      );
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text(
+              'Error',
+              style: TextStyle(color: Colors.red),
+            ),
+            content: Text('Error fetching family members: ${e.toString()}'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
     }
+  }
+
+  void _showMealPlanConfirmation(BuildContext context) {
+    bool isChecked = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                'Generate Meal Plan',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Do you want to Generate Meal Plan?',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Checkbox(
+                        value: isChecked,
+                        activeColor: Colors.green,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            isChecked = value ?? false;
+                          });
+                        },
+                      ),
+                      Expanded(
+                        child: const Text(
+                          'Note: Please check the details of all the family members including the Family Head, especially the Allergens.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.black),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: isChecked
+                      ? () async {
+                          Navigator.of(context).pop();
+                          await generateMealPlan(
+                              context, '$firstName $lastName');
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow,
+                    foregroundColor: Colors.black,
+                    disabledBackgroundColor: Colors.grey.shade300,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text(
+                    'Confirm',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+              actionsPadding: const EdgeInsets.all(16),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _editFamilyMember(Map<String, dynamic> memberData) async {
@@ -74,15 +186,56 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                   .update(updatedData)
                   .eq('familymember_id', memberData['familymember_id']);
               fetchFamilyMembers();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Family member updated.')),
-              );
+              if (context.mounted) {
+                Navigator.of(context).pop();
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => AlertDialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    title: Row(
+                      children: const [
+                        Icon(Icons.check_circle, color: Colors.green, size: 30),
+                        SizedBox(width: 10),
+                        Text(
+                          'Success',
+                          style: TextStyle(color: Colors.green),
+                        ),
+                      ],
+                    ),
+                    content: const Text('Family member updated successfully!'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
+              }
             } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
+              if (context.mounted) {
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (context) => AlertDialog(
+                    title: const Text(
+                      'Error',
+                      style: TextStyle(color: Colors.red),
+                    ),
                     content:
-                        Text('Error updating family member: ${e.toString()}')),
-              );
+                        Text('Error updating family member: ${e.toString()}'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('OK'),
+                      ),
+                    ],
+                  ),
+                );
+              }
             }
           },
         );
@@ -93,18 +246,19 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
   Future<void> _confirmDeleteFamilyMember(String familyMemberId) async {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Deletion'),
         content:
             const Text('Are you sure you want to delete this family member?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(), // Close the dialog
+            onPressed: () => Navigator.of(context).pop(),
             child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.of(context).pop(); // Close the confirmation dialog
+              Navigator.of(context).pop();
               await _deleteFamilyMember(familyMemberId);
             },
             child: const Text(
@@ -143,183 +297,56 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
             (member) => member['familymember_id'] == familyMemberId);
       });
 
-      _showSuccessDialog('Family member deleted successfully!');
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting family member: $e')),
-      );
-    }
-  }
-
-  Future<void> _showSuccessDialog(String message) async {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Success'),
-        content: Text(message),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Padding(
-        padding:
-            const EdgeInsets.all(16.0), // Outer padding for the entire page
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header with family icon and text
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.family_restroom,
-                  size: 50,
-                  color: Colors.black,
-                ),
-                const SizedBox(width: 10),
+      // Show success dialog
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: Row(
+              children: const [
+                Icon(Icons.check_circle, color: Colors.green, size: 30),
+                SizedBox(width: 10),
                 Text(
-                  "$firstName $lastName's Family",
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
+                  'Success',
+                  style: TextStyle(color: Colors.green),
                 ),
               ],
             ),
-            const Divider(),
-            // Add Family Member Button
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    vertical: 16.0), // Padding around Add button
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AddFamilyMemberDialog(
-                          onAdd: (data) {
-                            setState(() {
-                              familyMembers.add(data);
-                            });
-                          },
-                          familyHeadName: '$firstName $lastName',
-                        );
-                      },
-                    );
-                  },
-                  icon: const Icon(Icons.add),
-                  label: const Text('Add Family Member'),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.black,
-                    backgroundColor: Colors.yellow,
-                  ),
-                ),
+            content: const Text('Family member deleted successfully!'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
               ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            title: const Text(
+              'Error',
+              style: TextStyle(color: Colors.red),
             ),
-            Expanded(
-              child: ListView.builder(
-                itemCount: familyMembers.length,
-                padding: const EdgeInsets.only(bottom: 70), // Space for FAB
-                itemBuilder: (context, index) {
-                  final member = familyMembers[index];
-                  bool isHovered = false;
-
-                  return StatefulBuilder(
-                    builder: (context, setState) {
-                      return MouseRegion(
-                        onEnter: (_) {
-                          setState(() {
-                            isHovered = true;
-                          });
-                        },
-                        onExit: (_) {
-                          setState(() {
-                            isHovered = false;
-                          });
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 5.0), // Vertical spacing
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: isHovered
-                                  ? Colors.green.withOpacity(0.3)
-                                  : Colors.transparent,
-                              borderRadius:
-                                  BorderRadius.circular(12), // Rounded corners
-                            ),
-                            child: ListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal:
-                                    16.0, // Align content with the header
-                              ),
-                              title: Text(
-                                '${member['first_name'] ?? ''} ${member['last_name'] ?? ''}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16, // Larger font size
-                                ),
-                              ),
-                              subtitle: Text(
-                                member['position'] ?? '',
-                                style: const TextStyle(fontSize: 14),
-                              ),
-                              leading: const CircleAvatar(
-                                radius: 20, // Profile icon size (40px diameter)
-                                backgroundColor: Colors.grey,
-                                child: Icon(Icons.person, size: 20),
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit,
-                                        color: Colors.blue),
-                                    onPressed: () => _editFamilyMember(member),
-                                  ),
-                                  if (member['position'] != 'Family Head')
-                                    IconButton(
-                                      icon: const Icon(Icons.delete,
-                                          color: Colors.red),
-                                      onPressed: () =>
-                                          _confirmDeleteFamilyMember(
-                                              member['familymember_id']),
-                                    ),
-                                ],
-                              ),
-                              onTap: () => _showFamilyMemberDetails(member),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
+            content: Text('Error deleting family member: ${e.toString()}'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
               ),
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => generateMealPlan(context, '$firstName $lastName'),
-        backgroundColor: Colors.yellow,
-        label: const Text(
-          'Generate Meal Plan',
-          style: TextStyle(color: Colors.black),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-    );
+            ],
+          ),
+        );
+      }
+    }
   }
 
   void _showFamilyMemberDetails(Map<String, dynamic> member) {
@@ -330,11 +357,11 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
       context: context,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16), // Rounded corners
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Container(
           width: 500,
-          height: 500, // Set the dialog to be square (500x500)
+          height: 500,
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: Colors.white,
@@ -370,9 +397,9 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                     : 'None',
               ),
               const SizedBox(height: 10),
-              Text(
+              const Text(
                 'Allergens:',
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
@@ -433,6 +460,154 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
           ),
         ],
       ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.family_restroom,
+                  size: 50,
+                  color: Colors.black,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  "$firstName $lastName's Family",
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+            const Divider(),
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AddFamilyMemberDialog(
+                          onAdd: (data) {
+                            setState(() {
+                              familyMembers.add(data);
+                            });
+                          },
+                          familyHeadName: '$firstName $lastName',
+                        );
+                      },
+                    );
+                  },
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Family Member'),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.black,
+                    backgroundColor: Colors.yellow,
+                  ),
+                ),
+              ),
+            ),
+            Expanded(
+              child: ListView.builder(
+                itemCount: familyMembers.length,
+                padding: const EdgeInsets.only(bottom: 70),
+                itemBuilder: (context, index) {
+                  final member = familyMembers[index];
+                  bool isHovered = false;
+
+                  return StatefulBuilder(
+                    builder: (context, setState) {
+                      return MouseRegion(
+                        onEnter: (_) {
+                          setState(() {
+                            isHovered = true;
+                          });
+                        },
+                        onExit: (_) {
+                          setState(() {
+                            isHovered = false;
+                          });
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 5.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: isHovered
+                                  ? Colors.green.withOpacity(0.3)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                              ),
+                              title: Text(
+                                '${member['first_name'] ?? ''} ${member['last_name'] ?? ''}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              subtitle: Text(
+                                member['position'] ?? '',
+                                style: const TextStyle(fontSize: 14),
+                              ),
+                              leading: const CircleAvatar(
+                                radius: 20,
+                                backgroundColor: Colors.grey,
+                                child: Icon(Icons.person, size: 20),
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit,
+                                        color: Colors.blue),
+                                    onPressed: () => _editFamilyMember(member),
+                                  ),
+                                  if (member['position'] != 'Family Head')
+                                    IconButton(
+                                      icon: const Icon(Icons.delete,
+                                          color: Colors.red),
+                                      onPressed: () =>
+                                          _confirmDeleteFamilyMember(
+                                              member['familymember_id']),
+                                    ),
+                                ],
+                              ),
+                              onTap: () => _showFamilyMemberDetails(member),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showMealPlanConfirmation(context),
+        backgroundColor: Colors.yellow,
+        label: const Text(
+          'Generate Meal Plan',
+          style: TextStyle(color: Colors.black),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }

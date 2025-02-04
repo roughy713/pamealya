@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-Future<void> generateMealPlan(
+Future<bool> generateMealPlan(
     BuildContext context, String familyHeadName) async {
   try {
     final supabase = Supabase.instance.client;
@@ -14,20 +14,22 @@ Future<void> generateMealPlan(
 
     if (existingMealPlanResponse.isNotEmpty) {
       // Show dialog if meal plan already exists
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Meal Plan Exists'),
-          content: const Text('A meal plan has already been generated.'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
-      return;
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Meal Plan Exists'),
+            content: const Text('A meal plan has already been generated.'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+      return false;
     }
 
     // Fetch family members
@@ -147,12 +149,27 @@ Future<void> generateMealPlan(
           day + 1, 4, dailyMeals[3], familyHeadName); // Snack
     }
 
-    // Show success dialog
-    _showSuccessDialog(context);
+    return true; // Return true when successful
   } catch (e) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Error generating meal plan: ${e.toString()}')),
-    );
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text(
+            'Error',
+            style: TextStyle(color: Colors.red),
+          ),
+          content: Text('Error generating meal plan: ${e.toString()}'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+    }
+    return false;
   }
 }
 
@@ -168,21 +185,6 @@ Future<void> _saveMealToDatabase(int day, int mealCategoryId,
     });
   } catch (e) {
     print('Error saving meal to database: $e');
+    throw e;
   }
-}
-
-void _showSuccessDialog(BuildContext context) {
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Success'),
-      content: const Text('Meal plan generated and saved successfully!'),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('OK'),
-        ),
-      ],
-    ),
-  );
 }
