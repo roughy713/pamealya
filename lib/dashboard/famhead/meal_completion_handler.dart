@@ -7,25 +7,47 @@ class MealPlanCompletionHandler {
   // Check if all meals in the meal plan are completed
   static Future<bool> checkAllMealsCompleted(
       List<List<Map<String, dynamic>>> mealPlanData) async {
-    bool hasUncompletedMeals = false;
-
-    for (var dayMeals in mealPlanData) {
-      for (var meal in dayMeals) {
-        // Only check meals that exist in the plan (have a mealplan_id)
-        if (meal['mealplan_id'] != null && meal['is_completed'] != true) {
-          hasUncompletedMeals = true;
-          break;
-        }
-      }
-      if (hasUncompletedMeals) break;
+    // First check if the meal plan data is empty
+    if (mealPlanData.isEmpty) {
+      return false;
     }
 
-    return !hasUncompletedMeals;
+    bool validMealFound = false;
+
+    // Check all meals
+    for (var dayMeals in mealPlanData) {
+      for (var meal in dayMeals) {
+        // Only consider meals that have a valid mealplan_id
+        if (meal['mealplan_id'] != null) {
+          validMealFound = true;
+          // If any meal is not completed, return false
+          if (meal['is_completed'] != true) {
+            return false;
+          }
+        }
+      }
+    }
+
+    // Return false if no valid meals were found
+    // Return true only if we found valid meals and they were all completed
+    return validMealFound;
   }
 
   // Show the completion dialog with congratulations message and new plan option
-  static void showCompletionDialog(
-      BuildContext context, String familyHeadName) {
+  static Future<void> showCompletionDialog(
+      BuildContext context, String familyHeadName) async {
+    // First check if user has any meal plan
+    final supabase = Supabase.instance.client;
+    final mealPlanQuery = await supabase
+        .from('mealplan')
+        .select()
+        .eq('family_head', familyHeadName);
+
+    // Don't show dialog for new users with no meal plan
+    if (mealPlanQuery.isEmpty) {
+      return;
+    }
+
     bool generateNewPlan = false;
 
     showDialog(
