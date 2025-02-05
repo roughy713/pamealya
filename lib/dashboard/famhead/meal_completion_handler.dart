@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'meal_plan_generator.dart';
 import 'famhead_dashboard.dart';
+import 'meal_plan_dashboard.dart';
 
 class MealPlanCompletionHandler {
   // Check if all meals in the meal plan are completed
@@ -159,130 +160,271 @@ class MealPlanCompletionHandler {
   // Handle the generation of a new meal plan
   static Future<void> _handleNewPlanGeneration(
       BuildContext context, String familyHeadName) async {
-    try {
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return const Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
-            ),
-          );
-        },
-      );
+    bool isChecked = false;
+    bool isLoading = false;
 
-      final supabase = Supabase.instance.client;
+    final supabase = Supabase.instance.client;
 
-      // Delete existing meal plan
-      await supabase
-          .from('mealplan')
-          .delete()
-          .eq('family_head', familyHeadName);
-
-      // Remove loading indicator
-      Navigator.of(context).pop();
-
-      // Close the completion dialog
-      Navigator.of(context).pop();
-
-      // Generate new meal plan
-      await generateMealPlan(context, familyHeadName);
-
-      // Show success dialog
-      if (context.mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (BuildContext context) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Row(
-              children: [
-                Icon(
-                  Icons.check_circle,
-                  color: Colors.green,
-                  size: 40,
+    // Show confirmation dialog first
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                'Generate New Meal Plan',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
                 ),
-                SizedBox(width: 10),
-                Text(
-                  'Success!',
-                  style: TextStyle(
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 24,
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Do you want to Generate New Meal Plan?',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Checkbox(
+                        value: isChecked,
+                        activeColor: Colors.green,
+                        onChanged: (bool? value) {
+                          setState(() {
+                            isChecked = value ?? false;
+                          });
+                        },
+                      ),
+                      Expanded(
+                        child: const Text(
+                          'Note: Please check the details of all the family members including the Family Head, especially the Allergens.',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isLoading
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Colors.black),
                   ),
                 ),
-              ],
-            ),
-            content: const Text(
-              'Your new 7-day meal plan has been successfully generated!',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  // Split the family head name into first and last name
-                  final names = familyHeadName.split(' ');
-                  final firstName = names[0];
-                  final lastName = names.length > 1 ? names[1] : '';
+                if (isLoading)
+                  const CircularProgressIndicator()
+                else
+                  ElevatedButton(
+                    onPressed: isChecked
+                        ? () async {
+                            try {
+                              setState(() {
+                                isLoading = true;
+                              });
 
-                  // Refresh the dashboard
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(
-                      builder: (context) => FamHeadDashboard(
-                        firstName: firstName,
-                        lastName: lastName,
-                        currentUserUsername: '', // Add appropriate value
-                        currentUserId: '', // Add appropriate value
+                              // Delete existing meal plan
+                              await supabase
+                                  .from('mealplan')
+                                  .delete()
+                                  .eq('family_head', familyHeadName);
+
+                              // Generate new meal plan
+                              await generateMealPlan(context, familyHeadName);
+
+                              // Split the family head name for later use
+                              final names = familyHeadName.split(' ');
+                              final firstName = names[0];
+                              final lastName = names.length > 1 ? names[1] : '';
+
+                              // Close confirmation dialog
+                              Navigator.of(dialogContext).pop();
+
+                              // Show success dialog
+                              if (context.mounted) {
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (BuildContext context) => Dialog(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    child: Container(
+                                      width: 500, // Increased width
+                                      padding: const EdgeInsets.all(24),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: const [
+                                              Icon(
+                                                Icons.check_circle,
+                                                color: Color(0xFF4CAF50),
+                                                size: 40,
+                                              ),
+                                              SizedBox(width: 10),
+                                              Text(
+                                                'Success!',
+                                                style: TextStyle(
+                                                  color: Color(0xFF4CAF50),
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 24,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 16),
+                                          const Text(
+                                            'Your 7-day meal plan has been successfully generated!',
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 14),
+                                          const Align(
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              'The meal plan includes:',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          const Align(
+                                            alignment: Alignment.center,
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                    '• Daily breakfast options'),
+                                                Text('• Lunch selections'),
+                                                Text('• Dinner choices'),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 24),
+                                          Align(
+                                            alignment: Alignment.centerRight,
+                                            child: ElevatedButton(
+                                              onPressed: () {
+                                                Navigator.pushReplacement(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        FamHeadDashboard(
+                                                      firstName: firstName,
+                                                      lastName: lastName,
+                                                      currentUserUsername: '',
+                                                      currentUserId: '',
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    const Color(0xFF4CAF50),
+                                                foregroundColor: Colors.white,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 40,
+                                                  vertical: 15,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                'Got it!',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.white,
+                                                  fontSize: 16,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                Navigator.of(dialogContext).pop();
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text(
+                                      'Error',
+                                      style: TextStyle(color: Colors.red),
+                                    ),
+                                    content: Text(
+                                        'Error generating new meal plan: ${e.toString()}'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(),
+                                        child: const Text('OK'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                            } finally {
+                              setState(() {
+                                isLoading = false;
+                              });
+                            }
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.yellow,
+                      foregroundColor: Colors.black,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    child: const Text(
+                      'Confirm',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
-                child: const Text(
-                  'View Meal Plan',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                  ),
-                ),
-              ),
-            ],
-          ),
+              ],
+              actionsPadding: const EdgeInsets.all(16),
+            );
+          },
         );
-      }
-    } catch (e) {
-      // Remove loading indicator if it's still showing
-      if (context.mounted) {
-        Navigator.of(context).pop();
-      }
-
-      // Show error message
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error generating new meal plan: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 5),
-          ),
-        );
-      }
-    }
+      },
+    );
   }
 }

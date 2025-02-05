@@ -78,6 +78,99 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
   }
 
   Future<void> _showMealPlanConfirmation(BuildContext context) async {
+    try {
+      // First check if user has any meal plan
+      final supabase = Supabase.instance.client;
+
+      // Add print for debugging
+      print('Checking meal plan for: $firstName $lastName');
+
+      final existingPlan = await supabase
+          .from('mealplan')
+          .select()
+          .eq('family_head', '$firstName $lastName');
+
+      print('Existing plan: $existingPlan'); // Debug print
+
+      // Changed condition to check list length
+      if (existingPlan != null && existingPlan.isNotEmpty && context.mounted) {
+        print('Showing existing meal plan dialog'); // Debug print
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Row(
+                children: [
+                  Icon(
+                    Icons.info,
+                    color: Colors.green,
+                    size: 28,
+                  ),
+                  SizedBox(width: 8),
+                  Text(
+                    'Meal Plan Exists',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              content: const Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'You already have an existing meal plan.',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ],
+              ),
+              actions: [
+                ElevatedButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.yellow,
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('Okay'),
+                ),
+              ],
+              actionsPadding: const EdgeInsets.all(16),
+            );
+          },
+        );
+      } else {
+        print('No existing plan, showing generation dialog'); // Debug print
+        await _showGenerateMealPlanDialog(context);
+      }
+    } catch (e) {
+      print('Error checking meal plan: $e'); // Debug print
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Error'),
+            content: Text(e.toString()),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showGenerateMealPlanDialog(BuildContext context) async {
     bool isChecked = false;
     bool isLoading = false;
 
@@ -153,102 +246,133 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                               setState(() {
                                 isLoading = true;
                               });
+
+                              // Generate new meal plan
                               await generateMealPlan(
                                   context, '$firstName $lastName');
+
+                              // Close confirmation dialog
+                              Navigator.of(dialogContext).pop();
+
+                              // Show success dialog
                               if (context.mounted) {
-                                Navigator.of(dialogContext).pop();
                                 showDialog(
                                   context: context,
                                   barrierDismissible: false,
-                                  builder: (BuildContext context) =>
-                                      AlertDialog(
+                                  builder: (BuildContext context) => Dialog(
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(16),
                                     ),
-                                    title: Row(
-                                      children: const [
-                                        Icon(
-                                          Icons.check_circle,
-                                          color: Colors.green,
-                                          size: 40,
-                                        ),
-                                        SizedBox(width: 10),
-                                        Text(
-                                          'Success!',
-                                          style: TextStyle(
-                                            color: Colors.green,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 24,
+                                    child: Container(
+                                      width: 500,
+                                      padding: const EdgeInsets.all(24),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: const [
+                                              Icon(
+                                                Icons.check_circle,
+                                                color: Color(0xFF4CAF50),
+                                                size: 24,
+                                              ),
+                                              SizedBox(width: 8),
+                                              Text(
+                                                'Success!',
+                                                style: TextStyle(
+                                                  color: Color(0xFF4CAF50),
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                    content: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: const [
-                                        Text(
-                                          'Your 7-day meal plan has been successfully generated!',
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
+                                          const SizedBox(height: 16),
+                                          const Text(
+                                            'Your 7-day meal plan has been successfully generated!',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
-                                        ),
-                                        SizedBox(height: 16),
-                                        Text(
-                                          'The meal plan includes:',
-                                          style: TextStyle(fontSize: 14),
-                                        ),
-                                        SizedBox(height: 8),
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text('• Daily breakfast options'),
-                                            Text('• Lunch selections'),
-                                            Text('• Dinner choices'),
-                                            Text('• Snack recommendations'),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                    actions: [
-                                      ElevatedButton(
-                                        onPressed: () {
-                                          Navigator.of(context).pop();
-                                          Navigator.pushReplacement(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  FamHeadDashboard(
-                                                firstName: firstName,
-                                                lastName: lastName,
-                                                currentUserUsername: '',
-                                                currentUserId: '',
+                                          const SizedBox(height: 16),
+                                          const Align(
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              'The meal plan includes:',
+                                              style: TextStyle(
+                                                fontSize: 14,
                                               ),
                                             ),
-                                          );
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green,
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 40,
-                                            vertical: 15,
                                           ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
+                                          const SizedBox(height: 8),
+                                          const Align(
+                                            alignment: Alignment.center,
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                    '• Daily breakfast options',
+                                                    style: TextStyle(
+                                                        fontSize: 14)),
+                                                Text('• Lunch selections',
+                                                    style: TextStyle(
+                                                        fontSize: 14)),
+                                                Text('• Dinner choices',
+                                                    style: TextStyle(
+                                                        fontSize: 14)),
+                                                Text('• Snack recommendations',
+                                                    style: TextStyle(
+                                                        fontSize: 14)),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                        child: const Text(
-                                          'Got it!',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
+                                          const SizedBox(height: 24),
+                                          Align(
+                                            alignment: Alignment.centerRight,
+                                            child: ElevatedButton(
+                                              onPressed: () {
+                                                Navigator.pushReplacement(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        FamHeadDashboard(
+                                                      firstName: firstName,
+                                                      lastName: lastName,
+                                                      currentUserUsername: '',
+                                                      currentUserId: '',
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor:
+                                                    const Color(0xFF4CAF50),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                  horizontal: 32,
+                                                  vertical: 8,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(4),
+                                                ),
+                                              ),
+                                              child: const Text(
+                                                'Got it!',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ),
                                           ),
-                                        ),
+                                        ],
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 );
                               }
