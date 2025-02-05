@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'add_family_member_dialog.dart';
 import 'edit_family_member_dialog.dart';
 import 'meal_plan_generator.dart';
+import 'famhead_dashboard.dart';
 
 class MyFamilyPage extends StatefulWidget {
   final String initialFirstName;
@@ -76,13 +77,14 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
     }
   }
 
-  void _showMealPlanConfirmation(BuildContext context) {
+  Future<void> _showMealPlanConfirmation(BuildContext context) async {
     bool isChecked = false;
+    bool isLoading = false;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
@@ -133,37 +135,165 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                  onPressed: isLoading
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
                   child: const Text(
                     'Cancel',
                     style: TextStyle(color: Colors.black),
                   ),
                 ),
-                ElevatedButton(
-                  onPressed: isChecked
-                      ? () async {
-                          Navigator.of(context).pop();
-                          await generateMealPlan(
-                              context, '$firstName $lastName');
-                        }
-                      : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.yellow,
-                    foregroundColor: Colors.black,
-                    disabledBackgroundColor: Colors.grey.shade300,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                if (isLoading)
+                  const CircularProgressIndicator()
+                else
+                  ElevatedButton(
+                    onPressed: isChecked
+                        ? () async {
+                            try {
+                              setState(() {
+                                isLoading = true;
+                              });
+                              await generateMealPlan(
+                                  context, '$firstName $lastName');
+                              if (context.mounted) {
+                                Navigator.of(dialogContext).pop();
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (BuildContext context) =>
+                                      AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    title: Row(
+                                      children: const [
+                                        Icon(
+                                          Icons.check_circle,
+                                          color: Colors.green,
+                                          size: 40,
+                                        ),
+                                        SizedBox(width: 10),
+                                        Text(
+                                          'Success!',
+                                          style: TextStyle(
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 24,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: const [
+                                        Text(
+                                          'Your 7-day meal plan has been successfully generated!',
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        SizedBox(height: 16),
+                                        Text(
+                                          'The meal plan includes:',
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                        SizedBox(height: 8),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text('• Daily breakfast options'),
+                                            Text('• Lunch selections'),
+                                            Text('• Dinner choices'),
+                                            Text('• Snack recommendations'),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    actions: [
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          Navigator.of(context).pop();
+                                          Navigator.pushReplacement(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  FamHeadDashboard(
+                                                firstName: firstName,
+                                                lastName: lastName,
+                                                currentUserUsername: '',
+                                                currentUserId: '',
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.green,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 40,
+                                            vertical: 15,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'Got it!',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                Navigator.of(dialogContext).pop();
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Error'),
+                                    content: Text(e.toString()),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.of(context).pop(),
+                                        child: const Text('OK'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                            } finally {
+                              setState(() {
+                                isLoading = false;
+                              });
+                            }
+                          }
+                        : null,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.yellow,
+                      foregroundColor: Colors.black,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Confirm',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                  child: const Text(
-                    'Confirm',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
               ],
               actionsPadding: const EdgeInsets.all(16),
             );
