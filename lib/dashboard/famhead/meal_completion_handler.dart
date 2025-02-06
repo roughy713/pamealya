@@ -5,23 +5,18 @@ import 'famhead_dashboard.dart';
 import 'meal_plan_dashboard.dart';
 
 class MealPlanCompletionHandler {
-  // Check if all meals in the meal plan are completed
   static Future<bool> checkAllMealsCompleted(
       List<List<Map<String, dynamic>>> mealPlanData) async {
-    // First check if the meal plan data is empty
     if (mealPlanData.isEmpty) {
       return false;
     }
 
     bool validMealFound = false;
 
-    // Check all meals
     for (var dayMeals in mealPlanData) {
       for (var meal in dayMeals) {
-        // Only consider meals that have a valid mealplan_id
         if (meal['mealplan_id'] != null) {
           validMealFound = true;
-          // If any meal is not completed, return false
           if (meal['is_completed'] != true) {
             return false;
           }
@@ -29,23 +24,16 @@ class MealPlanCompletionHandler {
       }
     }
 
-    // Return false if no valid meals were found
-    // Return true only if we found valid meals and they were all completed
     return validMealFound;
   }
 
-  // Show the completion dialog with congratulations message and new plan option
   static Future<void> showCompletionDialog(
-      BuildContext context, String familyHeadName) async {
-    // First check if user has any meal plan
+      BuildContext context, String familyHeadName, String userId) async {
     final supabase = Supabase.instance.client;
-    final mealPlanQuery = await supabase
-        .from('mealplan')
-        .select()
-        .eq('family_head', familyHeadName);
+    final mealPlanQuery =
+        await supabase.from('mealplan').select().eq('user_id', userId);
 
-    // Don't show dialog for new users with no meal plan
-    if (mealPlanQuery.isEmpty) {
+    if (mealPlanQuery == null || mealPlanQuery.isEmpty) {
       return;
     }
 
@@ -53,7 +41,7 @@ class MealPlanCompletionHandler {
 
     showDialog(
       context: context,
-      barrierDismissible: false, // User must use a button to dismiss the dialog
+      barrierDismissible: false,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setState) {
@@ -129,7 +117,8 @@ class MealPlanCompletionHandler {
                 ),
                 ElevatedButton(
                   onPressed: generateNewPlan
-                      ? () => _handleNewPlanGeneration(context, familyHeadName)
+                      ? () => _handleNewPlanGeneration(
+                          context, familyHeadName, userId)
                       : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.yellow,
@@ -157,15 +146,13 @@ class MealPlanCompletionHandler {
     );
   }
 
-  // Handle the generation of a new meal plan
   static Future<void> _handleNewPlanGeneration(
-      BuildContext context, String familyHeadName) async {
+      BuildContext context, String familyHeadName, String userId) async {
     bool isChecked = false;
     bool isLoading = false;
 
     final supabase = Supabase.instance.client;
 
-    // Show confirmation dialog first
     await showDialog(
       context: context,
       barrierDismissible: false,
@@ -239,11 +226,11 @@ class MealPlanCompletionHandler {
                                 isLoading = true;
                               });
 
-                              // Delete existing meal plan
+                              // Delete existing meal plan using user_id
                               await supabase
                                   .from('mealplan')
                                   .delete()
-                                  .eq('family_head', familyHeadName);
+                                  .eq('user_id', userId);
 
                               // Generate new meal plan
                               await generateMealPlan(context, familyHeadName);
@@ -266,7 +253,7 @@ class MealPlanCompletionHandler {
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                     child: Container(
-                                      width: 500, // Increased width
+                                      width: 500,
                                       padding: const EdgeInsets.all(24),
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
@@ -336,7 +323,7 @@ class MealPlanCompletionHandler {
                                                       firstName: firstName,
                                                       lastName: lastName,
                                                       currentUserUsername: '',
-                                                      currentUserId: '',
+                                                      currentUserId: userId,
                                                     ),
                                                   ),
                                                 );

@@ -82,6 +82,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
       MealPlanCompletionHandler.showCompletionDialog(
         context,
         '${widget.firstName} ${widget.lastName}',
+        widget.currentUserId,
       );
     }
   }
@@ -95,13 +96,66 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     }
   }
 
+  Future<void> fetchFamilyMembers() async {
+    try {
+      // First get the family_head record for this user
+      final familyHeadRecord = await Supabase.instance.client
+          .from('familymember')
+          .select('family_head')
+          .eq('user_id', widget.currentUserId)
+          .single();
+
+      if (familyHeadRecord == null) return;
+
+      final familyHeadName = familyHeadRecord['family_head'];
+
+      // Then get all family members associated with this specific family head
+      final response =
+          await Supabase.instance.client.from('familymember').select('''
+            first_name, last_name, age, gender,
+            familymember_specialconditions(is_pregnant, is_lactating)
+          ''').eq('family_head', familyHeadName);
+
+      if (!mounted) return;
+
+      final members = response.map((member) {
+        final specialConditions = member['familymember_specialconditions'];
+        return {
+          'first_name': member['first_name'],
+          'last_name': member['last_name'],
+          'age': member['age'],
+          'gender': member['gender'],
+          'is_pregnant': specialConditions?['is_pregnant'] ?? false,
+          'is_lactating': specialConditions?['is_lactating'] ?? false,
+        };
+      }).toList();
+
+      setState(() {
+        familyMembers = members;
+      });
+    } catch (e) {
+      print('Error fetching family members: $e');
+    }
+  }
+
   Future<void> fetchMealPlan() async {
     try {
+      // First get the family_head record for this user
+      final familyHeadRecord = await Supabase.instance.client
+          .from('familymember')
+          .select('family_head')
+          .eq('user_id', widget.currentUserId)
+          .single();
+
+      if (familyHeadRecord == null) return;
+
+      final familyHeadName = familyHeadRecord['family_head'];
+
       final response = await Supabase.instance.client
           .from('mealplan')
           .select(
               'mealplan_id, meal_category_id, day, recipe_id, meal_name, is_completed')
-          .eq('family_head', '${widget.firstName} ${widget.lastName}')
+          .eq('family_head', familyHeadName)
           .order('day', ascending: true)
           .order('meal_category_id', ascending: true);
 
@@ -144,24 +198,8 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         mealPlanData = fetchedMealPlan;
       });
 
-      // Check if all meals are completed
-      bool allCompleted = true;
-      for (var dayMeals in mealPlanData) {
-        for (var meal in dayMeals) {
-          if (meal['mealplan_id'] != null && meal['is_completed'] != true) {
-            allCompleted = false;
-            break;
-          }
-        }
-        if (!allCompleted) break;
-      }
-
-      if (allCompleted && mounted) {
-        MealPlanCompletionHandler.showCompletionDialog(
-          context,
-          '${widget.firstName} ${widget.lastName}',
-        );
-      }
+      // Check completion status
+      checkMealPlanCompletion();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -171,31 +209,69 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     }
   }
 
-  Future<void> fetchFamilyMembers() async {
+  Future<void> markMealAsCompleted(String mealPlanId) async {
     try {
-      final response =
-          await Supabase.instance.client.from('familymember').select('''
-          first_name, last_name, age, gender,
-          familymember_specialconditions(is_pregnant, is_lactating)
-          ''').eq('family_head', '${widget.firstName} ${widget.lastName}');
+      // First get the family_head record for this user
+      final familyHeadRecord = await Supabase.instance.client
+          .from('familymember')
+          .select('family_head')
+          .eq('user_id', widget.currentUserId)
+          .single();
 
-      final members = response.map((member) {
-        final specialConditions = member['familymember_specialconditions'];
-        return {
-          'first_name': member['first_name'],
-          'last_name': member['last_name'],
-          'age': member['age'],
-          'gender': member['gender'],
-          'is_pregnant': specialConditions?['is_pregnant'] ?? false,
-          'is_lactating': specialConditions?['is_lactating'] ?? false,
-        };
-      }).toList();
+      if (familyHeadRecord == null) return;
 
+      final familyHeadName = familyHeadRecord['family_head'];
+
+      // Update in database
+      await Supabase.instance.client
+          .from('mealplan')
+          .update({'is_completed': true})
+          .eq('mealplan_id', mealPlanId)
+          .eq('family_head',
+              familyHeadName); // Add this condition to ensure updating correct record
+
+      // Update local state
       setState(() {
-        familyMembers = members;
+        for (var dayMeals in mealPlanData) {
+          for (var meal in dayMeals) {
+            if (meal['mealplan_id'] == mealPlanId) {
+              meal['is_completed'] = true;
+            }
+          }
+        }
       });
+
+      if (mounted) {
+        // Show completion message
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Meal marked as completed!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        // Check completion status
+        checkMealPlanCompletion();
+
+        // Refresh the page
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => FamHeadDashboard(
+              firstName: widget.firstName,
+              lastName: widget.lastName,
+              currentUserUsername: widget.currentUserUsername,
+              currentUserId: widget.currentUserId,
+            ),
+          ),
+        );
+      }
     } catch (e) {
-      print('Error fetching family members: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to mark meal as completed: $e')),
+        );
+      }
     }
   }
 
@@ -231,74 +307,6 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     }
   }
 
-  Future<void> markMealAsCompleted(String mealPlanId) async {
-    try {
-      // Update in database
-      await Supabase.instance.client
-          .from('mealplan')
-          .update({'is_completed': true}).eq('mealplan_id', mealPlanId);
-
-      // Update local state
-      setState(() {
-        for (var dayMeals in mealPlanData) {
-          for (var meal in dayMeals) {
-            if (meal['mealplan_id'] == mealPlanId) {
-              meal['is_completed'] = true;
-            }
-          }
-        }
-      });
-
-      // Check if all meals are completed
-      bool allCompleted = true;
-      for (var dayMeals in mealPlanData) {
-        for (var meal in dayMeals) {
-          if (meal['mealplan_id'] != null && meal['is_completed'] != true) {
-            allCompleted = false;
-            break;
-          }
-        }
-        if (!allCompleted) break;
-      }
-
-      if (mounted) {
-        // Show completion message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Meal marked as completed!'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-
-        if (allCompleted) {
-          MealPlanCompletionHandler.showCompletionDialog(
-            context,
-            '${widget.firstName} ${widget.lastName}',
-          );
-        }
-
-        // Refresh the page in place
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => FamHeadDashboard(
-              firstName: widget.firstName,
-              lastName: widget.lastName,
-              currentUserUsername: widget.currentUserUsername,
-              currentUserId: widget.currentUserId,
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to mark meal as completed: $e')),
-        );
-      }
-    }
-  }
-
   List<Widget> get _pageDetails => [
         MealPlanDashboard(
           mealPlanData: mealPlanData,
@@ -308,10 +316,12 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           onCompleteMeal: markMealAsCompleted,
           userFirstName: widget.firstName,
           userLastName: widget.lastName,
+          currentUserId: widget.currentUserId,
         ),
         MyFamilyPage(
           initialFirstName: widget.firstName,
           initialLastName: widget.lastName,
+          currentUserId: widget.currentUserId,
         ),
         FamHeadChatPage(
           currentUserId: widget.currentUserId,

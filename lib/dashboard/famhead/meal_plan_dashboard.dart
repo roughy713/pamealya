@@ -24,6 +24,7 @@ class MealPlanDashboard extends StatefulWidget {
   final Function(String mealPlanId)? onCompleteMeal;
   final String userFirstName;
   final String userLastName;
+  final String currentUserId;
 
   const MealPlanDashboard({
     super.key,
@@ -34,13 +35,13 @@ class MealPlanDashboard extends StatefulWidget {
     this.onCompleteMeal,
     required this.userFirstName,
     required this.userLastName,
+    required this.currentUserId,
   });
 
   @override
   _MealPlanDashboardState createState() => _MealPlanDashboardState();
 }
 
-// State Class
 class _MealPlanDashboardState extends State<MealPlanDashboard> {
   final ScrollController _horizontalScrollController = ScrollController();
   final ScrollController _verticalScrollController = ScrollController();
@@ -49,7 +50,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
   late List<List<Map<String, dynamic>>> mealPlanData;
   StreamSubscription<dynamic>? _mealPlanSubscription;
 
-  // Initialization and Cleanup
   @override
   void initState() {
     super.initState();
@@ -66,49 +66,28 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     super.dispose();
   }
 
-  // Supabase Functions
   Future<void> fetchMealPlan() async {
     try {
       final response = await Supabase.instance.client
           .from('mealplan')
           .select(
               'mealplan_id, meal_category_id, day, recipe_id, meal_name, is_completed')
-          .eq('family_head', widget.familyHeadName)
+          .eq('user_id', widget.currentUserId)
           .order('day', ascending: true)
           .order('meal_category_id', ascending: true);
 
       List<List<Map<String, dynamic>>> fetchedMealPlan = List.generate(
         7,
-        (_) => [
-          {
-            'meal_category_id': 1,
+        (_) => List.generate(
+          4,
+          (categoryId) => {
+            'meal_category_id': categoryId + 1,
             'meal_name': null,
             'recipe_id': null,
             'mealplan_id': null,
-            'is_completed': false
+            'is_completed': false,
           },
-          {
-            'meal_category_id': 2,
-            'meal_name': null,
-            'recipe_id': null,
-            'mealplan_id': null,
-            'is_completed': false
-          },
-          {
-            'meal_category_id': 3,
-            'meal_name': null,
-            'recipe_id': null,
-            'mealplan_id': null,
-            'is_completed': false
-          },
-          {
-            'meal_category_id': 4, // Adjust for Snacks
-            'meal_name': null,
-            'recipe_id': null,
-            'mealplan_id': null,
-            'is_completed': false
-          },
-        ],
+        ),
       );
 
       for (var meal in response ?? []) {
@@ -117,7 +96,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
             print('Skipping null meal entry');
             continue;
           }
-          int day = (meal['day'] ?? 1) - 1; // Default to day 1 if null
+          int day = (meal['day'] ?? 1) - 1;
           if (day < 0 || day >= 7) {
             print('Invalid day value: ${meal['day']}');
             continue;
@@ -165,12 +144,12 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       setState(() {
         mealPlanData = fetchedMealPlan;
       });
-
-      print('Final fetchedMealPlan: $mealPlanData');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching meal plan: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching meal plan: $e')),
+        );
+      }
     }
   }
 
@@ -178,7 +157,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     _mealPlanSubscription = Supabase.instance.client
         .from('mealplan')
         .stream(primaryKey: ['mealplan_id'])
-        .eq('family_head', widget.familyHeadName)
+        .eq('user_id', widget.currentUserId)
         .listen((data) {
           for (var meal in data) {
             int day = meal['day'] - 1;
@@ -187,13 +166,14 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
             if (day >= 0 &&
                 day < 7 &&
                 categoryIndex >= 0 &&
-                categoryIndex < 3) {
+                categoryIndex < 4) {
               setState(() {
                 mealPlanData[day][categoryIndex] = {
                   'meal_category_id': meal['meal_category_id'],
                   'meal_name': meal['meal_name'],
                   'recipe_id': meal['recipe_id'],
                   'mealplan_id': meal['mealplan_id'],
+                  'is_completed': meal['is_completed'] ?? false,
                 };
               });
             }
@@ -221,7 +201,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       final familyMembersResponse = await Supabase.instance.client
           .from('familymember')
           .select('familymember_id, religion')
-          .eq('family_head', widget.familyHeadName);
+          .eq('user_id', widget.currentUserId);
 
       final familyMembers = familyMembersResponse as List<dynamic>;
       final familyMemberIds =
@@ -230,12 +210,10 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       // Fetch allergens for family members
       final allergensResponse = await Supabase.instance.client
           .from('familymember_allergens')
-          .select('familymember_id, is_dairy, is_nuts, is_seafood');
+          .select('familymember_id, is_dairy, is_nuts, is_seafood')
+          .filter('familymember_id', 'in', familyMemberIds);
 
-      final allergens = allergensResponse
-          .where((allergen) =>
-              familyMemberIds.contains(allergen['familymember_id']))
-          .toList();
+      final allergens = allergensResponse as List<dynamic>;
 
       // Consolidate allergy information
       final hasAllergy = {
@@ -265,7 +243,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
         final isExcludedForHalal = isHalalRequired && meal['is_halal'] != true;
 
-        // Include only meals that are not excluded
         return !isExcludedForAllergens && !isExcludedForHalal;
       }).toList();
 
@@ -290,12 +267,16 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       final newMeal = availableMeals.first;
 
       // Update the meal in the database
-      await Supabase.instance.client.from('mealplan').update({
-        'recipe_id': newMeal['recipe_id'],
-        'meal_name': newMeal['name'],
-      }).eq('mealplan_id', mealPlanId);
+      await Supabase.instance.client
+          .from('mealplan')
+          .update({
+            'recipe_id': newMeal['recipe_id'],
+            'meal_name': newMeal['name'],
+          })
+          .eq('mealplan_id', mealPlanId)
+          .eq('user_id', widget.currentUserId);
 
-      // Update the local state to reflect the new meal
+      // Update the local state
       setState(() {
         mealPlanData[day] = mealPlanData[day].map((meal) {
           if (meal['mealplan_id'] == mealPlanId) {
@@ -319,12 +300,12 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     }
   }
 
-  Future<Map<String, String>?> fetchUserCity(String familyHeadName) async {
+  Future<Map<String, String>?> fetchUserCity() async {
     try {
       final response = await supabase
           .from('familymember')
           .select('city, barangay')
-          .eq('family_head', familyHeadName)
+          .eq('user_id', widget.currentUserId)
           .limit(1)
           .single();
 
@@ -349,7 +330,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       time_available_from, time_available_to, address_line1
     ''').eq('is_accepted', true).eq('city', userCity);
 
-      // Add barangay filter if provided
       if (userBarangay != null && userBarangay.isNotEmpty) {
         query = query.eq('barangay', userBarangay);
       }
@@ -366,19 +346,15 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
   Future<void> bookCook(
       String cookId, DateTime desiredDeliveryTime, String mealPlanId) async {
     try {
+      // Get the family member ID using user_id
       final familyMemberResponse = await supabase
           .from('familymember')
           .select('familymember_id')
-          .eq('first_name', widget.userFirstName)
-          .eq('last_name', widget.userLastName)
-          .eq('family_head',
-              widget.familyHeadName) // Ensure the query is unique
-          .maybeSingle();
+          .eq('user_id', widget.currentUserId)
+          .single();
 
-      if (familyMemberResponse == null ||
-          familyMemberResponse['familymember_id'] == null) {
-        throw Exception(
-            'Family member not found for name: ${widget.userFirstName} ${widget.userLastName}');
+      if (familyMemberResponse == null) {
+        throw Exception('Family member not found');
       }
 
       final familyMemberId = familyMemberResponse['familymember_id'];
@@ -387,8 +363,8 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       await supabase.from('bookingrequest').insert({
         'bookingrequest_id': uuid,
         'localcookid': cookId,
-        'family_head': widget.familyHeadName,
-        'familymember_id': familyMemberId, // Use the retrieved familymember_id
+        'user_id': widget.currentUserId,
+        'familymember_id': familyMemberId,
         'mealplan_id': mealPlanId,
         'is_cook_booking': true,
         'request_date': DateTime.now().toIso8601String(),
@@ -449,6 +425,122 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
               child: const Text('OK'),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showCookBookingDialog(BuildContext context, String mealPlanId) async {
+    final userLocation = await fetchUserCity();
+
+    if (userLocation == null ||
+        userLocation['city'] == null ||
+        userLocation['barangay'] == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User location not found.')),
+      );
+      return;
+    }
+
+    final userCity = userLocation['city']!;
+    final userBarangay = userLocation['barangay']!;
+
+    final cooks = await fetchCooks(userCity, userBarangay);
+
+    if (cooks.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No cooks available in your area.')),
+      );
+      return;
+    }
+
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: SizedBox(
+            width: 500,
+            height: 500,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  const Text(
+                    'Available cooks near you',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: cooks.length,
+                      itemBuilder: (context, index) {
+                        final cook = cooks[index];
+                        final firstName = cook['first_name'] ?? 'N/A';
+                        final lastName = cook['last_name'] ?? 'N/A';
+                        final city = cook['city'] ?? 'N/A';
+
+                        final addressLine1 =
+                            cook['address_line1']?.toString().trim();
+                        final barangay = cook['barangay']?.toString().trim();
+                        final formattedAddress =
+                            (addressLine1 != null && addressLine1.isNotEmpty)
+                                ? (barangay != null && barangay.isNotEmpty
+                                    ? '$addressLine1, $barangay'
+                                    : addressLine1)
+                                : 'No address provided';
+
+                        return Card(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 4,
+                          margin: const EdgeInsets.symmetric(vertical: 8),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              radius: 24,
+                              backgroundColor: Colors.green,
+                              child: Text(
+                                firstName.isNotEmpty
+                                    ? firstName[0].toUpperCase()
+                                    : 'C',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              '$firstName $lastName',
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(
+                              'City: ${cook['city'] ?? 'N/A'}\n'
+                              'Barangay: ${cook['barangay'] ?? 'N/A'}\n'
+                              'Address: $formattedAddress\n'
+                              'Availability: ${cook['availability_days'] ?? 'N/A'} '
+                              '(${cook['time_available_from'] ?? 'N/A'} - ${cook['time_available_to'] ?? 'N/A'})',
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            onTap: () => _showCookDetailsDialog(
+                                context, cook, mealPlanId),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       },
     );
@@ -1213,121 +1305,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     return 'Sample Barangay'; // Replace with actual barangay fetching logic
   }
 
-  void _showCookBookingDialog(BuildContext context, String mealPlanId) async {
-    final userLocation = await fetchUserCity(widget.familyHeadName);
-
-    if (userLocation == null ||
-        userLocation['city'] == null ||
-        userLocation['barangay'] == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User location not found.')),
-      );
-      return;
-    }
-
-    final userCity = userLocation['city']!;
-    final userBarangay = userLocation['barangay']!;
-
-    final cooks = await fetchCooks(userCity, userBarangay);
-
-    if (cooks.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No cooks available in your area.')),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: SizedBox(
-            width: 500,
-            height: 500,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  const Text(
-                    'Available cooks near you',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: cooks.length,
-                      itemBuilder: (context, index) {
-                        final cook = cooks[index];
-                        final firstName = cook['first_name'] ?? 'N/A';
-                        final lastName = cook['last_name'] ?? 'N/A';
-                        final city = cook['city'] ?? 'N/A';
-
-                        // Define formattedAddress
-                        final addressLine1 =
-                            cook['address_line1']?.toString().trim();
-                        final barangay = cook['barangay']?.toString().trim();
-                        final formattedAddress =
-                            (addressLine1 != null && addressLine1.isNotEmpty)
-                                ? (barangay != null && barangay.isNotEmpty
-                                    ? '$addressLine1, $barangay'
-                                    : addressLine1)
-                                : 'No address provided';
-
-                        return Card(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 4,
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              radius: 24,
-                              backgroundColor: Colors.green,
-                              child: Text(
-                                firstName.isNotEmpty
-                                    ? firstName[0].toUpperCase()
-                                    : 'C',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              '$firstName $lastName',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text(
-                              'City: ${cook['city'] ?? 'N/A'}\n'
-                              'Barangay: ${cook['barangay'] ?? 'N/A'}\n'
-                              'Address: $formattedAddress\n'
-                              'Availability: ${cook['availability_days'] ?? 'N/A'} '
-                              '(${cook['time_available_from'] ?? 'N/A'} - ${cook['time_available_to'] ?? 'N/A'})',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            onTap: () => _showCookDetailsDialog(
-                                context, cook, mealPlanId),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   void _showCookDetailsDialog(
       BuildContext context, Map<String, dynamic> cook, String mealPlanId) {
     DateTime? selectedDateTime;
@@ -1624,6 +1601,18 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       final mealCategoryId = meal['meal_category_id'];
       if (recipeId == null) return;
 
+      // First verify this meal belongs to the current user
+      final mealplanCheck = await supabase
+          .from('mealplan')
+          .select()
+          .eq('mealplan_id', meal['mealplan_id'])
+          .eq('user_id', widget.currentUserId)
+          .single();
+
+      if (mealplanCheck == null) {
+        throw Exception('Meal not found or unauthorized');
+      }
+
       // Fetch meal details
       final mealDetailsResponse = await supabase
           .from('meal')
@@ -1715,9 +1704,42 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                           ),
                           ElevatedButton(
                             onPressed: onCompleteMeal != null
-                                ? () {
-                                    Navigator.of(context).pop();
-                                    onCompleteMeal(meal['mealplan_id']);
+                                ? () async {
+                                    try {
+                                      // First verify this meal belongs to the current user
+                                      final mealCheck = await supabase
+                                          .from('mealplan')
+                                          .select()
+                                          .eq('mealplan_id',
+                                              meal['mealplan_id'])
+                                          .eq('user_id', widget.currentUserId)
+                                          .single();
+
+                                      if (mealCheck == null) {
+                                        throw Exception(
+                                            'Meal not found or unauthorized');
+                                      }
+
+                                      // Update the meal completion status
+                                      await supabase
+                                          .from('mealplan')
+                                          .update({'is_completed': true})
+                                          .eq('mealplan_id',
+                                              meal['mealplan_id'])
+                                          .eq('user_id', widget.currentUserId);
+
+                                      Navigator.of(context).pop();
+                                      if (onCompleteMeal != null) {
+                                        onCompleteMeal(meal['mealplan_id']);
+                                      }
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                            content: Text(
+                                                'Error completing meal: $e')),
+                                      );
+                                    }
                                   }
                                 : null,
                             style: ElevatedButton.styleFrom(

@@ -8,11 +8,13 @@ import 'famhead_dashboard.dart';
 class MyFamilyPage extends StatefulWidget {
   final String initialFirstName;
   final String initialLastName;
+  final String currentUserId;
 
   const MyFamilyPage({
     super.key,
     required this.initialFirstName,
     required this.initialLastName,
+    required this.currentUserId,
   });
 
   @override
@@ -23,6 +25,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
   List<Map<String, dynamic>> familyMembers = [];
   late String firstName;
   late String lastName;
+  String? familyHeadName;
 
   @override
   void initState() {
@@ -34,20 +37,28 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
 
   Future<void> fetchFamilyMembers() async {
     try {
+      // First, get the family head record to get the correct family_head identifier
+      final familyHeadRecord = await Supabase.instance.client
+          .from('familymember')
+          .select('family_head')
+          .eq('user_id', widget.currentUserId)
+          .single();
+
+      if (familyHeadRecord == null) return;
+
+      final String familyHeadName = familyHeadRecord['family_head'] as String;
+
+      // Then get all family members using that specific family_head value
       final response =
-          await Supabase.instance.client.from('familymember').select(
-        '''
-              *, 
-              familymember_allergens(is_seafood, is_nuts, is_dairy),
-              familymember_specialconditions(is_pregnant, is_lactating, is_none)
-            ''',
-      ).eq('family_head', '$firstName $lastName');
+          await Supabase.instance.client.from('familymember').select('''
+            *, 
+            familymember_allergens(is_seafood, is_nuts, is_dairy),
+            familymember_specialconditions(is_pregnant, is_lactating, is_none)
+          ''').eq('family_head', familyHeadName);
 
       setState(() {
         familyMembers =
             (response as List<dynamic>).cast<Map<String, dynamic>>();
-
-        // Sort the list to keep "Family Head" at the top
         familyMembers.sort((a, b) {
           if (a['position'] == 'Family Head') return -1;
           if (b['position'] == 'Family Head') return 1;
@@ -60,10 +71,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
           context: context,
           barrierDismissible: false,
           builder: (context) => AlertDialog(
-            title: const Text(
-              'Error',
-              style: TextStyle(color: Colors.red),
-            ),
+            title: const Text('Error', style: TextStyle(color: Colors.red)),
             content: Text('Error fetching family members: ${e.toString()}'),
             actions: [
               TextButton(
@@ -79,22 +87,14 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
 
   Future<void> _showMealPlanConfirmation(BuildContext context) async {
     try {
-      // First check if user has any meal plan
       final supabase = Supabase.instance.client;
-
-      // Add print for debugging
-      print('Checking meal plan for: $firstName $lastName');
 
       final existingPlan = await supabase
           .from('mealplan')
           .select()
-          .eq('family_head', '$firstName $lastName');
+          .eq('user_id', widget.currentUserId);
 
-      print('Existing plan: $existingPlan'); // Debug print
-
-      // Changed condition to check list length
       if (existingPlan != null && existingPlan.isNotEmpty && context.mounted) {
-        print('Showing existing meal plan dialog'); // Debug print
         await showDialog(
           context: context,
           barrierDismissible: false,
@@ -105,18 +105,11 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
               ),
               title: const Row(
                 children: [
-                  Icon(
-                    Icons.info,
-                    color: Colors.green,
-                    size: 28,
-                  ),
+                  Icon(Icons.info, color: Colors.green, size: 28),
                   SizedBox(width: 8),
                   Text(
                     'Meal Plan Exists',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                 ],
               ),
@@ -147,11 +140,9 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
           },
         );
       } else {
-        print('No existing plan, showing generation dialog'); // Debug print
         await _showGenerateMealPlanDialog(context);
       }
     } catch (e) {
-      print('Error checking meal plan: $e'); // Debug print
       if (context.mounted) {
         showDialog(
           context: context,
@@ -186,10 +177,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
               ),
               title: const Text(
                 'Generate Meal Plan',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -212,8 +200,8 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                           });
                         },
                       ),
-                      Expanded(
-                        child: const Text(
+                      const Expanded(
+                        child: Text(
                           'Note: Please check the details of all the family members including the Family Head, especially the Allergens.',
                           style: TextStyle(
                             fontSize: 14,
@@ -231,10 +219,8 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                   onPressed: isLoading
                       ? null
                       : () => Navigator.of(dialogContext).pop(),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(color: Colors.black),
-                  ),
+                  child: const Text('Cancel',
+                      style: TextStyle(color: Colors.black)),
                 ),
                 if (isLoading)
                   const CircularProgressIndicator()
@@ -247,14 +233,11 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                                 isLoading = true;
                               });
 
-                              // Generate new meal plan
                               await generateMealPlan(
-                                  context, '$firstName $lastName');
+                                  context, familyHeadName ?? '');
 
-                              // Close confirmation dialog
                               Navigator.of(dialogContext).pop();
 
-                              // Show success dialog
                               if (context.mounted) {
                                 showDialog(
                                   context: context,
@@ -271,8 +254,8 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Row(
-                                            children: const [
+                                          const Row(
+                                            children: [
                                               Icon(
                                                 Icons.check_circle,
                                                 color: Color(0xFF4CAF50),
@@ -302,9 +285,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                                             alignment: Alignment.center,
                                             child: Text(
                                               'The meal plan includes:',
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                              ),
+                                              style: TextStyle(fontSize: 14),
                                             ),
                                           ),
                                           const SizedBox(height: 8),
@@ -343,7 +324,8 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                                                       firstName: firstName,
                                                       lastName: lastName,
                                                       currentUserUsername: '',
-                                                      currentUserId: '',
+                                                      currentUserId:
+                                                          widget.currentUserId,
                                                     ),
                                                   ),
                                                 );
@@ -413,9 +395,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                     ),
                     child: const Text(
                       'Confirm',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
               ],
@@ -438,7 +418,9 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
               await Supabase.instance.client
                   .from('familymember')
                   .update(updatedData)
-                  .eq('familymember_id', memberData['familymember_id']);
+                  .eq('familymember_id', memberData['familymember_id'])
+                  .eq('user_id', widget.currentUserId); // Add user_id check
+
               fetchFamilyMembers();
               if (context.mounted) {
                 Navigator.of(context).pop();
@@ -449,14 +431,11 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    title: Row(
-                      children: const [
+                    title: const Row(
+                      children: [
                         Icon(Icons.check_circle, color: Colors.green, size: 30),
                         SizedBox(width: 10),
-                        Text(
-                          'Success',
-                          style: TextStyle(color: Colors.green),
-                        ),
+                        Text('Success', style: TextStyle(color: Colors.green)),
                       ],
                     ),
                     content: const Text('Family member updated successfully!'),
@@ -475,10 +454,8 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                   context: context,
                   barrierDismissible: false,
                   builder: (context) => AlertDialog(
-                    title: const Text(
-                      'Error',
-                      style: TextStyle(color: Colors.red),
-                    ),
+                    title: const Text('Error',
+                        style: TextStyle(color: Colors.red)),
                     content:
                         Text('Error updating family member: ${e.toString()}'),
                     actions: [

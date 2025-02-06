@@ -75,7 +75,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
 
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) {
-      return; // Form is not valid
+      return;
     }
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -89,11 +89,10 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
       final authResponse = await Supabase.instance.client.auth.signUp(
         email: _emailController.text,
         password: _passwordController.text,
-        data: {'user_type': 'family_head'}, // Optional user metadata
+        data: {'user_type': 'family_head'},
       );
 
       if (authResponse.user == null) {
-        // Handle error during sign-up
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Sign-up failed.')),
         );
@@ -103,30 +102,44 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
       final user = authResponse.user;
 
       if (user != null) {
-        // Prepare data for the database
         final familyHeadName =
             '${_firstNameController.text} ${_lastNameController.text}';
+
+        // Get existing family heads with the same name
+        final existingFamilyHeads = await Supabase.instance.client
+            .from('familymember')
+            .select('family_head')
+            .eq('family_head', familyHeadName);
+
+        // Create a unique family head identifier by appending a number if necessary
+        String uniqueFamilyHeadName = familyHeadName;
+        if (existingFamilyHeads.length > 0) {
+          uniqueFamilyHeadName =
+              '$familyHeadName (${existingFamilyHeads.length + 1})';
+        }
 
         final data = {
           'first_name': _firstNameController.text,
           'last_name': _lastNameController.text,
           'age': int.tryParse(_ageController.text),
           'gender': _selectedGender,
-          'phone': _phoneController.text,
+          'dob': _dobController.text,
+          'position': 'Family Head',
+          'family_head':
+              uniqueFamilyHeadName, // Use the unique family head name
+          'religion': _selectedReligion ?? 'N/A',
+          'user_id': user.id,
           'address_line1': _addressLine1Controller.text,
           'barangay': _barangayController.text,
           'city': _cityController.text,
           'province': _provinceController.text,
-          'postal_code': _postalCodeController.text,
-          'dob': _dobController.text,
-          'religion': _selectedReligion ?? 'N/A', // Include religion here
-          'user_id': user.id, // Link with Supabase Auth user ID
-          'is_family_head': true, // Automatically set as family head
-          'position': 'Family Head', // Automatically set position
-          'family_head': familyHeadName, // Full name in family_head column
+          'postal_code': int.tryParse(_postalCodeController.text),
+          'phone': int.tryParse(_phoneController.text),
+          'is_family_head': true,
+          'is_halal': false,
         };
 
-        // Step 2: Insert into the `familymember` table and retrieve the inserted row
+        // Insert into the familymember table
         final insertResponse = await Supabase.instance.client
             .from('familymember')
             .insert(data)
@@ -135,7 +148,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
         if (insertResponse != null && insertResponse.isNotEmpty) {
           final familyMemberId = insertResponse[0]['familymember_id'];
 
-          // Step 3: Save allergens
+          // Save allergens
           await Supabase.instance.client.from('familymember_allergens').upsert({
             'familymember_id': familyMemberId,
             'is_seafood': seafoodAllergy,
@@ -143,7 +156,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
             'is_dairy': dairyAllergy,
           });
 
-          // Step 4: Save special conditions
+          // Save special conditions
           await Supabase.instance.client
               .from('familymember_specialconditions')
               .upsert({
@@ -153,7 +166,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
             'is_none': _selectedCondition == 'None',
           });
 
-          // Step 5: Show success dialog
+          // Show success dialog
           await _showSuccessDialog(
             onSuccess: () {
               _autoLogin(
@@ -236,11 +249,11 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
 
       final user = loginResponse.user;
 
-      // Fetch the user's details from the `familymember` table
+      // Fetch the user's details from the familymember table using user_id
       final familyHeadResponse = await Supabase.instance.client
           .from('familymember')
           .select('first_name, last_name')
-          .eq('user_id', user!.id)
+          .eq('user_id', user!.id) // Use user_id instead of family_head name
           .single();
 
       final firstName = familyHeadResponse['first_name'];
@@ -252,8 +265,8 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
           builder: (context) => FamHeadDashboard(
             firstName: firstName,
             lastName: lastName,
-            currentUserUsername: email, // Pass the username or email
-            currentUserId: user.id, // Pass the current user's ID
+            currentUserUsername: email,
+            currentUserId: user.id, // Pass the user_id to the dashboard
           ),
         ),
       );
