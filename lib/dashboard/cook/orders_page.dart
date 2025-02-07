@@ -88,6 +88,7 @@ class _OrdersPageState extends State<OrdersPage> {
   Future<String> getOrCreateChatRoom(
       String familyUserId, String cookUserId) async {
     try {
+      // Create or get room via RPC
       final response = await supabase.rpc(
         'get_or_create_chat_room',
         params: {
@@ -100,8 +101,7 @@ class _OrdersPageState extends State<OrdersPage> {
         throw Exception('Unable to create or retrieve chat room');
       }
 
-      return response
-          as String; // This will now be the room_id that can be used with messages
+      return response as String;
     } catch (e) {
       throw Exception('Error creating or retrieving chat room: $e');
     }
