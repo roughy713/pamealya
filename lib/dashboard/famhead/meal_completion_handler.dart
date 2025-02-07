@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'meal_plan_generator.dart';
 import 'famhead_dashboard.dart';
-import 'meal_plan_dashboard.dart';
 
 class MealPlanCompletionHandler {
   static Future<bool> checkAllMealsCompleted(
@@ -30,8 +29,13 @@ class MealPlanCompletionHandler {
   static Future<void> showCompletionDialog(
       BuildContext context, String familyHeadName, String userId) async {
     final supabase = Supabase.instance.client;
-    final mealPlanQuery =
-        await supabase.from('mealplan').select().eq('user_id', userId);
+
+    // Check existing meal plan with both user_id and family_head
+    final mealPlanQuery = await supabase
+        .from('mealplan')
+        .select()
+        .eq('user_id', userId)
+        .eq('family_head', familyHeadName);
 
     if (mealPlanQuery == null || mealPlanQuery.isEmpty) {
       return;
@@ -51,11 +55,7 @@ class MealPlanCompletionHandler {
               ),
               title: const Row(
                 children: [
-                  Icon(
-                    Icons.celebration,
-                    color: Colors.green,
-                    size: 30,
-                  ),
+                  Icon(Icons.celebration, color: Colors.green, size: 30),
                   SizedBox(width: 10),
                   Text(
                     'Congratulations!',
@@ -73,10 +73,7 @@ class MealPlanCompletionHandler {
                 children: [
                   const Text(
                     'You have completed the 7-Day meal plan!',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 20),
                   const Text(
@@ -110,10 +107,8 @@ class MealPlanCompletionHandler {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: const Text(
-                    'Close',
-                    style: TextStyle(color: Colors.black),
-                  ),
+                  child: const Text('Close',
+                      style: TextStyle(color: Colors.black)),
                 ),
                 ElevatedButton(
                   onPressed: generateNewPlan
@@ -132,9 +127,7 @@ class MealPlanCompletionHandler {
                   ),
                   child: const Text(
                     'Generate New Meal Plan',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -165,10 +158,7 @@ class MealPlanCompletionHandler {
               ),
               title: const Text(
                 'Generate New Meal Plan',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                ),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -191,8 +181,8 @@ class MealPlanCompletionHandler {
                           });
                         },
                       ),
-                      Expanded(
-                        child: const Text(
+                      const Expanded(
+                        child: Text(
                           'Note: Please check the details of all the family members including the Family Head, especially the Allergens.',
                           style: TextStyle(
                             fontSize: 14,
@@ -210,10 +200,8 @@ class MealPlanCompletionHandler {
                   onPressed: isLoading
                       ? null
                       : () => Navigator.of(dialogContext).pop(),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(color: Colors.black),
-                  ),
+                  child: const Text('Cancel',
+                      style: TextStyle(color: Colors.black)),
                 ),
                 if (isLoading)
                   const CircularProgressIndicator()
@@ -226,11 +214,12 @@ class MealPlanCompletionHandler {
                                 isLoading = true;
                               });
 
-                              // Delete existing meal plan using user_id
+                              // Delete existing meal plan using both user_id and family_head
                               await supabase
                                   .from('mealplan')
                                   .delete()
-                                  .eq('user_id', userId);
+                                  .eq('user_id', userId)
+                                  .eq('family_head', familyHeadName);
 
                               // Generate new meal plan
                               await generateMealPlan(context, familyHeadName);
@@ -291,9 +280,7 @@ class MealPlanCompletionHandler {
                                             alignment: Alignment.center,
                                             child: Text(
                                               'The meal plan includes:',
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                              ),
+                                              style: TextStyle(fontSize: 14),
                                             ),
                                           ),
                                           const SizedBox(height: 8),
@@ -401,9 +388,7 @@ class MealPlanCompletionHandler {
                     ),
                     child: const Text(
                       'Confirm',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
               ],
