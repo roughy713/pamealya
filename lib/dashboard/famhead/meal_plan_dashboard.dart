@@ -1693,8 +1693,9 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                         children: [
                           ElevatedButton(
                             onPressed: () {
-                              _showCookBookingDialog(
-                                  context, meal['mealplan_id']);
+                              String mealPlanId = meal['mealplan_id']
+                                  .toString(); // Convert to string
+                              _showCookBookingDialog(context, mealPlanId);
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
@@ -1710,8 +1711,10 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                       final mealCheck = await supabase
                                           .from('mealplan')
                                           .select()
-                                          .eq('mealplan_id',
-                                              meal['mealplan_id'])
+                                          .eq(
+                                              'mealplan_id',
+                                              meal['mealplan_id']
+                                                  .toString()) // Convert to string
                                           .eq('user_id', widget.currentUserId)
                                           .single();
 
@@ -1724,13 +1727,16 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                       await supabase
                                           .from('mealplan')
                                           .update({'is_completed': true})
-                                          .eq('mealplan_id',
-                                              meal['mealplan_id'])
+                                          .eq(
+                                              'mealplan_id',
+                                              meal['mealplan_id']
+                                                  .toString()) // Convert to string
                                           .eq('user_id', widget.currentUserId);
 
                                       Navigator.of(context).pop();
                                       if (onCompleteMeal != null) {
-                                        onCompleteMeal(meal['mealplan_id']);
+                                        onCompleteMeal(meal['mealplan_id']
+                                            .toString()); // Convert to string
                                       }
                                     } catch (e) {
                                       ScaffoldMessenger.of(context)

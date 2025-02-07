@@ -97,10 +97,11 @@ class _OrdersPageState extends State<OrdersPage> {
       );
 
       if (response == null) {
-        throw Exception(
-            'Unable to create or retrieve chat room. Please ensure all data is valid.');
+        throw Exception('Unable to create or retrieve chat room');
       }
-      return response as String;
+
+      return response
+          as String; // This will now be the room_id that can be used with messages
     } catch (e) {
       throw Exception('Error creating or retrieving chat room: $e');
     }
