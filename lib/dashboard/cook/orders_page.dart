@@ -646,17 +646,25 @@ class _OrdersPageState extends State<OrdersPage> {
       int step, String bookingRequestId, BuildContext context) async {
     try {
       int statusId;
+      String statusText;
 
-      // Map the step to the corresponding delivery_status_id
       if (step == 2) {
-        statusId = 2; // "Preparing"
+        statusId = 2;
+        statusText = "Preparing";
       } else if (step == 3) {
-        statusId = 3; // "On Delivery"
+        statusId = 3;
+        statusText = "On Delivery";
       } else if (step == 4) {
-        statusId = 4; // "Completed"
+        statusId = 4;
+        statusText = "Completed";
       } else {
         return false;
       }
+
+      // Get the order before updating
+      final order = orders.firstWhere(
+        (order) => order['bookingrequest_id'] == bookingRequestId,
+      );
 
       // Update the delivery_status_id in the database
       final response = await supabase
@@ -666,23 +674,38 @@ class _OrdersPageState extends State<OrdersPage> {
           .select();
 
       if (response.isNotEmpty) {
-        await fetchOrders(); // Fetch updated orders immediately after update
+        // Send notification to family head
+        if (order['familymember'] != null &&
+            order['familymember']['user_id'] != null) {
+          await supabase.rpc(
+            'create_notification',
+            params: {
+              'p_recipient_id': order['familymember']['user_id'],
+              'p_sender_id': supabase.auth.currentUser?.id,
+              'p_title': 'Delivery Status Update',
+              'p_message':
+                  'Your order for ${order['mealplan']?['meal_name'] ?? 'the meal'} is now ${statusText}',
+              'p_notification_type': 'delivery',
+              'p_related_id': bookingRequestId,
+            },
+          );
+        }
 
-        // Check if the dialog is still mounted
+        await fetchOrders();
+
         if (mounted) {
           final updatedOrder = orders.firstWhere(
             (order) => order['bookingrequest_id'] == bookingRequestId,
             orElse: () => {},
           );
 
-          // Reopen the dialog with updated data
           if (updatedOrder.isNotEmpty) {
-            Navigator.pop(context); // Close current dialog
+            Navigator.pop(context);
             _showOrderDetailsDialog(context, updatedOrder);
           }
         }
 
-        return true; // Successfully updated
+        return true;
       } else {
         print('Database error: No rows affected.');
         return false;

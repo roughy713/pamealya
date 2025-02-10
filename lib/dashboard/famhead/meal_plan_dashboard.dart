@@ -276,6 +276,20 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           .eq('mealplan_id', mealPlanId)
           .eq('user_id', widget.currentUserId);
 
+      // Create notification for meal regeneration
+      await Supabase.instance.client.rpc(
+        'create_notification',
+        params: {
+          'p_recipient_id': widget.currentUserId,
+          'p_sender_id': widget.currentUserId,
+          'p_title': 'Meal Plan Updated',
+          'p_message':
+              'Your meal for Day ${day + 1} has been regenerated to: ${newMeal['name']}',
+          'p_notification_type': 'meal_plan',
+          'p_related_id': mealPlanId.toString(),
+        },
+      );
+
       // Update the local state
       setState(() {
         mealPlanData[day] = mealPlanData[day].map((meal) {

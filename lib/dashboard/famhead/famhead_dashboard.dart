@@ -6,7 +6,7 @@ import 'meal_plan_dashboard.dart';
 import 'my_family_page.dart';
 import 'famhead_chat_page.dart';
 import 'my_bookings_page.dart';
-import 'notifications_page.dart';
+import 'famhead_notifications_page.dart';
 import 'transactions_page.dart';
 import 'meal_completion_handler.dart';
 import 'custom_drawer.dart';
@@ -329,7 +329,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         MyBookingsPage(
           currentUserId: widget.currentUserId,
         ),
-        const NotificationsPage(),
+        const FamHeadNotificationsPage(),
         const TransactionPage(),
       ];
 

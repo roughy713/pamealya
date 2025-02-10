@@ -129,14 +129,37 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
 
   Future<void> updateBookingStatus(String bookingId, bool isAccepted) async {
     try {
+      // Get the booking details first
+      final booking = bookingRequests.firstWhere(
+        (booking) => booking['bookingrequest_id'] == bookingId,
+      );
+
       await supabase.from('bookingrequest').update({
         'status': isAccepted ? 'accepted' : 'declined',
-        '_isBookingAccepted': isAccepted, // Update _isBookingAccepted field
+        '_isBookingAccepted': isAccepted,
       }).eq('bookingrequest_id', bookingId);
+
+      // Get the family member's user_id for notification
+      if (booking['familymember'] != null &&
+          booking['familymember']['user_id'] != null) {
+        await supabase.rpc(
+          'create_notification',
+          params: {
+            'p_recipient_id': booking['familymember']['user_id'],
+            'p_sender_id': supabase.auth.currentUser?.id,
+            'p_title': 'Booking ${isAccepted ? 'Accepted' : 'Declined'}',
+            'p_message':
+                'Your booking for ${booking['meal_name'] ?? 'the meal'} has been ${isAccepted ? 'accepted' : 'declined'}',
+            'p_notification_type': 'booking',
+            'p_related_id': bookingId,
+          },
+        );
+      }
 
       setState(() {
         bookingRequests.removeWhere(
-            (booking) => booking['bookingrequest_id'] == bookingId);
+          (booking) => booking['bookingrequest_id'] == bookingId,
+        );
       });
 
       ScaffoldMessenger.of(context).showSnackBar(

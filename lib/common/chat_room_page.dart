@@ -82,15 +82,83 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     _messageController.clear();
 
     try {
-      // Ensure the room exists before sending the message
-      await ensureRoomExists(widget.chatRoomId);
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+      print('Current user ID: $currentUserId');
 
+      // Get sender's name first
+      String senderName = '';
+
+      // Try to find in familymember table using actual UUID comparison
+      final senderInfo = await Supabase.instance.client
+          .from('familymember')
+          .select('first_name, last_name')
+          .filter('user_id', 'eq', currentUserId) // Changed to filter method
+          .maybeSingle();
+
+      if (senderInfo == null) {
+        // If not found in familymember, check Local_Cook table
+        final cookInfo = await Supabase.instance.client
+            .from('Local_Cook')
+            .select('first_name, last_name')
+            .filter('user_id', 'eq', currentUserId) // Changed to filter method
+            .maybeSingle();
+
+        if (cookInfo != null) {
+          senderName =
+              '${cookInfo['first_name']} ${cookInfo['last_name']}'.trim();
+        }
+      } else {
+        senderName =
+            '${senderInfo['first_name']} ${senderInfo['last_name']}'.trim();
+      }
+
+      // Send the message
       await Supabase.instance.client.from('messages').insert({
         'content': messageContent,
         'room_id': widget.chatRoomId,
-        'user_id': Supabase.instance.client.auth.currentUser?.id,
+        'user_id': currentUserId,
       });
+
+      // Get chat room details
+      final chatRoomResponse =
+          await Supabase.instance.client.from('chat_room').select('''
+          familymember_id,
+          localcookid,
+          Local_Cook:localcookid(user_id),
+          familymember:familymember_id(user_id)
+        ''').eq('room_id', widget.chatRoomId).single();
+
+      print('Chat room response: $chatRoomResponse');
+
+      if (chatRoomResponse != null) {
+        String? recipientUserId;
+        final cookUserId = chatRoomResponse['Local_Cook']?['user_id'];
+        final familyUserId = chatRoomResponse['familymember']?['user_id'];
+
+        if (currentUserId == familyUserId) {
+          recipientUserId = cookUserId;
+        } else {
+          recipientUserId = familyUserId;
+        }
+
+        if (recipientUserId != null) {
+          print('Sending notification to recipient: $recipientUserId');
+          // Create notification with correct sender name
+          await Supabase.instance.client.rpc(
+            'create_notification',
+            params: {
+              'p_recipient_id': recipientUserId,
+              'p_sender_id': currentUserId,
+              'p_title': 'New Message',
+              'p_message': 'You have a new message from $senderName',
+              'p_notification_type': 'message',
+              'p_related_id': widget.chatRoomId,
+            },
+          );
+        }
+      }
     } catch (e) {
+      print('Error details: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error sending message: $e')),
       );
@@ -100,15 +168,15 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   Future<void> ensureRoomExists(String roomId) async {
     try {
       final response = await Supabase.instance.client
-          .from('rooms')
+          .from('chat_room') // Changed from 'rooms' to 'chat_room'
           .select('*')
-          .eq('id', roomId)
+          .eq('room_id', roomId)
           .maybeSingle();
 
       if (response == null) {
         // Room doesn't exist; create it
-        await Supabase.instance.client.from('rooms').insert({
-          'id': roomId,
+        await Supabase.instance.client.from('chat_room').insert({
+          'room_id': roomId,
           'created_at': DateTime.now().toIso8601String(),
         });
       }

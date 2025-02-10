@@ -110,10 +110,39 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
     _messageController.clear();
 
     try {
+      final currentUserId = supabase.auth.currentUser?.id;
+
+      // Get sender's name first
+      String senderName = '';
+
+      // Try to find in familymember table
+      final senderInfo = await supabase
+          .from('familymember')
+          .select('first_name, last_name')
+          .filter('user_id', 'eq', currentUserId)
+          .maybeSingle();
+
+      if (senderInfo == null) {
+        // If not found in familymember, check Local_Cook table
+        final cookInfo = await supabase
+            .from('Local_Cook')
+            .select('first_name, last_name')
+            .filter('user_id', 'eq', currentUserId)
+            .maybeSingle();
+
+        if (cookInfo != null) {
+          senderName =
+              '${cookInfo['first_name']} ${cookInfo['last_name']}'.trim();
+        }
+      } else {
+        senderName =
+            '${senderInfo['first_name']} ${senderInfo['last_name']}'.trim();
+      }
+
       await supabase.from('messages').insert({
         'content': messageContent,
         'room_id': widget.chatRoomId,
-        'user_id': supabase.auth.currentUser?.id,
+        'user_id': currentUserId,
         'created_at': DateTime.now().toIso8601String(),
       });
 
@@ -122,8 +151,45 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
         'last_message_at': DateTime.now().toIso8601String(),
       }).eq('room_id', widget.chatRoomId);
 
+      // Get chat room details to determine recipient
+      final chatRoomResponse = await supabase.from('chat_room').select('''
+          familymember_id,
+          localcookid,
+          Local_Cook:localcookid(user_id),
+          familymember:familymember_id(user_id)
+        ''').eq('room_id', widget.chatRoomId).single();
+
+      if (chatRoomResponse != null) {
+        String? recipientUserId;
+        final cookUserId = chatRoomResponse['Local_Cook']?['user_id'];
+        final familyUserId = chatRoomResponse['familymember']?['user_id'];
+
+        if (currentUserId == familyUserId) {
+          recipientUserId = cookUserId;
+        } else {
+          recipientUserId = familyUserId;
+        }
+
+        if (recipientUserId != null) {
+          print('Sending notification to recipient: $recipientUserId');
+          // Create notification with correct sender name
+          await supabase.rpc(
+            'create_notification',
+            params: {
+              'p_recipient_id': recipientUserId,
+              'p_sender_id': currentUserId,
+              'p_title': 'New Message',
+              'p_message': 'You have a new message from $senderName',
+              'p_notification_type': 'message',
+              'p_related_id': widget.chatRoomId,
+            },
+          );
+        }
+      }
+
       _fetchMessages(); // Fetch messages immediately after sending
     } catch (e) {
+      print('Error details: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error sending message: $e')),
