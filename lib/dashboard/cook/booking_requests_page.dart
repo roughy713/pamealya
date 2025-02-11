@@ -134,23 +134,37 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
         (booking) => booking['bookingrequest_id'] == bookingId,
       );
 
+      // Update the booking status
       await supabase.from('bookingrequest').update({
         'status': isAccepted ? 'accepted' : 'declined',
         '_isBookingAccepted': isAccepted,
       }).eq('bookingrequest_id', bookingId);
 
-      // Get the family member's user_id for notification
-      if (booking['familymember'] != null &&
-          booking['familymember']['user_id'] != null) {
+      // Get the family head's user_id from the bookingrequest table
+      final bookingDetails = await supabase.from('bookingrequest').select('''
+          user_id,
+          family_head,
+          Local_Cook ( first_name, last_name ),
+          mealplan ( meal_name )
+        ''').eq('bookingrequest_id', bookingId).single();
+
+      if (bookingDetails != null) {
+        final familyHeadUserId = bookingDetails['user_id'];
+        final cookName =
+            "${bookingDetails['Local_Cook']['first_name']} ${bookingDetails['Local_Cook']['last_name']}";
+        final mealName = bookingDetails['mealplan']['meal_name'];
+
+        // Create notification for the family head
         await supabase.rpc(
           'create_notification',
           params: {
-            'p_recipient_id': booking['familymember']['user_id'],
+            'p_recipient_id': familyHeadUserId,
             'p_sender_id': supabase.auth.currentUser?.id,
-            'p_title': 'Booking ${isAccepted ? 'Accepted' : 'Declined'}',
-            'p_message':
-                'Your booking for ${booking['meal_name'] ?? 'the meal'} has been ${isAccepted ? 'accepted' : 'declined'}',
-            'p_notification_type': 'booking',
+            'p_title': isAccepted ? 'Booking Accepted' : 'Booking Declined',
+            'p_message': isAccepted
+                ? 'Your booking for $mealName has been accepted by cook $cookName.'
+                : 'Your booking for $mealName has been declined by cook $cookName.',
+            'p_notification_type': 'booking_status',
             'p_related_id': bookingId,
           },
         );

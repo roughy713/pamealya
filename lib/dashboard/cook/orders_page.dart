@@ -647,24 +647,37 @@ class _OrdersPageState extends State<OrdersPage> {
     try {
       int statusId;
       String statusText;
-
-      if (step == 2) {
-        statusId = 2;
-        statusText = "Preparing";
-      } else if (step == 3) {
-        statusId = 3;
-        statusText = "On Delivery";
-      } else if (step == 4) {
-        statusId = 4;
-        statusText = "Completed";
-      } else {
-        return false;
-      }
+      String notificationMessage;
 
       // Get the order before updating
       final order = orders.firstWhere(
         (order) => order['bookingrequest_id'] == bookingRequestId,
       );
+
+      final cookName = order['cook_name'] ?? 'Your cook';
+      final mealName = order['mealplan']?['meal_name'] ?? 'your meal';
+
+      switch (step) {
+        case 2:
+          statusId = 2;
+          statusText = "Preparing";
+          notificationMessage = "$cookName has started preparing $mealName";
+          break;
+        case 3:
+          statusId = 3;
+          statusText = "On Delivery";
+          notificationMessage =
+              "$cookName is now delivering $mealName to your location";
+          break;
+        case 4:
+          statusId = 4;
+          statusText = "Completed";
+          notificationMessage =
+              "Your order for $mealName has been completed by $cookName";
+          break;
+        default:
+          return false;
+      }
 
       // Update the delivery_status_id in the database
       final response = await supabase
@@ -682,10 +695,9 @@ class _OrdersPageState extends State<OrdersPage> {
             params: {
               'p_recipient_id': order['familymember']['user_id'],
               'p_sender_id': supabase.auth.currentUser?.id,
-              'p_title': 'Delivery Status Update',
-              'p_message':
-                  'Your order for ${order['mealplan']?['meal_name'] ?? 'the meal'} is now ${statusText}',
-              'p_notification_type': 'delivery',
+              'p_title': 'Order Status: $statusText',
+              'p_message': notificationMessage,
+              'p_notification_type': 'delivery_status',
               'p_related_id': bookingRequestId,
             },
           );
@@ -705,6 +717,16 @@ class _OrdersPageState extends State<OrdersPage> {
           }
         }
 
+        // Show success message to cook
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Status successfully updated to $statusText'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+
         return true;
       } else {
         print('Database error: No rows affected.');
@@ -712,6 +734,16 @@ class _OrdersPageState extends State<OrdersPage> {
       }
     } catch (e) {
       print('Error updating order status: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating status: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+
       return false;
     }
   }

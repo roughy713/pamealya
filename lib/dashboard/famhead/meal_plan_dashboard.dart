@@ -363,13 +363,23 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       // First get the user's name from familymember table with correct column names
       final userNameResponse = await supabase
           .from('familymember')
-          .select(
-              'first_name, last_name, familymember_id') // Using correct column names
+          .select('first_name, last_name, familymember_id')
           .eq('user_id', widget.currentUserId)
           .single();
 
       if (userNameResponse == null) {
         throw Exception('User not found');
+      }
+
+      // Get cook's user_id for notification
+      final cookResponse = await supabase
+          .from('Local_Cook')
+          .select('user_id')
+          .eq('localcookid', cookId)
+          .single();
+
+      if (cookResponse == null) {
+        throw Exception('Cook not found');
       }
 
       // Combine first name and last name
@@ -378,11 +388,12 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       final familyMemberId = userNameResponse['familymember_id'];
       final uuid = const Uuid().v4();
 
+      // Create the booking request
       await supabase.from('bookingrequest').insert({
         'bookingrequest_id': uuid,
         'localcookid': cookId,
         'user_id': widget.currentUserId,
-        'family_head': fullName, // Using the full name string
+        'family_head': fullName,
         'familymember_id': familyMemberId,
         'mealplan_id': mealPlanId,
         'is_cook_booking': true,
@@ -392,6 +403,20 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         'status': 'pending',
         '_isBookingAccepted': false,
       });
+
+      // Create notification for the cook
+      await supabase.rpc(
+        'create_notification',
+        params: {
+          'p_recipient_id': cookResponse['user_id'],
+          'p_sender_id': widget.currentUserId,
+          'p_title': 'New Booking Request',
+          'p_message':
+              'You have a new booking request from $fullName for ${DateFormat('MMM dd, yyyy hh:mm a').format(desiredDeliveryTime)}',
+          'p_notification_type': 'booking',
+          'p_related_id': uuid,
+        },
+      );
 
       await showSuccessDialog(
         context,
