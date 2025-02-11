@@ -45,9 +45,6 @@ class _OrdersPageState extends State<OrdersPage> {
           .eq('Local_Cook.user_id', userId) // Ensure only this user's bookings
           .order('desired_delivery_time', ascending: true);
 
-      // Debug: print the response to verify data
-      print('Filtered Orders Response: $response');
-
       // Filter out results with null Local_Cook data
       final filteredOrders = response.where((order) {
         final cook = order['Local_Cook'];
@@ -648,6 +645,7 @@ class _OrdersPageState extends State<OrdersPage> {
       int statusId;
       String statusText;
       String notificationMessage;
+      String notificationTitle;
 
       // Get the order before updating
       final order = orders.firstWhere(
@@ -661,17 +659,20 @@ class _OrdersPageState extends State<OrdersPage> {
         case 2:
           statusId = 2;
           statusText = "Preparing";
+          notificationTitle = "Order Status: Preparing";
           notificationMessage = "$cookName has started preparing $mealName";
           break;
         case 3:
           statusId = 3;
           statusText = "On Delivery";
+          notificationTitle = "Order Status: On Delivery";
           notificationMessage =
               "$cookName is now delivering $mealName to your location";
           break;
         case 4:
           statusId = 4;
           statusText = "Completed";
+          notificationTitle = "Order Status: Completed";
           notificationMessage =
               "Your order for $mealName has been completed by $cookName";
           break;
@@ -695,7 +696,7 @@ class _OrdersPageState extends State<OrdersPage> {
             params: {
               'p_recipient_id': order['familymember']['user_id'],
               'p_sender_id': supabase.auth.currentUser?.id,
-              'p_title': 'Order Status: $statusText',
+              'p_title': notificationTitle,
               'p_message': notificationMessage,
               'p_notification_type': 'delivery_status',
               'p_related_id': bookingRequestId,

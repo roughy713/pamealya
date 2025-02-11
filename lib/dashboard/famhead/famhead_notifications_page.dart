@@ -58,8 +58,6 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
           .eq('recipient_id', userId)
           .order('created_at', ascending: false);
 
-      print('Family head fetched notifications: $response');
-
       if (mounted) {
         setState(() {
           notifications = List<Map<String, dynamic>>.from(response);
@@ -103,10 +101,76 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
     }
   }
 
-  Widget _buildNotificationIcon(String type) {
+  Widget _buildNotificationIcon(String type, [String? title]) {
     IconData iconData;
     Color iconColor;
 
+    // Check for order status notifications
+    if (title != null && title.startsWith('Order Status:')) {
+      if (title.contains('Preparing')) {
+        iconData = Icons.fastfood;
+        iconColor = Colors.orange;
+        return Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(iconData, color: iconColor),
+        );
+      } else if (title.contains('On Delivery')) {
+        iconData = Icons.delivery_dining;
+        iconColor = Colors.blue;
+        return Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(iconData, color: iconColor),
+        );
+      } else if (title.contains('Completed')) {
+        iconData = Icons.check_circle;
+        iconColor = Colors.green;
+        return Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(iconData, color: iconColor),
+        );
+      }
+    }
+
+    // Check for booking status notifications
+    if (title != null) {
+      if (title == 'Booking Accepted') {
+        iconData = Icons.check_circle; // Same as completed
+        iconColor = Colors.green;
+        return Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(iconData, color: iconColor),
+        );
+      } else if (title == 'Booking Declined') {
+        iconData = Icons.close; // X icon
+        iconColor = Colors.red;
+        return Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.red.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(iconData, color: iconColor),
+        );
+      }
+    }
+
+    // Default handling for other notification types
     switch (type) {
       case 'message':
         iconData = Icons.message;
@@ -116,13 +180,9 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
         iconData = Icons.book_online;
         iconColor = Colors.green;
         break;
-      case 'meal_plan':
-        iconData = Icons.restaurant_menu;
-        iconColor = Colors.purple;
-        break;
       case 'delivery':
         iconData = Icons.delivery_dining;
-        iconColor = Colors.orange;
+        iconColor = Colors.purple;
         break;
       default:
         iconData = Icons.notifications;
@@ -200,8 +260,8 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
           child: Card(
             margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: ListTile(
-              leading:
-                  _buildNotificationIcon(notification['notification_type']),
+              leading: _buildNotificationIcon(
+                  notification['notification_type'], notification['title']),
               title: Text(
                 notification['title'],
                 style: TextStyle(

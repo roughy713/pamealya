@@ -102,10 +102,49 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
     }
   }
 
-  Widget _buildNotificationIcon(String type) {
+  Widget _buildNotificationIcon(String type, [String? title]) {
     IconData iconData;
     Color iconColor;
 
+    // First check if it's an order status notification
+    if (title != null && title.startsWith('Order Status:')) {
+      if (title.contains('Preparing')) {
+        iconData = Icons.fastfood; // Food icon for preparing
+        iconColor = Colors.orange;
+        return Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.orange.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(iconData, color: iconColor),
+        );
+      } else if (title.contains('On Delivery')) {
+        iconData = Icons.delivery_dining; // Delivery icon
+        iconColor = Colors.blue;
+        return Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.blue.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(iconData, color: iconColor),
+        );
+      } else if (title.contains('Completed')) {
+        iconData = Icons.check_circle; // Checkmark circle icon
+        iconColor = Colors.green;
+        return Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.green.withOpacity(0.1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(iconData, color: iconColor),
+        );
+      }
+    }
+
+    // Default handling for other notification types
     switch (type) {
       case 'message':
         iconData = Icons.message;
@@ -117,7 +156,7 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
         break;
       case 'delivery':
         iconData = Icons.delivery_dining;
-        iconColor = Colors.orange;
+        iconColor = Colors.purple;
         break;
       default:
         iconData = Icons.notifications;
