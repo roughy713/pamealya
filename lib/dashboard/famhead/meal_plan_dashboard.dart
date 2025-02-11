@@ -360,30 +360,37 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
   Future<void> bookCook(
       String cookId, DateTime desiredDeliveryTime, String mealPlanId) async {
     try {
-      // Get the family member ID using user_id
-      final familyMemberResponse = await supabase
+      // First get the user's name from familymember table with correct column names
+      final userNameResponse = await supabase
           .from('familymember')
-          .select('familymember_id')
+          .select(
+              'first_name, last_name, familymember_id') // Using correct column names
           .eq('user_id', widget.currentUserId)
           .single();
 
-      if (familyMemberResponse == null) {
-        throw Exception('Family member not found');
+      if (userNameResponse == null) {
+        throw Exception('User not found');
       }
 
-      final familyMemberId = familyMemberResponse['familymember_id'];
+      // Combine first name and last name
+      final String fullName =
+          "${userNameResponse['first_name']} ${userNameResponse['last_name']}";
+      final familyMemberId = userNameResponse['familymember_id'];
       final uuid = const Uuid().v4();
 
       await supabase.from('bookingrequest').insert({
         'bookingrequest_id': uuid,
         'localcookid': cookId,
         'user_id': widget.currentUserId,
+        'family_head': fullName, // Using the full name string
         'familymember_id': familyMemberId,
         'mealplan_id': mealPlanId,
         'is_cook_booking': true,
         'request_date': DateTime.now().toIso8601String(),
         'desired_delivery_time': desiredDeliveryTime.toIso8601String(),
         'meal_price': 0.0,
+        'status': 'pending',
+        '_isBookingAccepted': false,
       });
 
       await showSuccessDialog(
