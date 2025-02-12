@@ -58,11 +58,24 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
           .eq('recipient_id', userId)
           .order('created_at', ascending: false);
 
+      print('Raw notification response: $response'); // Debug print
+
+      if (response == null) {
+        print('No notifications found');
+        return;
+      }
+
       if (mounted) {
         setState(() {
           notifications = List<Map<String, dynamic>>.from(response);
           isLoading = false;
         });
+        print(
+            'Number of notifications loaded: ${notifications.length}'); // Debug print
+        // Print first few notifications for debugging
+        for (var i = 0; i < notifications.length && i < 3; i++) {
+          print('Notification ${i + 1}: ${notifications[i]}');
+        }
       }
     } catch (e) {
       print('Error fetching family head notifications: $e');
@@ -105,6 +118,20 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
     IconData iconData;
     Color iconColor;
 
+    // First check meal plan notifications
+    if (type == 'meal_plan' || type == 'meal_completion') {
+      iconData = Icons.restaurant_menu;
+      iconColor = Colors.green;
+      return Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(iconData, color: iconColor),
+      );
+    }
+
     // Check for order status notifications
     if (title != null && title.startsWith('Order Status:')) {
       if (title.contains('Preparing')) {
@@ -146,7 +173,7 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
     // Check for booking status notifications
     if (title != null) {
       if (title == 'Booking Accepted') {
-        iconData = Icons.check_circle; // Same as completed
+        iconData = Icons.check_circle;
         iconColor = Colors.green;
         return Container(
           padding: const EdgeInsets.all(8),
@@ -157,7 +184,7 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
           child: Icon(iconData, color: iconColor),
         );
       } else if (title == 'Booking Declined') {
-        iconData = Icons.close; // X icon
+        iconData = Icons.close;
         iconColor = Colors.red;
         return Container(
           padding: const EdgeInsets.all(8),

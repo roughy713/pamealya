@@ -8,7 +8,7 @@ Future<bool> generateMealPlan(
 
     final userId = supabase.auth.currentUser?.id;
     print('Debug - User ID: $userId');
-    print('Debug - Family Head Name: $familyHeadName'); // Debug line
+    print('Debug - Family Head Name: $familyHeadName');
 
     if (userId == null) {
       throw 'User not authenticated';
@@ -22,14 +22,11 @@ Future<bool> generateMealPlan(
         .eq('position', 'Family Head')
         .single();
 
-    print('Debug - Family Head Check: $familyHeadCheck'); // Debug line
-
     if (familyHeadCheck == null) {
       throw 'Family head record not found';
     }
 
     final verifiedFamilyHead = familyHeadCheck['family_head'] as String;
-    print('Debug - Verified Family Head: $verifiedFamilyHead'); // Debug line
 
     // Delete any existing meal plans
     await supabase
@@ -54,12 +51,6 @@ Future<bool> generateMealPlan(
     final dinners = meals.where((m) => m['meal_category_id'] == 3).toList();
     final snacks = meals.where((m) => m['meal_category_id'] == 4).toList();
 
-    print('Debug - Meals per category:');
-    print('Breakfasts: ${breakfasts.length}');
-    print('Lunches: ${lunches.length}');
-    print('Dinners: ${dinners.length}');
-    print('Snacks: ${snacks.length}');
-
     // Generate meal plan
     for (int day = 1; day <= 7; day++) {
       breakfasts.shuffle();
@@ -81,20 +72,29 @@ Future<bool> generateMealPlan(
           'meal_category_id': mealData['category'],
           'recipe_id': meal['recipe_id'],
           'meal_name': meal['name'],
-          'family_head': verifiedFamilyHead, // Using verified family head name
+          'family_head': verifiedFamilyHead,
           'user_id': userId,
           'is_completed': false,
           'created_at': DateTime.now().toIso8601String(),
         };
 
-        print('Debug - Saving meal plan data: $mealPlanData'); // Debug line
-
-        final response =
-            await supabase.from('mealplan').insert(mealPlanData).select();
-
-        print('Debug - Save response: $response'); // Debug line
+        await supabase.from('mealplan').insert(mealPlanData).select();
       }
     }
+
+    // Send only one notification for the complete weekly meal plan
+    await supabase.rpc(
+      'create_notification',
+      params: {
+        'p_recipient_id': userId,
+        'p_sender_id': userId,
+        'p_title': 'Weekly Meal Plan Generated',
+        'p_message':
+            'Your complete 7-day meal plan has been generated successfully!',
+        'p_notification_type': 'meal_plan',
+        'p_related_id': userId,
+      },
+    );
 
     print('Meal plan generation completed successfully');
     return true;

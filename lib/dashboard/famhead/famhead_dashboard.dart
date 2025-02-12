@@ -211,8 +211,10 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
 
   Future<void> markMealAsCompleted(String mealPlanId) async {
     try {
+      final supabase = Supabase.instance.client;
+
       // First get the family_head record for this user
-      final familyHeadRecord = await Supabase.instance.client
+      final familyHeadRecord = await supabase
           .from('familymember')
           .select('family_head')
           .eq('user_id', widget.currentUserId)
@@ -222,13 +224,53 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
 
       final familyHeadName = familyHeadRecord['family_head'];
 
+      // Get the meal details
+      final mealDetails = await supabase
+          .from('mealplan')
+          .select('day, meal_category_id, meal_name')
+          .eq('mealplan_id', mealPlanId)
+          .single();
+
+      if (mealDetails == null) return;
+
       // Update in database
-      await Supabase.instance.client
+      await supabase
           .from('mealplan')
           .update({'is_completed': true})
           .eq('mealplan_id', mealPlanId)
-          .eq('family_head',
-              familyHeadName); // Add this condition to ensure updating correct record
+          .eq('family_head', familyHeadName);
+
+      // Get meal type name
+      String mealType;
+      switch (mealDetails['meal_category_id']) {
+        case 1:
+          mealType = "Breakfast";
+          break;
+        case 2:
+          mealType = "Lunch";
+          break;
+        case 3:
+          mealType = "Dinner";
+          break;
+        case 4:
+          mealType = "Snacks";
+          break;
+        default:
+          mealType = "Meal";
+      }
+
+      // Send notification for meal completion
+      await supabase.rpc(
+        'create_notification',
+        params: {
+          'p_recipient_id': widget.currentUserId,
+          'p_sender_id': widget.currentUserId,
+          'p_title': 'Day ${mealDetails['day']} $mealType Completed',
+          'p_message': 'You have completed ${mealDetails['meal_name']}',
+          'p_notification_type': 'meal_completion',
+          'p_related_id': mealPlanId,
+        },
+      );
 
       // Update local state
       setState(() {
