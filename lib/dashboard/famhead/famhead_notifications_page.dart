@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import '/common/chat_room_page.dart';
+import 'dart:async';
 
 class FamHeadNotificationsPage extends StatefulWidget {
-  const FamHeadNotificationsPage({super.key});
+  final Function(int)? onPageChange;
+  final String? currentUserId;
+
+  const FamHeadNotificationsPage({
+    super.key,
+    this.onPageChange,
+    this.currentUserId,
+  });
 
   @override
   _FamHeadNotificationsPageState createState() =>
@@ -14,6 +23,7 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
   final supabase = Supabase.instance.client;
   List<Map<String, dynamic>> notifications = [];
   bool isLoading = true;
+  StreamSubscription? _notificationSubscription;
 
   @override
   void initState() {
@@ -22,19 +32,24 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
     _setupNotificationSubscription();
   }
 
+  @override
+  void dispose() {
+    _notificationSubscription?.cancel();
+    super.dispose();
+  }
+
   void _setupNotificationSubscription() {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return;
 
     print('Setting up notifications for family head with ID: $userId');
 
-    supabase
+    _notificationSubscription = supabase
         .from('notifications')
         .stream(primaryKey: ['notification_id'])
         .eq('recipient_id', userId)
         .order('created_at', ascending: false)
         .listen((List<Map<String, dynamic>> data) {
-          print('Family head received notification data: $data');
           if (mounted) {
             setState(() {
               notifications = data;
@@ -46,6 +61,8 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
   }
 
   Future<void> fetchNotifications() async {
+    if (!mounted) return;
+
     try {
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) throw Exception('User not authenticated');
@@ -58,25 +75,12 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
           .eq('recipient_id', userId)
           .order('created_at', ascending: false);
 
-      print('Raw notification response: $response'); // Debug print
+      if (!mounted) return;
 
-      if (response == null) {
-        print('No notifications found');
-        return;
-      }
-
-      if (mounted) {
-        setState(() {
-          notifications = List<Map<String, dynamic>>.from(response);
-          isLoading = false;
-        });
-        print(
-            'Number of notifications loaded: ${notifications.length}'); // Debug print
-        // Print first few notifications for debugging
-        for (var i = 0; i < notifications.length && i < 3; i++) {
-          print('Notification ${i + 1}: ${notifications[i]}');
-        }
-      }
+      setState(() {
+        notifications = List<Map<String, dynamic>>.from(response);
+        isLoading = false;
+      });
     } catch (e) {
       print('Error fetching family head notifications: $e');
       if (mounted) {
@@ -91,11 +95,15 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
   }
 
   Future<void> markAsRead(String notificationId) async {
+    if (!mounted) return;
+
     try {
       await supabase.rpc(
         'mark_notification_read',
         params: {'p_notification_id': notificationId},
       );
+
+      if (!mounted) return;
 
       setState(() {
         final index = notifications.indexWhere(
@@ -105,12 +113,92 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
         }
       });
     } catch (e) {
-      print('Error marking notification as read: $e');
-      if (mounted) {
+      rethrow;
+    }
+  }
+
+  Future<void> _handleNotificationTap(Map<String, dynamic> notification) async {
+    if (!mounted) return;
+
+    final notificationType = notification['notification_type'];
+    final senderId = notification['sender_id'];
+
+    // Mark notification as read first
+    if (!(notification['is_read'] ?? false)) {
+      try {
+        await markAsRead(notification['notification_id'].toString());
+      } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error marking notification as read: $e')),
         );
       }
+    }
+
+    // Then handle navigation
+    switch (notificationType) {
+      case 'meal_plan':
+      case 'meal_completion':
+        widget.onPageChange?.call(0);
+        break;
+
+      case 'booking_status':
+        widget.onPageChange?.call(3);
+        break;
+
+      case 'message':
+        if (senderId != null && widget.currentUserId != null) {
+          try {
+            final chatRoomId =
+                await getOrCreateChatRoom(senderId, widget.currentUserId!);
+            final cookData = await supabase
+                .from('Local_Cook')
+                .select('first_name, last_name')
+                .eq('user_id', senderId)
+                .single();
+
+            if (!mounted) return;
+
+            final cookName =
+                '${cookData['first_name']} ${cookData['last_name']}';
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChatRoomPage(
+                  chatRoomId: chatRoomId,
+                  recipientName: cookName,
+                ),
+              ),
+            );
+          } catch (e) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error opening chat: $e')),
+            );
+          }
+        }
+        break;
+    }
+  }
+
+  Future<String> getOrCreateChatRoom(
+      String cookUserId, String familyMemberUserId) async {
+    try {
+      final response = await supabase.rpc(
+        'get_or_create_chat_room',
+        params: {
+          'family_member_user_id': familyMemberUserId,
+          'cook_user_id': cookUserId,
+        },
+      );
+
+      if (response == null) {
+        throw Exception('Unable to create or retrieve chat room');
+      }
+
+      return response as String;
+    } catch (e) {
+      throw Exception('Error creating or retrieving chat room: $e');
     }
   }
 
@@ -137,37 +225,24 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
       if (title.contains('Preparing')) {
         iconData = Icons.fastfood;
         iconColor = Colors.orange;
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.orange.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(iconData, color: iconColor),
-        );
       } else if (title.contains('On Delivery')) {
         iconData = Icons.delivery_dining;
         iconColor = Colors.blue;
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(iconData, color: iconColor),
-        );
       } else if (title.contains('Completed')) {
         iconData = Icons.check_circle;
         iconColor = Colors.green;
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(iconData, color: iconColor),
-        );
+      } else {
+        iconData = Icons.notifications;
+        iconColor = Colors.grey;
       }
+      return Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: iconColor.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(iconData, color: iconColor),
+      );
     }
 
     // Check for booking status notifications
@@ -175,26 +250,21 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
       if (title == 'Booking Accepted') {
         iconData = Icons.check_circle;
         iconColor = Colors.green;
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(iconData, color: iconColor),
-        );
       } else if (title == 'Booking Declined') {
         iconData = Icons.close;
         iconColor = Colors.red;
-        return Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.red.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(iconData, color: iconColor),
-        );
+      } else {
+        iconData = Icons.notifications;
+        iconColor = Colors.grey;
       }
+      return Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: iconColor.withOpacity(0.1),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(iconData, color: iconColor),
+      );
     }
 
     // Default handling for other notification types
@@ -272,16 +342,17 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
                   .delete()
                   .eq('notification_id', notification['notification_id']);
 
+              if (!mounted) return;
+
               setState(() {
                 notifications.removeAt(index);
               });
             } catch (e) {
               print('Error deleting notification: $e');
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Error deleting notification: $e')),
-                );
-              }
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error deleting notification: $e')),
+              );
             }
           },
           child: Card(
@@ -305,11 +376,7 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
                   ),
                 ],
               ),
-              onTap: () {
-                if (!isRead) {
-                  markAsRead(notification['notification_id'].toString());
-                }
-              },
+              onTap: () => _handleNotificationTap(notification),
               tileColor: isRead ? null : Colors.grey.withOpacity(0.1),
             ),
           ),

@@ -349,6 +349,12 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     }
   }
 
+  void changePage(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   List<Widget> get _pageDetails => [
         MealPlanDashboard(
           mealPlanData: mealPlanData,
@@ -371,7 +377,10 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         MyBookingsPage(
           currentUserId: widget.currentUserId,
         ),
-        const FamHeadNotificationsPage(),
+        FamHeadNotificationsPage(
+          onPageChange: changePage,
+          currentUserId: widget.currentUserId,
+        ),
         const TransactionPage(),
       ];
 
