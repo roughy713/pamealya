@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import '/common/chat_room_page.dart';
 
 class CookNotificationsPage extends StatefulWidget {
-  const CookNotificationsPage({super.key});
+  final Function(int)? onPageChange;
+  final String? currentUserId;
+
+  const CookNotificationsPage({
+    super.key,
+    this.onPageChange,
+    this.currentUserId,
+  });
 
   @override
   _CookNotificationsPageState createState() => _CookNotificationsPageState();
@@ -99,6 +107,94 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
           SnackBar(content: Text('Error marking notification as read: $e')),
         );
       }
+    }
+  }
+
+  Future<void> _handleNotificationTap(Map<String, dynamic> notification) async {
+    final notificationType = notification['notification_type'];
+    final senderId = notification['sender_id'];
+    print('Handling notification type: $notificationType');
+
+    switch (notificationType) {
+      case 'booking':
+        print('Navigating to booking requests page...');
+        widget.onPageChange?.call(1);
+        break;
+
+      case 'delivery_status':
+        print('Navigating to orders page...');
+        widget.onPageChange?.call(2);
+        break;
+
+      case 'message':
+        print('Navigating to chat room...');
+        if (senderId != null && widget.currentUserId != null) {
+          try {
+            // Get or create chat room
+            final String chatRoomId =
+                await getOrCreateChatRoom(senderId, widget.currentUserId!);
+
+            // Get sender's name
+            final senderData = await supabase
+                .from('familymember')
+                .select('first_name, last_name')
+                .eq('user_id', senderId)
+                .single();
+
+            final senderName =
+                '${senderData['first_name']} ${senderData['last_name']}';
+
+            if (mounted) {
+              // Navigate to chat room
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChatRoomPage(
+                    chatRoomId: chatRoomId,
+                    recipientName: senderName,
+                  ),
+                ),
+              );
+            }
+          } catch (e) {
+            print('Error navigating to chat room: $e');
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error opening chat: $e')),
+              );
+            }
+          }
+        }
+        break;
+
+      default:
+        print('Unknown notification type: $notificationType');
+    }
+
+    // Mark notification as read when clicked
+    if (!(notification['is_read'] ?? false)) {
+      markAsRead(notification['notification_id'].toString());
+    }
+  }
+
+  Future<String> getOrCreateChatRoom(
+      String familyMemberUserId, String cookUserId) async {
+    try {
+      final response = await supabase.rpc(
+        'get_or_create_chat_room',
+        params: {
+          'family_member_user_id': familyMemberUserId,
+          'cook_user_id': cookUserId,
+        },
+      );
+
+      if (response == null) {
+        throw Exception('Unable to create or retrieve chat room');
+      }
+
+      return response as String;
+    } catch (e) {
+      throw Exception('Error creating or retrieving chat room: $e');
     }
   }
 
@@ -234,8 +330,10 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
           child: Card(
             margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: ListTile(
-              leading:
-                  _buildNotificationIcon(notification['notification_type']),
+              leading: _buildNotificationIcon(
+                notification['notification_type'],
+                notification['title'],
+              ),
               title: Text(
                 notification['title'],
                 style: TextStyle(
@@ -253,9 +351,7 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
                 ],
               ),
               onTap: () {
-                if (!isRead) {
-                  markAsRead(notification['notification_id'].toString());
-                }
+                _handleNotificationTap(notification);
               },
               tileColor: isRead ? null : Colors.grey.withOpacity(0.1),
             ),

@@ -120,6 +120,13 @@ class CookDashboardState extends State<CookDashboard> {
     );
   }
 
+  void changePage(int index) {
+    print('Changing page to index: $index'); // Debug print
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
   Widget _getPage(int index) {
     List<Widget> pageDetails = [
       const DashboardPage(),
@@ -128,7 +135,13 @@ class CookDashboardState extends State<CookDashboard> {
       CookChatPage(
         currentUserId: widget.currentUserId,
       ),
-      const CookNotificationsPage(),
+      CookNotificationsPage(
+        onPageChange: (pageIndex) {
+          print('onPageChange called with index: $pageIndex');
+          changePage(pageIndex);
+        },
+        currentUserId: widget.currentUserId, // Add this line
+      ),
       const ReviewsPage(),
       const EarningsPage(),
       const SupportPage(),
