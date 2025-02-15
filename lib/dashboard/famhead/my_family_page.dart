@@ -177,7 +177,10 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
               ),
               title: const Text(
                 'Generate Meal Plan',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 20,
+                ),
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -187,30 +190,75 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                     'Do you want to Generate Meal Plan?',
                     style: TextStyle(fontSize: 16),
                   ),
-                  const SizedBox(height: 20),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Checkbox(
-                        value: isChecked,
-                        activeColor: Colors.green,
-                        onChanged: (bool? value) {
-                          setState(() {
-                            isChecked = value ?? false;
-                          });
-                        },
-                      ),
-                      const Expanded(
-                        child: Text(
-                          'Note: Please check the details of all the family members including the Family Head, especially the Allergens.',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey,
-                            fontStyle: FontStyle.italic,
+                  const SizedBox(height: 16),
+                  // Warning Container
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[200]!),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.orange[700],
+                          size: 20,
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Warning: This action cannot be undone. Please ensure all family member information and allergen details are correct before proceeding.',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.black87,
+                              height: 1.4,
+                            ),
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Checkbox with aligned text
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        isChecked = !isChecked;
+                      });
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: Checkbox(
+                              value: isChecked,
+                              activeColor: Colors.green,
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  isChecked = value ?? false;
+                                });
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Text(
+                              'I have double-checked all family member information and confirm it is correct',
+                              style: TextStyle(
+                                fontSize: 14,
+                                height: 1.2,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -242,112 +290,245 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                                 showDialog(
                                   context: context,
                                   barrierDismissible: false,
+                                  barrierColor: Colors.black.withOpacity(0.5),
                                   builder: (BuildContext context) => Dialog(
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(28),
                                     ),
                                     child: Container(
-                                      width: 500,
-                                      padding: const EdgeInsets.all(24),
+                                      width: 400,
+                                      decoration: BoxDecoration(
+                                        color: const Color(
+                                            0xFFF8F9FE), // Light purple-grey background
+                                        borderRadius: BorderRadius.circular(28),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color:
+                                                Colors.black.withOpacity(0.08),
+                                            blurRadius: 20,
+                                            offset: const Offset(0, 10),
+                                          ),
+                                        ],
+                                      ),
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          const Row(
-                                            children: [
-                                              Icon(
-                                                Icons.check_circle,
-                                                color: Color(0xFF4CAF50),
-                                                size: 24,
-                                              ),
-                                              SizedBox(width: 8),
-                                              Text(
-                                                'Success!',
-                                                style: TextStyle(
-                                                  color: Color(0xFF4CAF50),
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 16),
-                                          const Text(
-                                            'Your 7-day meal plan has been successfully generated!',
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-                                          const Align(
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              'The meal plan includes:',
-                                              style: TextStyle(fontSize: 14),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          const Align(
-                                            alignment: Alignment.center,
+                                          // Main content padding
+                                          Padding(
+                                            padding: const EdgeInsets.all(32),
                                             child: Column(
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.start,
                                               children: [
-                                                Text(
-                                                    '• Daily breakfast options',
-                                                    style: TextStyle(
-                                                        fontSize: 14)),
-                                                Text('• Lunch selections',
-                                                    style: TextStyle(
-                                                        fontSize: 14)),
-                                                Text('• Dinner choices',
-                                                    style: TextStyle(
-                                                        fontSize: 14)),
-                                                Text('• Snack recommendations',
-                                                    style: TextStyle(
-                                                        fontSize: 14)),
+                                                // Success icon and text
+                                                Row(
+                                                  children: [
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                              2),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors
+                                                            .green.shade50,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(8),
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.check,
+                                                        color: Colors
+                                                            .green.shade500,
+                                                        size: 16,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      'Success!',
+                                                      style: TextStyle(
+                                                        color: Colors
+                                                            .green.shade500,
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 16),
+
+                                                // Success message
+                                                const Text(
+                                                  'Your 7-day meal plan has been successfully generated!',
+                                                  style: TextStyle(
+                                                    fontSize: 15,
+                                                    fontWeight: FontWeight.w500,
+                                                    color: Color(0xFF2C3135),
+                                                    height: 1.3,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 24),
+
+                                                // White card for meal plan content
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.all(24),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            20),
+                                                    boxShadow: [
+                                                      BoxShadow(
+                                                        color: Colors.black
+                                                            .withOpacity(0.03),
+                                                        blurRadius: 10,
+                                                        offset:
+                                                            const Offset(0, 4),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                  child: Row(
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
+                                                    children: [
+                                                      // Meal plan illustration
+                                                      SizedBox(
+                                                        width: 100,
+                                                        height: 100,
+                                                        child: Image.asset(
+                                                          'assets/mealplan.png',
+                                                          color: Colors
+                                                              .green.shade400,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 24),
+
+                                                      // Meal plan details
+                                                      Expanded(
+                                                        child: Column(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .start,
+                                                          children: [
+                                                            const Text(
+                                                              'The meal plan includes:',
+                                                              style: TextStyle(
+                                                                fontSize: 14,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                                color: Color(
+                                                                    0xFF2C3135),
+                                                              ),
+                                                            ),
+                                                            const SizedBox(
+                                                                height: 12),
+                                                            ...[
+                                                              'Daily breakfast options',
+                                                              'Lunch selections',
+                                                              'Dinner choices',
+                                                              'Snack recommendations'
+                                                            ]
+                                                                .map(
+                                                                  (text) =>
+                                                                      Padding(
+                                                                    padding: const EdgeInsets
+                                                                        .only(
+                                                                        bottom:
+                                                                            8),
+                                                                    child: Row(
+                                                                      children: [
+                                                                        Container(
+                                                                          width:
+                                                                              4,
+                                                                          height:
+                                                                              4,
+                                                                          margin: const EdgeInsets
+                                                                              .only(
+                                                                              right: 8,
+                                                                              top: 8),
+                                                                          decoration:
+                                                                              BoxDecoration(
+                                                                            color:
+                                                                                Colors.green.shade400,
+                                                                            borderRadius:
+                                                                                BorderRadius.circular(2),
+                                                                          ),
+                                                                        ),
+                                                                        Expanded(
+                                                                          child:
+                                                                              Text(
+                                                                            text,
+                                                                            style:
+                                                                                const TextStyle(
+                                                                              fontSize: 14,
+                                                                              color: Color(0xFF4A5056),
+                                                                              height: 1.4,
+                                                                            ),
+                                                                          ),
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                  ),
+                                                                )
+                                                                .toList(),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
                                               ],
                                             ),
                                           ),
-                                          const SizedBox(height: 24),
-                                          Align(
-                                            alignment: Alignment.centerRight,
-                                            child: ElevatedButton(
-                                              onPressed: () {
-                                                Navigator.pushReplacement(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (context) =>
-                                                        FamHeadDashboard(
-                                                      firstName: firstName,
-                                                      lastName: lastName,
-                                                      currentUserUsername: '',
-                                                      currentUserId:
-                                                          widget.currentUserId,
+
+                                          // Bottom action
+                                          Container(
+                                            padding: const EdgeInsets.fromLTRB(
+                                                32, 0, 32, 32),
+                                            child: Align(
+                                              alignment: Alignment.centerRight,
+                                              child: ElevatedButton(
+                                                onPressed: () {
+                                                  Navigator.pushReplacement(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          FamHeadDashboard(
+                                                        firstName: firstName,
+                                                        lastName: lastName,
+                                                        currentUserUsername: '',
+                                                        currentUserId: widget
+                                                            .currentUserId,
+                                                      ),
                                                     ),
+                                                  );
+                                                },
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor:
+                                                      Colors.green.shade400,
+                                                  foregroundColor: Colors.white,
+                                                  elevation: 0,
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                    horizontal: 24,
+                                                    vertical: 12,
                                                   ),
-                                                );
-                                              },
-                                              style: ElevatedButton.styleFrom(
-                                                backgroundColor:
-                                                    const Color(0xFF4CAF50),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                  horizontal: 32,
-                                                  vertical: 8,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                            12),
+                                                  ),
                                                 ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(4),
-                                                ),
-                                              ),
-                                              child: const Text(
-                                                'Got it!',
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 14,
+                                                child: const Text(
+                                                  'Got it!',
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
                                                 ),
                                               ),
                                             ),

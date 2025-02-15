@@ -219,6 +219,10 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                         value: _selectedGender,
                         onChanged: (value) => setState(() {
                           _selectedGender = value;
+                          // Reset special condition when switching to male
+                          if (value == 'Male') {
+                            _selectedCondition = 'None';
+                          }
                         }),
                         validator: (value) => value == null || value.isEmpty
                             ? 'Select gender'
@@ -257,26 +261,27 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                         decoration:
                             const InputDecoration(labelText: 'Position'),
                       ),
-                      DropdownButtonFormField<String>(
-                        value: _selectedCondition,
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedCondition = value;
-                          });
-                        },
-                        items: [
-                          'None',
-                          'Lactating',
-                          'Pregnant',
-                        ].map((condition) {
-                          return DropdownMenuItem(
-                            value: condition,
-                            child: Text(condition),
-                          );
-                        }).toList(),
-                        decoration: const InputDecoration(
-                            labelText: 'Special Condition'),
-                      ),
+                      if (_selectedGender == 'Female') // Only show for Female
+                        DropdownButtonFormField<String>(
+                          value: _selectedCondition,
+                          onChanged: (value) {
+                            setState(() {
+                              _selectedCondition = value;
+                            });
+                          },
+                          items: [
+                            'None',
+                            'Lactating',
+                            'Pregnant',
+                          ].map((condition) {
+                            return DropdownMenuItem(
+                              value: condition,
+                              child: Text(condition),
+                            );
+                          }).toList(),
+                          decoration: const InputDecoration(
+                              labelText: 'Special Condition'),
+                        ),
                       const SizedBox(height: 10),
                       const Text('Allergens'),
                       CheckboxListTile(

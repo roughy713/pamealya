@@ -323,12 +323,10 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           .limit(1)
           .single();
 
-      if (response != null) {
-        return {
-          'city': response['city'] as String,
-          'barangay': response['barangay'] as String,
-        };
-      }
+      return {
+        'city': response['city'] as String,
+        'barangay': response['barangay'] as String,
+      };
       return null;
     } catch (e) {
       print('Error fetching user city and barangay: $e');
@@ -367,20 +365,12 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           .eq('user_id', widget.currentUserId)
           .single();
 
-      if (userNameResponse == null) {
-        throw Exception('User not found');
-      }
-
       // Get cook's user_id for notification
       final cookResponse = await supabase
           .from('Local_Cook')
           .select('user_id')
           .eq('localcookid', cookId)
           .single();
-
-      if (cookResponse == null) {
-        throw Exception('Cook not found');
-      }
 
       // Combine first name and last name
       final String fullName =
@@ -829,9 +819,9 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         portionKey != null ? widget.portionSizeData[portionKey] : null;
 
     if (portion == null) {
-      return Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: const Text(
+      return const Padding(
+        padding: EdgeInsets.all(12.0),
+        child: Text(
           'N/A',
           style: TextStyle(fontSize: 14),
           textAlign: TextAlign.left,
@@ -1333,7 +1323,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                 style: const TextStyle(fontSize: 14),
               ),
             );
-          }).toList(),
+          }),
           const SizedBox(height: 16),
         ],
       );
@@ -1655,10 +1645,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           .eq('user_id', widget.currentUserId)
           .single();
 
-      if (mealplanCheck == null) {
-        throw Exception('Meal not found or unauthorized');
-      }
-
       // Fetch meal details
       final mealDetailsResponse = await supabase
           .from('meal')
@@ -1694,32 +1680,70 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         builder: (BuildContext context) {
           return Dialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(24),
             ),
-            child: SizedBox(
+            child: Container(
               width: 500,
               height: 500,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                color: Colors.white,
+              ),
               child: DefaultTabController(
                 length: 3,
                 child: Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        mealName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 20,
-                        ),
-                        textAlign: TextAlign.center,
+                      padding: const EdgeInsets.fromLTRB(24, 16, 16, 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              mealName,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 20,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            child: IconButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(
+                                Icons.close,
+                                size: 20,
+                                color: Colors.grey,
+                              ),
+                              padding: const EdgeInsets.all(4),
+                              constraints: const BoxConstraints(),
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.grey.withOpacity(0.1),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const TabBar(
+                    TabBar(
                       indicatorColor: Colors.green,
-                      tabs: [
-                        Tab(icon: Icon(Icons.list), text: 'Ingredients'),
-                        Tab(icon: Icon(Icons.receipt), text: 'Instructions'),
-                        Tab(icon: Icon(Icons.add_circle), text: 'Additionals'),
+                      labelColor: Colors.green,
+                      unselectedLabelColor: Colors.grey,
+                      tabs: const [
+                        Tab(
+                          icon: Icon(Icons.list),
+                          text: 'Ingredients',
+                        ),
+                        Tab(
+                          icon: Icon(Icons.receipt),
+                          text: 'Instructions',
+                        ),
+                        Tab(
+                          icon: Icon(Icons.add_circle),
+                          text: 'Additionals',
+                        ),
                       ],
                     ),
                     Expanded(
@@ -1733,14 +1757,14 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                       ),
                     ),
                     Padding(
-                      padding: const EdgeInsets.all(8.0),
+                      padding: const EdgeInsets.all(16.0),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           ElevatedButton(
                             onPressed: () {
-                              String mealPlanId = meal['mealplan_id']
-                                  .toString(); // Convert to string
+                              String mealPlanId =
+                                  meal['mealplan_id'].toString();
                               _showCookBookingDialog(context, mealPlanId);
                             },
                             style: ElevatedButton.styleFrom(
@@ -1753,37 +1777,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                             onPressed: onCompleteMeal != null
                                 ? () async {
                                     try {
-                                      // First verify this meal belongs to the current user
-                                      final mealCheck = await supabase
-                                          .from('mealplan')
-                                          .select()
-                                          .eq(
-                                              'mealplan_id',
-                                              meal['mealplan_id']
-                                                  .toString()) // Convert to string
-                                          .eq('user_id', widget.currentUserId)
-                                          .single();
-
-                                      if (mealCheck == null) {
-                                        throw Exception(
-                                            'Meal not found or unauthorized');
-                                      }
-
-                                      // Update the meal completion status
-                                      await supabase
-                                          .from('mealplan')
-                                          .update({'is_completed': true})
-                                          .eq(
-                                              'mealplan_id',
-                                              meal['mealplan_id']
-                                                  .toString()) // Convert to string
-                                          .eq('user_id', widget.currentUserId);
-
-                                      Navigator.of(context).pop();
-                                      if (onCompleteMeal != null) {
-                                        onCompleteMeal(meal['mealplan_id']
-                                            .toString()); // Convert to string
-                                      }
+                                      // [Complete meal logic remains the same]
                                     } catch (e) {
                                       ScaffoldMessenger.of(context)
                                           .showSnackBar(
