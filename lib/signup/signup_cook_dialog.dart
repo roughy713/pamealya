@@ -94,17 +94,28 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
   };
 
   // Select a date
-  Future<void> selectDate(BuildContext context) async {
+  Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(1900),
-      lastDate: DateTime(2101),
+      lastDate: DateTime.now(),
     );
-    if (picked != null && picked != dateOfBirth) {
+    if (picked != null) {
       setState(() {
-        dateOfBirth = picked;
-        dateOfBirthController.text = DateFormat('MM-dd-yyyy').format(picked);
+        // Format date for display
+        dateOfBirthController.text = DateFormat('dd-MM-yyyy').format(picked);
+
+        // Calculate age
+        final today = DateTime.now();
+        int age = today.year - picked.year;
+        // Adjust age if birthday hasn't occurred this year
+        if (today.month < picked.month ||
+            (today.month == picked.month && today.day < picked.day)) {
+          age--;
+        }
+        // Update age controller
+        ageController.text = age.toString();
       });
     }
   }
@@ -776,7 +787,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                               labelText: 'Date of Birth',
                               border: OutlineInputBorder(),
                             ),
-                            onTap: () => selectDate(context),
+                            onTap: () => _selectDate(context),
                           ),
                           const SizedBox(height: 10),
                           TextFormField(

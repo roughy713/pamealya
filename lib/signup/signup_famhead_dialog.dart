@@ -526,7 +526,19 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
     );
     if (picked != null) {
       setState(() {
+        // Format date for display
         _dobController.text = DateFormat('dd-MM-yyyy').format(picked);
+
+        // Calculate age
+        final today = DateTime.now();
+        int age = today.year - picked.year;
+        // Adjust age if birthday hasn't occurred this year
+        if (today.month < picked.month ||
+            (today.month == picked.month && today.day < picked.day)) {
+          age--;
+        }
+        // Update age controller
+        _ageController.text = age.toString();
       });
     }
   }
