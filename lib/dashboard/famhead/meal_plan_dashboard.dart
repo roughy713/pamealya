@@ -1777,14 +1777,42 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                             onPressed: onCompleteMeal != null
                                 ? () async {
                                     try {
-                                      // [Complete meal logic remains the same]
+                                      // First verify this meal belongs to the current user
+                                      final mealCheck = await supabase
+                                          .from('mealplan')
+                                          .select()
+                                          .eq('mealplan_id',
+                                              meal['mealplan_id'].toString())
+                                          .eq('user_id', widget.currentUserId)
+                                          .single();
+
+                                      if (mealCheck == null) {
+                                        throw Exception(
+                                            'Meal not found or unauthorized');
+                                      }
+
+                                      // Update the meal completion status
+                                      await supabase
+                                          .from('mealplan')
+                                          .update({'is_completed': true})
+                                          .eq('mealplan_id',
+                                              meal['mealplan_id'].toString())
+                                          .eq('user_id', widget.currentUserId);
+
+                                      Navigator.of(context).pop();
+                                      if (onCompleteMeal != null) {
+                                        onCompleteMeal(
+                                            meal['mealplan_id'].toString());
+                                      }
                                     } catch (e) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(
-                                            content: Text(
-                                                'Error completing meal: $e')),
-                                      );
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          SnackBar(
+                                              content: Text(
+                                                  'Error completing meal: $e')),
+                                        );
+                                      }
                                     }
                                   }
                                 : null,
