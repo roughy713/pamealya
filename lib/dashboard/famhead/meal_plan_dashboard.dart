@@ -1777,7 +1777,10 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                             onPressed: onCompleteMeal != null
                                 ? () async {
                                     try {
-                                      // First verify this meal belongs to the current user
+                                      // Close the meal details dialog first
+                                      Navigator.of(context).pop();
+
+                                      // Verify meal ownership
                                       final mealCheck = await supabase
                                           .from('mealplan')
                                           .select()
@@ -1791,7 +1794,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                             'Meal not found or unauthorized');
                                       }
 
-                                      // Update the meal completion status
+                                      // Update database
                                       await supabase
                                           .from('mealplan')
                                           .update({'is_completed': true})
@@ -1799,13 +1802,30 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                               meal['mealplan_id'].toString())
                                           .eq('user_id', widget.currentUserId);
 
-                                      Navigator.of(context).pop();
-                                      if (onCompleteMeal != null) {
-                                        onCompleteMeal(
-                                            meal['mealplan_id'].toString());
+                                      // Update local state
+                                      setState(() {
+                                        for (var dayMeals in mealPlanData) {
+                                          for (var m in dayMeals) {
+                                            if (m['mealplan_id'] ==
+                                                meal['mealplan_id']) {
+                                              m['is_completed'] = true;
+                                            }
+                                          }
+                                        }
+                                      });
+
+                                      if (context.mounted) {
+                                        // Show the completion dialog
+                                        _showCompletionSuccessDialog(context);
+
+                                        // Call the completion callback
+                                        if (onCompleteMeal != null) {
+                                          onCompleteMeal(
+                                              meal['mealplan_id'].toString());
+                                        }
                                       }
                                     } catch (e) {
-                                      if (mounted) {
+                                      if (context.mounted) {
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(
                                           SnackBar(
@@ -1839,6 +1859,70 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         );
       }
     }
+  }
+
+  void _showCompletionSuccessDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.check_circle,
+                color: Colors.green,
+                size: 48,
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Success!',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.green,
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'Meal marked as completed!',
+            style: TextStyle(fontSize: 16),
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 12,
+                  ),
+                ),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Helper function to adjust the quantity
