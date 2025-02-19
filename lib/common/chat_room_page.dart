@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 
 class ChatRoomPage extends StatefulWidget {
   final String chatRoomId;
@@ -17,90 +18,215 @@ class ChatRoomPage extends StatefulWidget {
 
 class _ChatRoomPageState extends State<ChatRoomPage> {
   final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final List<Map<String, dynamic>> _messages = [];
+  final supabase = Supabase.instance.client;
+  bool _isFirstLoad = true;
 
   @override
   void initState() {
     super.initState();
     _fetchMessages();
     _subscribeToMessages();
+    _markMessagesAsRead();
   }
 
   @override
   void dispose() {
     _messageController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   Future<void> _fetchMessages() async {
     try {
-      final response = await Supabase.instance.client
+      final response = await supabase
           .from('messages')
-          .select('id, content, user_id, created_at')
+          .select('''
+            id, 
+            content, 
+            user_id, 
+            created_at,
+            is_read,
+            read_at
+          ''')
           .eq('room_id', widget.chatRoomId)
           .order('created_at', ascending: true);
 
       if (response != null) {
         setState(() {
           _messages.clear();
-          _messages.addAll((response as List<dynamic>)
-              .map((message) => message as Map<String, dynamic>)
-              .toList());
+          _messages.addAll(List<Map<String, dynamic>>.from(response));
+        });
+
+        if (_isFirstLoad) {
+          _isFirstLoad = false;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (_scrollController.hasClients) {
+              _scrollController
+                  .jumpTo(_scrollController.position.maxScrollExtent);
+            }
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching messages: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _markMessagesAsRead() async {
+    try {
+      final currentUserId = supabase.auth.currentUser?.id;
+      if (currentUserId == null) return;
+
+      final currentTime = DateTime.now().toIso8601String();
+
+      final unreadMessages = _messages
+          .where((msg) =>
+              msg['user_id'] != currentUserId && !(msg['is_read'] ?? false))
+          .toList();
+
+      if (unreadMessages.isNotEmpty) {
+        await supabase
+            .from('messages')
+            .update({
+              'is_read': true,
+              'read_at': currentTime,
+            })
+            .eq('room_id', widget.chatRoomId)
+            .eq('is_read', false)
+            .neq('user_id', currentUserId);
+
+        setState(() {
+          for (var msg in _messages) {
+            if (msg['user_id'] != currentUserId && !(msg['is_read'] ?? false)) {
+              msg['is_read'] = true;
+              msg['read_at'] = currentTime;
+            }
+          }
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching messages: $e')),
-      );
+      print('Error marking messages as read: $e');
+    }
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     }
   }
 
   void _subscribeToMessages() {
-    Supabase.instance.client
+    supabase
         .from('messages')
         .stream(primaryKey: ['id'])
         .eq('room_id', widget.chatRoomId)
         .listen((List<Map<String, dynamic>> payload) {
           for (final newMessage in payload) {
-            // Prevent duplicate messages
-            if (!_messages
-                .any((message) => message['id'] == newMessage['id'])) {
-              setState(() {
+            int existingIndex =
+                _messages.indexWhere((msg) => msg['id'] == newMessage['id']);
+
+            setState(() {
+              if (existingIndex != -1) {
+                _messages[existingIndex] = newMessage;
+              } else {
                 _messages.add(newMessage);
-              });
+                if (newMessage['user_id'] != supabase.auth.currentUser?.id) {
+                  _markMessagesAsRead();
+                }
+              }
+            });
+
+            if (existingIndex == -1) {
+              _scrollToBottom();
             }
           }
         });
   }
 
+  String _formatMessageTime(String? timestamp) {
+    if (timestamp == null) return '';
+    final dateTime = DateTime.parse(timestamp).toLocal();
+    return DateFormat('h:mm a').format(dateTime);
+  }
+
+  Widget _buildMessageStatus(Map<String, dynamic> message) {
+    final time = _formatMessageTime(message['created_at']);
+    final isRead = message['is_read'] ?? false;
+
+    return Container(
+      padding: const EdgeInsets.only(top: 2, right: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            time,
+            style: const TextStyle(
+              fontSize: 11,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(width: 3),
+          if (isRead)
+            const Row(
+              children: [
+                Icon(Icons.done_all, size: 16, color: Colors.blue),
+                SizedBox(width: 3),
+                Text(
+                  'Seen',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.blue,
+                  ),
+                ),
+              ],
+            )
+          else
+            const Row(
+              children: [
+                Icon(Icons.done, size: 16, color: Colors.grey),
+                SizedBox(width: 3),
+                Text(
+                  'Sent',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _sendMessage() async {
-    if (_messageController.text.trim().isEmpty) {
-      return;
-    }
+    if (_messageController.text.trim().isEmpty) return;
 
     final messageContent = _messageController.text.trim();
     _messageController.clear();
 
     try {
-      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-      print('Current user ID: $currentUserId');
+      final currentUserId = supabase.auth.currentUser?.id;
 
-      // Get sender's name first
+      // Get sender's name
       String senderName = '';
-
-      // Try to find in familymember table using actual UUID comparison
-      final senderInfo = await Supabase.instance.client
+      final senderInfo = await supabase
           .from('familymember')
           .select('first_name, last_name')
-          .filter('user_id', 'eq', currentUserId) // Changed to filter method
+          .filter('user_id', 'eq', currentUserId)
           .maybeSingle();
 
       if (senderInfo == null) {
-        // If not found in familymember, check Local_Cook table
-        final cookInfo = await Supabase.instance.client
+        final cookInfo = await supabase
             .from('Local_Cook')
             .select('first_name, last_name')
-            .filter('user_id', 'eq', currentUserId) // Changed to filter method
+            .filter('user_id', 'eq', currentUserId)
             .maybeSingle();
 
         if (cookInfo != null) {
@@ -112,39 +238,39 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             '${senderInfo['first_name']} ${senderInfo['last_name']}'.trim();
       }
 
-      // Send the message
-      await Supabase.instance.client.from('messages').insert({
+      // Send message
+      await supabase.from('messages').insert({
         'content': messageContent,
         'room_id': widget.chatRoomId,
         'user_id': currentUserId,
+        'created_at': DateTime.now().toIso8601String(),
+        'is_read': false,
+        'read_at': null,
       });
 
-      // Get chat room details
-      final chatRoomResponse =
-          await Supabase.instance.client.from('chat_room').select('''
-          familymember_id,
-          localcookid,
-          Local_Cook:localcookid(user_id),
-          familymember:familymember_id(user_id)
-        ''').eq('room_id', widget.chatRoomId).single();
+      // Update chat room's last message timestamp
+      await supabase.from('chat_room').update({
+        'last_message_at': DateTime.now().toIso8601String(),
+      }).eq('room_id', widget.chatRoomId);
 
-      print('Chat room response: $chatRoomResponse');
+      // Get recipient information and send notification
+      final chatRoomResponse = await supabase.from('chat_room').select('''
+            familymember_id,
+            localcookid,
+            Local_Cook:localcookid(user_id),
+            familymember:familymember_id(user_id)
+          ''').eq('room_id', widget.chatRoomId).single();
 
       if (chatRoomResponse != null) {
         String? recipientUserId;
         final cookUserId = chatRoomResponse['Local_Cook']?['user_id'];
         final familyUserId = chatRoomResponse['familymember']?['user_id'];
 
-        if (currentUserId == familyUserId) {
-          recipientUserId = cookUserId;
-        } else {
-          recipientUserId = familyUserId;
-        }
+        recipientUserId =
+            currentUserId == familyUserId ? cookUserId : familyUserId;
 
         if (recipientUserId != null) {
-          print('Sending notification to recipient: $recipientUserId');
-          // Create notification with correct sender name
-          await Supabase.instance.client.rpc(
+          await supabase.rpc(
             'create_notification',
             params: {
               'p_recipient_id': recipientUserId,
@@ -158,30 +284,11 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
         }
       }
     } catch (e) {
-      print('Error details: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error sending message: $e')),
-      );
-    }
-  }
-
-  Future<void> ensureRoomExists(String roomId) async {
-    try {
-      final response = await Supabase.instance.client
-          .from('chat_room') // Changed from 'rooms' to 'chat_room'
-          .select('*')
-          .eq('room_id', roomId)
-          .maybeSingle();
-
-      if (response == null) {
-        // Room doesn't exist; create it
-        await Supabase.instance.client.from('chat_room').insert({
-          'room_id': roomId,
-          'created_at': DateTime.now().toIso8601String(),
-        });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error sending message: $e')),
+        );
       }
-    } catch (e) {
-      print('Error ensuring room exists: $e');
     }
   }
 
@@ -189,53 +296,92 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.recipientName}'),
+        title: Text(widget.recipientName),
+        backgroundColor: Colors.green,
       ),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
+              controller: _scrollController,
               itemCount: _messages.length,
+              padding: const EdgeInsets.all(10.0),
               itemBuilder: (context, index) {
                 final message = _messages[index];
-                final isMine = message['user_id'] ==
-                    Supabase.instance.client.auth.currentUser?.id;
+                final isMine =
+                    message['user_id'] == supabase.auth.currentUser?.id;
+
                 return Align(
                   alignment:
                       isMine ? Alignment.centerRight : Alignment.centerLeft,
                   child: Container(
-                    margin: const EdgeInsets.symmetric(
-                        vertical: 5.0, horizontal: 10.0),
-                    padding: const EdgeInsets.all(10.0),
-                    decoration: BoxDecoration(
-                      color: isMine ? Colors.green : Colors.grey[300],
-                      borderRadius: BorderRadius.circular(10.0),
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.75,
                     ),
-                    child: Text(
-                      message['content'],
-                      style: TextStyle(
-                        color: isMine ? Colors.white : Colors.black,
-                      ),
+                    margin: const EdgeInsets.symmetric(
+                      vertical: 5.0,
+                      horizontal: 10.0,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: isMine
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12.0),
+                          decoration: BoxDecoration(
+                            color: isMine ? Colors.green : Colors.grey[300],
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          child: Text(
+                            message['content'] ?? '',
+                            style: TextStyle(
+                              color: isMine ? Colors.white : Colors.black,
+                            ),
+                          ),
+                        ),
+                        if (isMine) _buildMessageStatus(message),
+                      ],
                     ),
                   ),
                 );
               },
             ),
           ),
-          Padding(
+          Container(
             padding: const EdgeInsets.all(8.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  blurRadius: 4,
+                  offset: const Offset(0, -1),
+                ),
+              ],
+            ),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       hintText: 'Type a message...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: Colors.grey[100],
+                      contentPadding: const EdgeInsets.all(12),
                     ),
+                    onSubmitted: (_) => _sendMessage(),
                   ),
                 ),
+                const SizedBox(width: 8),
                 IconButton(
                   icon: const Icon(Icons.send),
+                  color: Colors.green,
                   onPressed: _sendMessage,
                 ),
               ],

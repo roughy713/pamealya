@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 
 class OrdersChatRoomPage extends StatefulWidget {
   final String chatRoomId;
@@ -23,15 +24,16 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
   final supabase = Supabase.instance.client;
   bool isLoading = true;
   Timer? _messageTimer;
+  bool _isFirstLoad = true;
 
   @override
   void initState() {
     super.initState();
-    print('Chat room ID: ${widget.chatRoomId}'); // Add this debug print
     _fetchMessages();
     _messageTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       _fetchMessages();
     });
+    _markMessagesAsRead();
   }
 
   @override
@@ -44,7 +46,6 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
 
   Future<void> _fetchMessages() async {
     try {
-      // Ensure chat room exists
       final roomResponse = await supabase
           .from('chat_room')
           .select('room_id')
@@ -52,7 +53,6 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
           .maybeSingle();
 
       if (roomResponse == null) {
-        print('No existing chat room found.');
         setState(() {
           _messages = [];
           isLoading = false;
@@ -60,10 +60,16 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
         return;
       }
 
-      // Fetch messages for the existing chat room
       final response = await supabase
           .from('messages')
-          .select('id, content, user_id, created_at')
+          .select('''
+            id, 
+            content, 
+            user_id, 
+            created_at,
+            is_read,
+            read_at
+          ''')
           .eq('room_id', widget.chatRoomId)
           .order('created_at', ascending: true);
 
@@ -73,8 +79,14 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
         isLoading = false;
       });
 
-      if (_messages.isNotEmpty) {
-        Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
+      if (_isFirstLoad && _messages.isNotEmpty) {
+        _isFirstLoad = false;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scrollController.hasClients) {
+            _scrollController
+                .jumpTo(_scrollController.position.maxScrollExtent);
+          }
+        });
       }
     } catch (e) {
       print('Error fetching messages: $e');
@@ -87,20 +99,102 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
     }
   }
 
+  Future<void> _markMessagesAsRead() async {
+    try {
+      final currentUserId = supabase.auth.currentUser?.id;
+      if (currentUserId == null) return;
+
+      final currentTime = DateTime.now().toIso8601String();
+      final unreadMessages = _messages
+          .where((msg) =>
+              msg['user_id'] != currentUserId && !(msg['is_read'] ?? false))
+          .toList();
+
+      if (unreadMessages.isNotEmpty) {
+        await supabase
+            .from('messages')
+            .update({
+              'is_read': true,
+              'read_at': currentTime,
+            })
+            .eq('room_id', widget.chatRoomId)
+            .eq('is_read', false)
+            .neq('user_id', currentUserId);
+
+        setState(() {
+          for (var msg in _messages) {
+            if (msg['user_id'] != currentUserId && !(msg['is_read'] ?? false)) {
+              msg['is_read'] = true;
+              msg['read_at'] = currentTime;
+            }
+          }
+        });
+      }
+    } catch (e) {
+      print('Error marking messages as read: $e');
+    }
+  }
+
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        try {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        } catch (e) {
-          print('Error scrolling to bottom: $e');
-        }
-      });
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
     }
+  }
+
+  String _formatMessageTime(String? timestamp) {
+    if (timestamp == null) return '';
+    final dateTime = DateTime.parse(timestamp).toLocal();
+    return DateFormat('h:mm a').format(dateTime);
+  }
+
+  Widget _buildMessageStatus(Map<String, dynamic> message) {
+    final time = _formatMessageTime(message['created_at']);
+    final isRead = message['is_read'] ?? false;
+
+    return Container(
+      padding: const EdgeInsets.only(top: 2, right: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            time,
+            style: const TextStyle(
+              fontSize: 11,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(width: 3),
+          if (isRead)
+            const Row(
+              children: [
+                Icon(Icons.done_all, size: 16, color: Colors.blue),
+                SizedBox(width: 3),
+                Text(
+                  'Seen',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.blue,
+                  ),
+                ),
+              ],
+            )
+          else
+            const Row(
+              children: [
+                Icon(Icons.done, size: 16, color: Colors.grey),
+                SizedBox(width: 3),
+                Text(
+                  'Sent',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
   }
 
   Future<void> _sendMessage() async {
@@ -112,10 +206,7 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
     try {
       final currentUserId = supabase.auth.currentUser?.id;
 
-      // Get sender's name first
       String senderName = '';
-
-      // Try to find in familymember table
       final senderInfo = await supabase
           .from('familymember')
           .select('first_name, last_name')
@@ -123,7 +214,6 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
           .maybeSingle();
 
       if (senderInfo == null) {
-        // If not found in familymember, check Local_Cook table
         final cookInfo = await supabase
             .from('Local_Cook')
             .select('first_name, last_name')
@@ -144,14 +234,14 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
         'room_id': widget.chatRoomId,
         'user_id': currentUserId,
         'created_at': DateTime.now().toIso8601String(),
+        'is_read': false,
+        'read_at': null,
       });
 
-      // Update last_message_at in chat_room
       await supabase.from('chat_room').update({
         'last_message_at': DateTime.now().toIso8601String(),
       }).eq('room_id', widget.chatRoomId);
 
-      // Get chat room details to determine recipient
       final chatRoomResponse = await supabase.from('chat_room').select('''
           familymember_id,
           localcookid,
@@ -164,15 +254,10 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
         final cookUserId = chatRoomResponse['Local_Cook']?['user_id'];
         final familyUserId = chatRoomResponse['familymember']?['user_id'];
 
-        if (currentUserId == familyUserId) {
-          recipientUserId = cookUserId;
-        } else {
-          recipientUserId = familyUserId;
-        }
+        recipientUserId =
+            currentUserId == familyUserId ? cookUserId : familyUserId;
 
         if (recipientUserId != null) {
-          print('Sending notification to recipient: $recipientUserId');
-          // Create notification with correct sender name
           await supabase.rpc(
             'create_notification',
             params: {
@@ -187,9 +272,8 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
         }
       }
 
-      _fetchMessages(); // Fetch messages immediately after sending
+      _fetchMessages();
     } catch (e) {
-      print('Error details: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error sending message: $e')),
@@ -232,16 +316,27 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
                             vertical: 5.0,
                             horizontal: 10.0,
                           ),
-                          padding: const EdgeInsets.all(12.0),
-                          decoration: BoxDecoration(
-                            color: isMine ? Colors.green : Colors.grey[300],
-                            borderRadius: BorderRadius.circular(12.0),
-                          ),
-                          child: Text(
-                            message['content'] ?? '',
-                            style: TextStyle(
-                              color: isMine ? Colors.white : Colors.black,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: isMine
+                                ? CrossAxisAlignment.end
+                                : CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12.0),
+                                decoration: BoxDecoration(
+                                  color:
+                                      isMine ? Colors.green : Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(12.0),
+                                ),
+                                child: Text(
+                                  message['content'] ?? '',
+                                  style: TextStyle(
+                                    color: isMine ? Colors.white : Colors.black,
+                                  ),
+                                ),
+                              ),
+                              if (isMine) _buildMessageStatus(message),
+                            ],
                           ),
                         ),
                       );

@@ -17,16 +17,45 @@ class CookChatPage extends StatefulWidget {
 class _CookChatPageState extends State<CookChatPage> {
   Future<List<dynamic>> fetchFamilyHeads() async {
     try {
+      // Get family heads who have accepted bookings with this cook
       final response = await Supabase.instance.client
           .from('familymember')
-          .select(
-              'familymember_id, first_name, last_name, user_id, is_family_head')
-          .eq('is_family_head', true); // Filter by is_family_head = true
+          .select('''
+            familymember_id,
+            first_name,
+            last_name,
+            user_id,
+            is_family_head,
+            bookingrequest!inner (
+              status,
+              localcookid,
+              _isBookingAccepted,
+              is_cook_booking
+            )
+          ''')
+          .eq('is_family_head', true)
+          .eq('bookingrequest.status', 'accepted')
+          .eq('bookingrequest._isBookingAccepted', true)
+          .eq('bookingrequest.is_cook_booking', true)
+          .eq(
+              'bookingrequest.localcookid',
+              (await Supabase.instance.client
+                  .from('Local_Cook')
+                  .select('localcookid')
+                  .eq('user_id', widget.currentUserId)
+                  .single())['localcookid']);
 
       if (response == null) {
         throw Exception('No response received.');
       }
-      return response as List<dynamic>; // Casting the result
+
+      // Remove duplicates based on familymember_id
+      final Map<String, dynamic> uniqueFamilyHeads = {};
+      for (var familyHead in response as List<dynamic>) {
+        uniqueFamilyHeads[familyHead['familymember_id']] = familyHead;
+      }
+
+      return uniqueFamilyHeads.values.toList();
     } catch (e) {
       throw Exception('Error fetching family heads: $e');
     }
@@ -46,7 +75,7 @@ class _CookChatPageState extends State<CookChatPage> {
       if (response == null) {
         throw Exception('No response received from RPC.');
       }
-      return response as String; // Assuming the RPC returns the chat room ID
+      return response as String;
     } catch (e) {
       throw Exception('Error creating or retrieving chat room: $e');
     }
@@ -57,7 +86,7 @@ class _CookChatPageState extends State<CookChatPage> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Select family heads to chat'),
+        title: const Text('Chat with Family Heads'),
       ),
       body: FutureBuilder<List<dynamic>>(
         future: fetchFamilyHeads(),
@@ -67,7 +96,8 @@ class _CookChatPageState extends State<CookChatPage> {
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           } else if (snapshot.data == null || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No family heads available.'));
+            return const Center(
+                child: Text('No family heads have accepted bookings yet.'));
           }
 
           final familyHeads = snapshot.data!;
@@ -81,8 +111,8 @@ class _CookChatPageState extends State<CookChatPage> {
                 onTap: () async {
                   try {
                     final chatRoomId = await getOrCreateChatRoom(
-                      familyHead['user_id'], // Family head's user ID
-                      widget.currentUserId, // Cook's user ID
+                      familyHead['user_id'],
+                      widget.currentUserId,
                     );
                     Navigator.push(
                       context,
