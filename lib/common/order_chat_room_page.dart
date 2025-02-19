@@ -147,54 +147,68 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
     return DateFormat('h:mm a').format(dateTime);
   }
 
-  Widget _buildMessageStatus(Map<String, dynamic> message) {
+  Widget _buildMessageStatus(Map<String, dynamic> message, bool isMine) {
     final time = _formatMessageTime(message['created_at']);
     final isRead = message['is_read'] ?? false;
 
-    return Container(
-      padding: const EdgeInsets.only(top: 2, right: 2),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            time,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Colors.grey,
+    if (isMine) {
+      return Container(
+        padding: const EdgeInsets.only(top: 2, right: 2),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              time,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.grey,
+              ),
             ),
+            const SizedBox(width: 3),
+            if (isRead)
+              const Row(
+                children: [
+                  Icon(Icons.done_all, size: 16, color: Colors.blue),
+                  SizedBox(width: 3),
+                  Text(
+                    'Seen',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ],
+              )
+            else
+              const Row(
+                children: [
+                  Icon(Icons.done, size: 16, color: Colors.grey),
+                  SizedBox(width: 3),
+                  Text(
+                    'Sent',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      );
+    } else {
+      // For received messages, just show the time
+      return Container(
+        padding: const EdgeInsets.only(top: 2, left: 2),
+        child: Text(
+          time,
+          style: const TextStyle(
+            fontSize: 11,
+            color: Colors.grey,
           ),
-          const SizedBox(width: 3),
-          if (isRead)
-            const Row(
-              children: [
-                Icon(Icons.done_all, size: 16, color: Colors.blue),
-                SizedBox(width: 3),
-                Text(
-                  'Seen',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.blue,
-                  ),
-                ),
-              ],
-            )
-          else
-            const Row(
-              children: [
-                Icon(Icons.done, size: 16, color: Colors.grey),
-                SizedBox(width: 3),
-                Text(
-                  'Sent',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-        ],
-      ),
-    );
+        ),
+      );
+    }
   }
 
   Future<void> _sendMessage() async {
@@ -335,7 +349,8 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
                                   ),
                                 ),
                               ),
-                              if (isMine) _buildMessageStatus(message),
+                              _buildMessageStatus(
+                                  message, isMine), // Pass isMine parameter
                             ],
                           ),
                         ),

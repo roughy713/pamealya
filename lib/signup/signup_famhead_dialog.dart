@@ -47,6 +47,20 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
     'specialChar': false,
   });
 
+  @override
+  void dispose() {
+    _firstNameController.dispose();
+    _lastNameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    _ageController.dispose();
+    _dobController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
+    super.dispose();
+  }
+
   Widget _buildRequirementRow(String text, bool isValid) {
     return Row(
       children: [
@@ -98,6 +112,128 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
         _ageController.text = age.toString();
       });
     }
+  }
+
+  Future<void> _showTermsDialog(BuildContext context) async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.privacy_tip, color: Colors.green[700]),
+              const SizedBox(width: 10),
+              const Text('paMEALya Terms and Conditions'),
+            ],
+          ),
+          content: Container(
+            width: MediaQuery.of(context).size.width * 0.8,
+            height: MediaQuery.of(context).size.height * 0.7,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Data Privacy and Security',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'paMEALya is committed to protecting your personal information in compliance with Republic Act 10173, also known as the Data Privacy Act of 2012. By using our platform, you agree to the following policies:',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildTermsSection(
+                    'Collection of Personal Information',
+                    'We collect and process your personal data to enhance your experience, including:\n'
+                        '• Name and contact details\n'
+                        '• Age, dietary preferences, and restrictions\n'
+                        '• Family member details for personalized meal planning\n'
+                        '• Location data for cook booking services',
+                  ),
+                  _buildTermsSection(
+                    'Purpose of Data Collection',
+                    'Your information will be used to:\n'
+                        '• Generate personalized meal plans based on nutritional needs\n'
+                        '• Facilitate cook bookings and meal transactions\n'
+                        '• Improve user experience through tailored recommendations\n'
+                        '• Ensure compliance with dietary and health standards',
+                  ),
+                  _buildTermsSection(
+                    'Data Protection Measures',
+                    'paMEALya employs strict security protocols to prevent:\n'
+                        '• Unauthorized access to personal data\n'
+                        '• Data breaches or leaks\n'
+                        '• Misuse of sensitive information',
+                  ),
+                  _buildTermsSection(
+                    'User Rights',
+                    'Under the Data Privacy Act, you have the right to:\n'
+                        '• Access and update your personal data\n'
+                        '• Request deletion or restriction of your information\n'
+                        '• Withdraw consent for data processing\n'
+                        '• Report concerns about data handling practices',
+                  ),
+                  _buildTermsSection(
+                    'Data Retention Policy',
+                    'Your data will be retained only for as long as necessary to:\n'
+                        '• Provide personalized meal planning services\n'
+                        '• Maintain legal and financial records\n'
+                        '• Improve system functionality based on anonymized usage data',
+                  ),
+                  _buildTermsSection(
+                    'Third-Party Sharing',
+                    'We may share anonymized data with:\n'
+                        '• Nutritionists for dietary assessments\n'
+                        '• Cooks for meal preparation services\n'
+                        '• Research institutions for improving food security and nutrition insights',
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'By accepting these terms, you acknowledge that you have read, understood, and agree to the collection and processing of your personal information as outlined above.',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildTermsSection(String title, String content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          content,
+          style: const TextStyle(fontSize: 14),
+        ),
+      ],
+    );
   }
 
   Future<void> _handleSignUp() async {
@@ -485,9 +621,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           ),
                           Expanded(
                             child: GestureDetector(
-                              onTap: () {
-                                // Show terms and conditions dialog
-                              },
+                              onTap: () => _showTermsDialog(context),
                               child: const Text(
                                 'I agree to the Terms and Conditions and Privacy Policy',
                                 style: TextStyle(
