@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ViewCooksPage extends StatefulWidget {
   const ViewCooksPage({super.key});
@@ -26,8 +27,10 @@ class _ViewCooksPageState extends State<ViewCooksPage> {
     });
 
     try {
-      final response =
-          await Supabase.instance.client.from('Local_Cook').select();
+      final response = await Supabase.instance.client
+          .from('Local_Cook')
+          .select()
+          .eq('is_accepted', true);
       setState(() {
         cooks = response;
         isLoading = false;
@@ -40,12 +43,179 @@ class _ViewCooksPageState extends State<ViewCooksPage> {
     }
   }
 
-  void _viewCookDetails(dynamic cook) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => CookDetailsPage(cook: cook),
+  Widget _buildDetailRow(String label, String? value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value ?? 'N/A',
+              style: const TextStyle(color: Colors.black54),
+            ),
+          ),
+        ],
       ),
+    );
+  }
+
+  void _viewCookDetails(dynamic cook) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with close button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${cook['first_name']} ${cook['last_name']}',
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+
+                  // Profile Avatar
+                  Center(
+                    child: CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.green[100],
+                      child: const Icon(Icons.person,
+                          size: 50, color: Colors.green),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Personal Information Section
+                  const Text(
+                    'Personal Information',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildDetailRow('Age:', cook['age']?.toString()),
+                  _buildDetailRow('Gender:', cook['gender']),
+                  _buildDetailRow('Date of Birth:', cook['dateofbirth']),
+                  _buildDetailRow('Phone:', cook['phone']),
+
+                  const SizedBox(height: 20),
+                  // Address Information Section
+                  const Text(
+                    'Address Information',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildDetailRow('Street:', cook['address_street']),
+                  _buildDetailRow('Barangay:', cook['barangay']),
+                  _buildDetailRow('City:', cook['city']),
+                  _buildDetailRow('Province:', cook['province']),
+                  _buildDetailRow(
+                      'Postal Code:', cook['postal_code']?.toString()),
+
+                  const SizedBox(height: 20),
+                  // Availability Section
+                  const Text(
+                    'Availability',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildDetailRow('Days:', cook['availability_days']),
+                  _buildDetailRow('Time:',
+                      '${cook['time_available_from'] ?? 'N/A'} - ${cook['time_available_to'] ?? 'N/A'}'),
+
+                  const SizedBox(height: 20),
+                  // Certifications Section
+                  const Text(
+                    'Certifications',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (cook['certifications'] != null &&
+                      cook['certifications'].isNotEmpty)
+                    InkWell(
+                      onTap: () async {
+                        final url = cook['certifications'];
+                        if (url != null && url.isNotEmpty) {
+                          try {
+                            await launchUrl(Uri.parse(url));
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content:
+                                        Text('Could not open certification')),
+                              );
+                            }
+                          }
+                        }
+                      },
+                      child: Row(
+                        children: [
+                          const Icon(Icons.file_present, color: Colors.blue),
+                          const SizedBox(width: 8),
+                          Text(
+                            'View Certification',
+                            style: TextStyle(
+                              color: Colors.blue[700],
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    const Text('No certifications available'),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -95,143 +265,5 @@ class _ViewCooksPageState extends State<ViewCooksPage> {
                       },
                     ),
     );
-  }
-}
-
-class CookDetailsPage extends StatelessWidget {
-  final dynamic cook;
-
-  const CookDetailsPage({super.key, required this.cook});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('${cook['first_name']} ${cook['last_name']}'),
-        backgroundColor: Colors.green,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Card(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.0),
-            ),
-            elevation: 8.0,
-            shadowColor: Colors.greenAccent,
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Column(
-                      children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundColor: Colors.green[100],
-                          child: const Icon(
-                            Icons.person,
-                            size: 50,
-                            color: Colors.green,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          '${cook['first_name']} ${cook['last_name']}',
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Age: ${cook['age']}',
-                          style:
-                              const TextStyle(fontSize: 16, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(thickness: 1, height: 40),
-                  buildDetailRow('Gender:', cook['gender']),
-                  buildDetailRow('Date of Birth:', cook['dateofbirth']),
-                  buildDetailRow('Phone:', cook['phone']),
-                  buildDetailRow('Address:',
-                      '${cook['address_line1']}, ${cook['barangay']}, ${cook['city']}, ${cook['province']}'),
-                  buildDetailRow('Postal Code:', cook['postal_code']),
-                  buildDetailRow('Availability:',
-                      '${cook['availability_days']} from ${cook['time_available_from']} to ${cook['time_available_to']}'),
-                  const SizedBox(height: 8),
-                  buildCertificationSection(cook['certifications']),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: Colors.black87,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontSize: 16, color: Colors.black54),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget buildCertificationSection(String? certificationUrl) {
-    return certificationUrl == null || certificationUrl.isEmpty
-        ? const Text(
-            'Certifications: None',
-            style: TextStyle(fontSize: 16, color: Colors.black54),
-          )
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Certifications:',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: () {
-                  // Handle certification file opening
-                  // Add logic to open or download the certification file
-                },
-                child: Text(
-                  certificationUrl,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    color: Colors.blue,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
-            ],
-          );
   }
 }
