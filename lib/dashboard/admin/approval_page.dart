@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:http/http.dart' as http; // Import HTTP package
+import 'dart:html' as html;
+import 'dart:typed_data';
 
 class ApprovalPage extends StatefulWidget {
   const ApprovalPage({Key? key}) : super(key: key);
@@ -19,6 +19,20 @@ class _ApprovalPageState extends State<ApprovalPage> {
   void initState() {
     super.initState();
     _fetchCooks();
+  }
+
+  Future<void> downloadFile(Uint8List bytes, String fileName) async {
+    final blob = html.Blob([bytes]);
+    final url = html.Url.createObjectUrlFromBlob(blob);
+    final anchor = html.AnchorElement()
+      ..href = url
+      ..style.display = 'none'
+      ..download = fileName;
+
+    html.document.body?.children.add(anchor);
+    anchor.click();
+    html.document.body?.children.remove(anchor);
+    html.Url.revokeObjectUrl(url);
   }
 
   Future<void> _fetchCooks() async {
@@ -62,7 +76,7 @@ class _ApprovalPageState extends State<ApprovalPage> {
           ),
           child: Container(
             width: 500,
-            height: 500,
+            height: 600,
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -78,64 +92,265 @@ class _ApprovalPageState extends State<ApprovalPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '${cook['first_name']} ${cook['last_name']}',
+                        '${cook['first_name'] ?? 'N/A'} ${cook['last_name'] ?? 'N/A'}',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
-                const Text(
-                  'Personal Details',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                Text('Gender: ${cook['gender'] ?? 'N/A'}'),
-                Text(
-                    'Address: ${cook['address_street'] ?? 'N/A'}, Barangay ${cook['barangay'] ?? 'N/A'}'),
-                Text('Postal Code: ${cook['postal_code'] ?? 'N/A'}'),
-                const SizedBox(height: 16),
-                const Text(
-                  'Availability',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                Text('Days Available: ${cook['availability_days'] ?? 'N/A'}'),
-                Text(
-                    'Time Available: ${cook['time_available_from'] ?? 'N/A'} - ${cook['time_available_to'] ?? 'N/A'}'),
-                const SizedBox(height: 16),
-                const Text(
-                  'Certification',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () async {
-                    final url = cook['certifications'];
-                    if (url != null && url.isNotEmpty) {
-                      if (await canLaunch(url)) {
-                        await launch(url);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content:
-                                  Text('Cannot open the certification file')),
-                        );
-                      }
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('No certification available')),
-                      );
-                    }
-                  },
-                  child: const Text(
-                    'View Certification',
-                    style: TextStyle(
-                        color: Colors.blue,
-                        decoration: TextDecoration.underline),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Personal Details',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Age: ${cook['age'] ?? 'N/A'}'),
+                        Text('Gender: ${cook['gender'] ?? 'N/A'}'),
+                        Text('Date of Birth: ${cook['dateofbirth'] ?? 'N/A'}'),
+                        Text('Phone: ${cook['phone'] ?? 'N/A'}'),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Address Information',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        Text('Address: ${cook['address_line1'] ?? 'N/A'}'),
+                        Text('Barangay: ${cook['barangay'] ?? 'N/A'}'),
+                        Text('City: ${cook['city'] ?? 'N/A'}'),
+                        Text('Province: ${cook['province'] ?? 'N/A'}'),
+                        Text('Postal Code: ${cook['postal_code'] ?? 'N/A'}'),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Availability',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                            'Days Available: ${cook['availability_days'] ?? 'N/A'}'),
+                        Text('From: ${cook['time_available_from'] ?? 'N/A'}'),
+                        Text('To: ${cook['time_available_to'] ?? 'N/A'}'),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Certification',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () async {
+                            try {
+                              // Get the file extension
+                              final String fileName =
+                                  cook['certifications']?.split('/').last ?? '';
+                              final String fileExt =
+                                  fileName.split('.').last.toLowerCase();
+
+                              // Determine file type and icon
+                              IconData fileIcon;
+                              String fileType;
+                              switch (fileExt) {
+                                case 'pdf':
+                                  fileIcon = Icons.picture_as_pdf;
+                                  fileType = 'PDF Document';
+                                  break;
+                                case 'doc':
+                                case 'docx':
+                                  fileIcon = Icons.description;
+                                  fileType = 'Word Document';
+                                  break;
+                                case 'jpg':
+                                case 'jpeg':
+                                case 'png':
+                                  fileIcon = Icons.image;
+                                  fileType = 'Image';
+                                  break;
+                                case 'txt':
+                                  fileIcon = Icons.text_snippet;
+                                  fileType = 'Text Document';
+                                  break;
+                                default:
+                                  fileIcon = Icons.insert_drive_file;
+                                  fileType = 'Document';
+                              }
+
+                              // Show download dialog
+                              await showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  bool isDownloading = false;
+
+                                  return StatefulBuilder(
+                                    builder: (context, setState) {
+                                      return Dialog(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                        ),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(16),
+                                          width: 400,
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                fileIcon,
+                                                size: 64,
+                                                color: Colors.blue,
+                                              ),
+                                              const SizedBox(height: 16),
+                                              Text(
+                                                fileType,
+                                                style: const TextStyle(
+                                                  fontSize: 20,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                'File: $fileName',
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey,
+                                                ),
+                                                textAlign: TextAlign.center,
+                                              ),
+                                              const SizedBox(height: 24),
+                                              isDownloading
+                                                  ? const CircularProgressIndicator()
+                                                  : ElevatedButton(
+                                                      onPressed: () async {
+                                                        try {
+                                                          setState(() {
+                                                            isDownloading =
+                                                                true;
+                                                          });
+
+                                                          final String fileUrl =
+                                                              cook['certifications'] ??
+                                                                  '';
+                                                          if (fileUrl.isEmpty) {
+                                                            throw Exception(
+                                                                'No certification file available');
+                                                          }
+
+                                                          // Download the file using Supabase Storage
+                                                          final bytes = await Supabase
+                                                              .instance
+                                                              .client
+                                                              .storage
+                                                              .from(
+                                                                  'certifications')
+                                                              .download(
+                                                                  'cooks certifications/$fileName');
+
+                                                          // Use the web-compatible download function
+                                                          await downloadFile(
+                                                              bytes, fileName);
+
+                                                          setState(() {
+                                                            isDownloading =
+                                                                false;
+                                                          });
+
+                                                          Navigator.of(context)
+                                                              .pop(); // Close dialog
+
+                                                          ScaffoldMessenger.of(
+                                                                  context)
+                                                              .showSnackBar(
+                                                            const SnackBar(
+                                                              content: Text(
+                                                                  'File downloaded successfully!'),
+                                                              backgroundColor:
+                                                                  Colors.green,
+                                                            ),
+                                                          );
+                                                        } catch (e) {
+                                                          print(
+                                                              'Download error: $e');
+                                                          setState(() {
+                                                            isDownloading =
+                                                                false;
+                                                          });
+                                                          ScaffoldMessenger.of(
+                                                                  context)
+                                                              .showSnackBar(
+                                                            SnackBar(
+                                                              content: Text(
+                                                                  'Error downloading file: $e'),
+                                                              backgroundColor:
+                                                                  Colors.red,
+                                                            ),
+                                                          );
+                                                        }
+                                                      },
+                                                      style: ElevatedButton
+                                                          .styleFrom(
+                                                        backgroundColor:
+                                                            Colors.blue,
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal: 32,
+                                                                vertical: 16),
+                                                      ),
+                                                      child: const Row(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          Icon(Icons.download),
+                                                          SizedBox(width: 8),
+                                                          Text('Download File'),
+                                                        ],
+                                                      ),
+                                                    ),
+                                              const SizedBox(height: 8),
+                                              TextButton(
+                                                onPressed: isDownloading
+                                                    ? null
+                                                    : () {
+                                                        Navigator.of(context)
+                                                            .pop();
+                                                      },
+                                                child: const Text('Cancel'),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              );
+                            } catch (e) {
+                              print('Error details: $e');
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content:
+                                        Text('Error with certification: $e')),
+                              );
+                            }
+                          },
+                          child: const Text(
+                            'View Certification',
+                            style: TextStyle(
+                              color: Colors.blue,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                const Spacer(),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -271,11 +486,11 @@ class _ApprovalPageState extends State<ApprovalPage> {
                           child: Icon(Icons.person, color: Colors.green[700]),
                         ),
                         title: Text(
-                          '${cook['first_name']} ${cook['last_name']}',
+                          '${cook['first_name'] ?? 'N/A'} ${cook['last_name'] ?? 'N/A'}',
                           style: Theme.of(context).textTheme.titleMedium,
                         ),
                         subtitle: Text(
-                          'Age: ${cook['age'] ?? 'N/A'} | City: ${cook['address_street'] ?? 'N/A'}',
+                          'Age: ${cook['age'] ?? 'N/A'} | City: ${cook['city'] ?? 'N/A'}',
                         ),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => _showCookDetailsDialog(context, cook),

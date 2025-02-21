@@ -66,6 +66,68 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     super.dispose();
   }
 
+  Future<void> sendMealCompletionNotification(String mealName, int day) async {
+    try {
+      await supabase.rpc(
+        'create_notification',
+        params: {
+          'p_recipient_id': widget.currentUserId,
+          'p_sender_id': widget.currentUserId,
+          'p_title': 'Meal Completed',
+          'p_message': 'You have completed $mealName for Day $day',
+          'p_notification_type': 'meal_completion',
+          'p_related_id': widget.currentUserId,
+        },
+      );
+    } catch (e) {
+      print('Error sending meal completion notification: $e');
+    }
+  }
+
+  Future<bool> checkAndNotifyWeekCompletion() async {
+    try {
+      bool allMealsCompleted = true;
+      int totalMeals = 0;
+      int completedMeals = 0;
+
+      // Count total and completed meals
+      for (var dayMeals in mealPlanData) {
+        for (var meal in dayMeals) {
+          if (meal['mealplan_id'] != null) {
+            totalMeals++;
+            if (meal['is_completed'] == true) {
+              completedMeals++;
+            }
+          }
+        }
+      }
+
+      // Check if all meals are completed
+      allMealsCompleted = totalMeals > 0 && completedMeals == totalMeals;
+
+      if (allMealsCompleted) {
+        // Send notification for completing the entire week
+        await supabase.rpc(
+          'create_notification',
+          params: {
+            'p_recipient_id': widget.currentUserId,
+            'p_sender_id': widget.currentUserId,
+            'p_title': 'Weekly Meal Plan Completed!',
+            'p_message':
+                'Congratulations! You have completed your entire weekly meal plan.',
+            'p_notification_type': 'meal_completion',
+            'p_related_id': widget.currentUserId,
+          },
+        );
+      }
+
+      return allMealsCompleted;
+    } catch (e) {
+      print('Error checking week completion: $e');
+      return false;
+    }
+  }
+
   Future<void> fetchMealPlan() async {
     try {
       final response = await Supabase.instance.client
@@ -1802,6 +1864,12 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                               meal['mealplan_id'].toString())
                                           .eq('user_id', widget.currentUserId);
 
+                                      // Send notification for individual meal completion
+                                      await sendMealCompletionNotification(
+                                        meal['meal_name'],
+                                        meal['day'] ?? 1,
+                                      );
+
                                       // Update local state
                                       setState(() {
                                         for (var dayMeals in mealPlanData) {
@@ -1814,6 +1882,10 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                         }
                                       });
 
+                                      // Check if all meals for the week are completed
+                                      final weekCompleted =
+                                          await checkAndNotifyWeekCompletion();
+
                                       if (context.mounted) {
                                         // Show the completion dialog
                                         _showCompletionSuccessDialog(context);
@@ -1822,6 +1894,45 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                         if (onCompleteMeal != null) {
                                           onCompleteMeal(
                                               meal['mealplan_id'].toString());
+                                        }
+
+                                        // If week is completed, show the week completion dialog
+                                        if (weekCompleted) {
+                                          await showDialog(
+                                            context: context,
+                                            builder: (BuildContext context) {
+                                              return AlertDialog(
+                                                title: const Column(
+                                                  children: [
+                                                    Icon(Icons.celebration,
+                                                        color: Colors.green,
+                                                        size: 48),
+                                                    SizedBox(height: 16),
+                                                    Text(
+                                                      'Congratulations!',
+                                                      style: TextStyle(
+                                                        color: Colors.green,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                content: const Text(
+                                                  'You have completed all meals for this week! Great job maintaining a healthy diet!',
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                                actions: [
+                                                  TextButton(
+                                                    onPressed: () =>
+                                                        Navigator.of(context)
+                                                            .pop(),
+                                                    child: const Text('OK'),
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                          );
                                         }
                                       }
                                     } catch (e) {
