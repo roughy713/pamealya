@@ -119,97 +119,130 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.privacy_tip, color: Colors.green[700]),
-              const SizedBox(width: 10),
-              const Text('paMEALya Terms and Conditions'),
-            ],
-          ),
-          content: Container(
-            width: MediaQuery.of(context).size.width * 0.8,
-            height: MediaQuery.of(context).size.height * 0.7,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Data Privacy and Security',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
+          contentPadding: const EdgeInsets.all(16.0),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.5,
+            height: MediaQuery.of(context).size.height * 0.9,
+            child: Column(
+              children: [
+                AppBar(
+                  elevation: 0,
+                  backgroundColor: Colors.transparent,
+                  automaticallyImplyLeading: false,
+                  title: Row(
+                    children: [
+                      Icon(Icons.privacy_tip, color: Colors.green[700]),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'paMEALya Terms and Conditions',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        child: const Icon(Icons.close,
+                            color: Colors.black, size: 20),
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Data Privacy and Security',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'paMEALya is committed to protecting your personal information in compliance with Republic Act 10173, also known as the Data Privacy Act of 2012. By using our platform, you agree to the following policies:',
+                            style: const TextStyle(fontSize: 14),
+                            textAlign: TextAlign.justify,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildTermsSection(
+                            'Collection of Personal Information',
+                            'We collect and process your personal data to enhance your experience, including:\n'
+                                '• Name and contact details\n'
+                                '• Age, dietary preferences, and restrictions\n'
+                                '• Family member details for personalized meal planning\n'
+                                '• Location data for cook booking services',
+                          ),
+                          _buildTermsSection(
+                            'Purpose of Data Collection',
+                            'Your information will be used to:\n'
+                                '• Generate personalized meal plans based on nutritional needs\n'
+                                '• Facilitate cook bookings and meal transactions\n'
+                                '• Improve user experience through tailored recommendations\n'
+                                '• Ensure compliance with dietary and health standards',
+                          ),
+                          _buildTermsSection(
+                            'Data Protection Measures',
+                            'paMEALya employs strict security protocols to prevent:\n'
+                                '• Unauthorized access to personal data\n'
+                                '• Data breaches or leaks\n'
+                                '• Misuse of sensitive information',
+                          ),
+                          _buildTermsSection(
+                            'User Rights',
+                            'Under the Data Privacy Act, you have the right to:\n'
+                                '• Access and update your personal data\n'
+                                '• Request deletion or restriction of your information\n'
+                                '• Withdraw consent for data processing\n'
+                                '• Report concerns about data handling practices',
+                          ),
+                          _buildTermsSection(
+                            'Data Retention Policy',
+                            'Your data will be retained only for as long as necessary to:\n'
+                                '• Provide personalized meal planning services\n'
+                                '• Maintain legal and financial records\n'
+                                '• Improve system functionality based on anonymized usage data',
+                          ),
+                          _buildTermsSection(
+                              'Third-Party Sharing',
+                              'We may share anonymized data with:\n'
+                                  '• Cooks for meal preparation services\n'),
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green.shade100),
+                            ),
+                            child: const Text(
+                              'By accepting these terms, you acknowledge that you have read, understood, and agree to the collection and processing of your personal information as outlined above.',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.justify,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'paMEALya is committed to protecting your personal information in compliance with Republic Act 10173, also known as the Data Privacy Act of 2012. By using our platform, you agree to the following policies:',
-                    style: TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildTermsSection(
-                    'Collection of Personal Information',
-                    'We collect and process your personal data to enhance your experience, including:\n'
-                        '• Name and contact details\n'
-                        '• Age, dietary preferences, and restrictions\n'
-                        '• Family member details for personalized meal planning\n'
-                        '• Location data for cook booking services',
-                  ),
-                  _buildTermsSection(
-                    'Purpose of Data Collection',
-                    'Your information will be used to:\n'
-                        '• Generate personalized meal plans based on nutritional needs\n'
-                        '• Facilitate cook bookings and meal transactions\n'
-                        '• Improve user experience through tailored recommendations\n'
-                        '• Ensure compliance with dietary and health standards',
-                  ),
-                  _buildTermsSection(
-                    'Data Protection Measures',
-                    'paMEALya employs strict security protocols to prevent:\n'
-                        '• Unauthorized access to personal data\n'
-                        '• Data breaches or leaks\n'
-                        '• Misuse of sensitive information',
-                  ),
-                  _buildTermsSection(
-                    'User Rights',
-                    'Under the Data Privacy Act, you have the right to:\n'
-                        '• Access and update your personal data\n'
-                        '• Request deletion or restriction of your information\n'
-                        '• Withdraw consent for data processing\n'
-                        '• Report concerns about data handling practices',
-                  ),
-                  _buildTermsSection(
-                    'Data Retention Policy',
-                    'Your data will be retained only for as long as necessary to:\n'
-                        '• Provide personalized meal planning services\n'
-                        '• Maintain legal and financial records\n'
-                        '• Improve system functionality based on anonymized usage data',
-                  ),
-                  _buildTermsSection(
-                    'Third-Party Sharing',
-                    'We may share anonymized data with:\n'
-                        '• Nutritionists for dietary assessments\n'
-                        '• Cooks for meal preparation services\n'
-                        '• Research institutions for improving food security and nutrition insights',
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'By accepting these terms, you acknowledge that you have read, understood, and agree to the collection and processing of your personal information as outlined above.',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
         );
       },
     );
@@ -231,17 +264,68 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
         Text(
           content,
           style: const TextStyle(fontSize: 14),
+          textAlign: TextAlign.justify,
         ),
       ],
     );
   }
 
+// Add this method to show validation errors
+  Future<void> _showValidationDialog(String message) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Icons.warning, color: Colors.yellow[700]),
+              const SizedBox(width: 8),
+              const Text('Signup Failed'),
+            ],
+          ),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+// Add this method to show error messages
+  Future<void> _showErrorDialog(String message) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.error, color: Colors.red),
+              const SizedBox(width: 8),
+              const Text('Error'),
+            ],
+          ),
+          content: Text(message),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('OK'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate() || !_isChecked) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text(
-                'Please check all fields and agree to Terms and Conditions')),
+      await _showValidationDialog(
+        'Please check all fields and agree to Terms and Conditions',
       );
       return;
     }
@@ -266,7 +350,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
             .eq('family_head', familyHeadName);
 
         String uniqueFamilyHeadName = familyHeadName;
-        if (existingFamilyHeads.length > 0) {
+        if (existingFamilyHeads.isNotEmpty) {
           uniqueFamilyHeadName =
               '$familyHeadName (${existingFamilyHeads.length + 1})';
         }
@@ -298,7 +382,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
             .insert(data)
             .select();
 
-        if (insertResponse != null && insertResponse.isNotEmpty) {
+        if (insertResponse.isNotEmpty) {
           // Show success and proceed to dashboard
           await _showSuccessDialog();
           if (mounted) {
@@ -316,9 +400,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
         }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error during sign-up: $e')),
-      );
+      await _showErrorDialog('Error during sign-up: $e');
     }
   }
 
@@ -355,11 +437,17 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
             key: _formKey,
             child: Column(
               children: [
-                AppBar(
-                  elevation: 0,
-                  leading: IconButton(
-                    icon: const Icon(Icons.arrow_back),
-                    onPressed: () => Navigator.of(context).pop(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Row(
+                    mainAxisAlignment:
+                        MainAxisAlignment.end, // Align to the right
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.close, color: Colors.black),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                    ],
                   ),
                 ),
                 Padding(
@@ -391,8 +479,9 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                                 labelText: 'First Name',
                                 border: OutlineInputBorder(),
                               ),
-                              validator: (value) =>
-                                  value?.isEmpty ?? true ? 'Required' : null,
+                              validator: (value) => value?.isEmpty ?? true
+                                  ? 'Please enter your first name'
+                                  : null,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -403,8 +492,9 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                                 labelText: 'Last Name',
                                 border: OutlineInputBorder(),
                               ),
-                              validator: (value) =>
-                                  value?.isEmpty ?? true ? 'Required' : null,
+                              validator: (value) => value?.isEmpty ?? true
+                                  ? 'Please enter your last name'
+                                  : null,
                             ),
                           ),
                         ],
@@ -418,8 +508,9 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           labelText: 'Email',
                           border: OutlineInputBorder(),
                         ),
-                        validator: (value) =>
-                            value?.isEmpty ?? true ? 'Required' : null,
+                        validator: (value) => value?.isEmpty ?? true
+                            ? 'Please enter your email'
+                            : null,
                       ),
                       const SizedBox(height: 10),
 
@@ -430,6 +521,11 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                         decoration: const InputDecoration(
                           labelText: 'Password',
                           border: OutlineInputBorder(),
+                          helperText:
+                              'Must contain: 8+ characters, uppercase, lowercase, number, special character (@\$!%*?&)',
+                          helperMaxLines:
+                              2, // In case of text wrap on smaller screens
+                          helperStyle: TextStyle(fontSize: 12),
                         ),
                         onChanged: _validatePasswordRealTime,
                         validator: (value) {
@@ -440,31 +536,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           return null;
                         },
                       ),
-
-                      // Password Requirements
-                      ValueListenableBuilder<Map<String, bool>>(
-                        valueListenable: _passwordRequirements,
-                        builder: (context, value, child) {
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _buildRequirementRow(
-                                  'At least 8 characters', value['length']!),
-                              _buildRequirementRow(
-                                  'One uppercase letter', value['uppercase']!),
-                              _buildRequirementRow(
-                                  'One lowercase letter', value['lowercase']!),
-                              _buildRequirementRow(
-                                  'One number', value['number']!),
-                              _buildRequirementRow(
-                                  'One special character (@\$!%*?&)',
-                                  value['specialChar']!),
-                            ],
-                          );
-                        },
-                      ),
                       const SizedBox(height: 10),
-
                       // Confirm Password
                       TextFormField(
                         controller: _confirmPasswordController,
@@ -482,49 +554,6 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                         },
                       ),
                       const SizedBox(height: 10),
-
-                      // Personal Details
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _ageController,
-                              decoration: const InputDecoration(
-                                labelText: 'Age',
-                                border: OutlineInputBorder(),
-                              ),
-                              readOnly: true,
-                              validator: (value) =>
-                                  value?.isEmpty ?? true ? 'Required' : null,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              decoration: const InputDecoration(
-                                labelText: 'Gender',
-                                border: OutlineInputBorder(),
-                              ),
-                              value: _selectedGender,
-                              items: ['Male', 'Female'].map((String gender) {
-                                return DropdownMenuItem<String>(
-                                  value: gender,
-                                  child: Text(gender),
-                                );
-                              }).toList(),
-                              onChanged: (String? value) {
-                                setState(() {
-                                  _selectedGender = value;
-                                });
-                              },
-                              validator: (value) =>
-                                  value == null ? 'Required' : null,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-
                       // Date of Birth and Religion
                       Row(
                         children: [
@@ -538,8 +567,9 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                               ),
                               readOnly: true,
                               onTap: () => _selectDate(context),
-                              validator: (value) =>
-                                  value?.isEmpty ?? true ? 'Required' : null,
+                              validator: (value) => value?.isEmpty ?? true
+                                  ? 'Please input your date of birth'
+                                  : null,
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -579,6 +609,49 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                       ),
                       const SizedBox(height: 10),
 
+                      // Personal Details
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _ageController,
+                              decoration: const InputDecoration(
+                                labelText: 'Age',
+                                border: OutlineInputBorder(),
+                              ),
+                              readOnly: true,
+                              validator: (value) => value?.isEmpty ?? true
+                                  ? 'Please enter your age'
+                                  : null,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: DropdownButtonFormField<String>(
+                              decoration: const InputDecoration(
+                                labelText: 'Gender',
+                                border: OutlineInputBorder(),
+                              ),
+                              value: _selectedGender,
+                              items: ['Male', 'Female'].map((String gender) {
+                                return DropdownMenuItem<String>(
+                                  value: gender,
+                                  child: Text(gender),
+                                );
+                              }).toList(),
+                              onChanged: (String? value) {
+                                setState(() {
+                                  _selectedGender = value;
+                                });
+                              },
+                              validator: (value) =>
+                                  value == null ? 'Required' : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
                       // Phone Number
                       TextFormField(
                         controller: _phoneController,
@@ -587,8 +660,9 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           border: OutlineInputBorder(),
                         ),
                         keyboardType: TextInputType.phone,
-                        validator: (value) =>
-                            value?.isEmpty ?? true ? 'Required' : null,
+                        validator: (value) => value?.isEmpty ?? true
+                            ? 'Please enter your phone number'
+                            : null,
                       ),
                       const SizedBox(height: 10),
 
@@ -611,28 +685,47 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                       // Terms and Conditions Checkbox
                       Row(
                         children: [
-                          Checkbox(
-                            value: _isChecked,
-                            onChanged: (bool? value) {
-                              setState(() {
-                                _isChecked = value ?? false;
-                              });
-                            },
+                          Theme(
+                            data: Theme.of(context).copyWith(
+                              unselectedWidgetColor: Colors.grey[600],
+                              // This ensures checkbox hover matches terms text hover
+                              hoverColor: Colors.green[50],
+                            ),
+                            child: Checkbox(
+                              value: _isChecked,
+                              onChanged: (bool? value) {
+                                setState(() {
+                                  _isChecked = value ?? false;
+                                });
+                              },
+                            ),
                           ),
                           Expanded(
-                            child: GestureDetector(
-                              onTap: () => _showTermsDialog(context),
-                              child: const Text(
-                                'I agree to the Terms and Conditions and Privacy Policy',
-                                style: TextStyle(
-                                  color: Colors.blue,
-                                  decoration: TextDecoration.underline,
+                            child: MouseRegion(
+                              cursor: SystemMouseCursors.click,
+                              child: GestureDetector(
+                                onTap: () => _showTermsDialog(context),
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4.0),
+                                  decoration: BoxDecoration(
+                                    // This creates hover effect area
+                                    color: Colors.transparent,
+                                  ),
+                                  child: Text(
+                                    'I agree to the Terms and Conditions and Privacy Policy',
+                                    style: TextStyle(
+                                      color: Colors.blue,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 20),
 
                       // Submit Button

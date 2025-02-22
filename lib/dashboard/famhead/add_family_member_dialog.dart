@@ -139,7 +139,7 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
       ),
       child: Container(
         width: 500,
-        height: 500, // Square dimensions
+        height: 500,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -147,12 +147,23 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
         ),
         child: Column(
           children: [
-            const Text(
-              'Add Family Member',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Add Family Member',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.of(context).pop(),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
             ),
             const SizedBox(height: 10),
             Expanded(
@@ -179,13 +190,6 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                             : null,
                       ),
                       TextFormField(
-                        controller: _ageController,
-                        decoration: const InputDecoration(labelText: 'Age'),
-                        keyboardType: TextInputType.number,
-                        validator: (value) =>
-                            value == null || value.isEmpty ? 'Enter age' : null,
-                      ),
-                      TextFormField(
                         controller: _dateOfBirthController,
                         decoration: const InputDecoration(
                           labelText: 'Date of Birth',
@@ -196,6 +200,13 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
                             : null,
                         onTap: () => _selectDate(context),
                         readOnly: true,
+                      ),
+                      TextFormField(
+                        controller: _ageController,
+                        decoration: const InputDecoration(labelText: 'Age'),
+                        keyboardType: TextInputType.number,
+                        validator: (value) =>
+                            value == null || value.isEmpty ? 'Enter age' : null,
                       ),
                       DropdownButtonFormField<String>(
                         value: _religionController.text.isNotEmpty

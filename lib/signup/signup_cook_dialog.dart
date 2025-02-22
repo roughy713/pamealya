@@ -213,6 +213,25 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
     return null;
   }
 
+// Add this helper method to show error dialogs
+  Future<void> _showErrorDialog(String message) async {
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Error'),
+          content: Text(message),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _showSuccessDialog() async {
     return showDialog<void>(
       context: context,
@@ -249,97 +268,130 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Row(
-            children: [
-              Icon(Icons.privacy_tip, color: Colors.green[700]),
-              const SizedBox(width: 10),
-              const Text('paMEALya Terms and Conditions'),
-            ],
-          ),
-          content: Container(
-            width: MediaQuery.of(context).size.width * 0.8,
-            height: MediaQuery.of(context).size.height * 0.7,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Data Privacy and Security',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
+          contentPadding: const EdgeInsets.all(16.0),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.5,
+            height: MediaQuery.of(context).size.height * 0.9,
+            child: Column(
+              children: [
+                AppBar(
+                  elevation: 0,
+                  backgroundColor: Colors.transparent,
+                  automaticallyImplyLeading: false,
+                  title: Row(
+                    children: [
+                      Icon(Icons.privacy_tip, color: Colors.green[700]),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'paMEALya Terms and Conditions',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                    ],
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(50),
+                        ),
+                        child: const Icon(Icons.close,
+                            color: Colors.black, size: 20),
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Data Privacy and Security',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'paMEALya is committed to protecting your personal information in compliance with Republic Act 10173, also known as the Data Privacy Act of 2012. By using our platform, you agree to the following policies:',
+                            style: const TextStyle(fontSize: 14),
+                            textAlign: TextAlign.justify,
+                          ),
+                          const SizedBox(height: 20),
+                          _buildTermsSection(
+                            'Collection of Personal Information',
+                            'We collect and process your personal data to enhance your experience, including:\n'
+                                '• Name and contact details\n'
+                                '• Age, dietary preferences, and restrictions\n'
+                                '• Family member details for personalized meal planning\n'
+                                '• Location data for cook booking services',
+                          ),
+                          _buildTermsSection(
+                            'Purpose of Data Collection',
+                            'Your information will be used to:\n'
+                                '• Generate personalized meal plans based on nutritional needs\n'
+                                '• Facilitate cook bookings and meal transactions\n'
+                                '• Improve user experience through tailored recommendations\n'
+                                '• Ensure compliance with dietary and health standards',
+                          ),
+                          _buildTermsSection(
+                            'Data Protection Measures',
+                            'paMEALya employs strict security protocols to prevent:\n'
+                                '• Unauthorized access to personal data\n'
+                                '• Data breaches or leaks\n'
+                                '• Misuse of sensitive information',
+                          ),
+                          _buildTermsSection(
+                            'User Rights',
+                            'Under the Data Privacy Act, you have the right to:\n'
+                                '• Access and update your personal data\n'
+                                '• Request deletion or restriction of your information\n'
+                                '• Withdraw consent for data processing\n'
+                                '• Report concerns about data handling practices',
+                          ),
+                          _buildTermsSection(
+                            'Data Retention Policy',
+                            'Your data will be retained only for as long as necessary to:\n'
+                                '• Provide personalized meal planning services\n'
+                                '• Maintain legal and financial records\n'
+                                '• Improve system functionality based on anonymized usage data',
+                          ),
+                          _buildTermsSection(
+                              'Third-Party Sharing',
+                              'We may share anonymized data with:\n'
+                                  '• Cooks for meal preparation services\n'),
+                          const SizedBox(height: 20),
+                          Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.green[50],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green.shade100),
+                            ),
+                            child: const Text(
+                              'By accepting these terms, you acknowledge that you have read, understood, and agree to the collection and processing of your personal information as outlined above.',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                              textAlign: TextAlign.justify,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'paMEALya is committed to protecting your personal information in compliance with Republic Act 10173, also known as the Data Privacy Act of 2012. By using our platform, you agree to the following policies:',
-                    style: TextStyle(fontSize: 14),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildTermsSection(
-                    'Collection of Personal Information',
-                    'We collect and process your personal data to enhance your experience, including:\n'
-                        '• Name and contact details\n'
-                        '• Age, dietary preferences, and restrictions\n'
-                        '• Family member details for personalized meal planning\n'
-                        '• Location data for cook booking services',
-                  ),
-                  _buildTermsSection(
-                    'Purpose of Data Collection',
-                    'Your information will be used to:\n'
-                        '• Generate personalized meal plans based on nutritional needs\n'
-                        '• Facilitate cook bookings and meal transactions\n'
-                        '• Improve user experience through tailored recommendations\n'
-                        '• Ensure compliance with dietary and health standards',
-                  ),
-                  _buildTermsSection(
-                    'Data Protection Measures',
-                    'paMEALya employs strict security protocols to prevent:\n'
-                        '• Unauthorized access to personal data\n'
-                        '• Data breaches or leaks\n'
-                        '• Misuse of sensitive information',
-                  ),
-                  _buildTermsSection(
-                    'User Rights',
-                    'Under the Data Privacy Act, you have the right to:\n'
-                        '• Access and update your personal data\n'
-                        '• Request deletion or restriction of your information\n'
-                        '• Withdraw consent for data processing\n'
-                        '• Report concerns about data handling practices',
-                  ),
-                  _buildTermsSection(
-                    'Data Retention Policy',
-                    'Your data will be retained only for as long as necessary to:\n'
-                        '• Provide personalized meal planning services\n'
-                        '• Maintain legal and financial records\n'
-                        '• Improve system functionality based on anonymized usage data',
-                  ),
-                  _buildTermsSection(
-                    'Third-Party Sharing',
-                    'We may share anonymized data with:\n'
-                        '• Nutritionists for dietary assessments\n'
-                        '• Cooks for meal preparation services\n'
-                        '• Research institutions for improving food security and nutrition insights',
-                  ),
-                  const SizedBox(height: 20),
-                  const Text(
-                    'By accepting these terms, you acknowledge that you have read, understood, and agree to the collection and processing of your personal information as outlined above.',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
         );
       },
     );
@@ -361,12 +413,22 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
         Text(
           content,
           style: const TextStyle(fontSize: 14),
+          textAlign: TextAlign.justify,
         ),
       ],
     );
   }
 
   Future<void> handleFormSubmission() async {
+    if (!_isChecked) {
+      await _showErrorDialog('Please agree to the Terms and Conditions');
+      return;
+    }
+
+    if (uploadedFileName == null) {
+      await _showErrorDialog('Please upload your certification and licenses');
+      return;
+    }
     if (formKey.currentState?.validate() == true && _isChecked) {
       try {
         final authResponse = await Supabase.instance.client.auth.signUp(
@@ -407,43 +469,39 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
         }
       } catch (e) {
         debugPrint('Error during sign-up: $e');
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error during sign-up: $e')),
-        );
+        await _showErrorDialog('Error during sign-up: $e');
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please agree to the Terms and Conditions'),
-        ),
-      );
+      await _showErrorDialog('Please fill out all required fields');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      insetPadding:
-          const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10.0),
-      ),
-      child: SizedBox(
+    return AlertDialog(
+      contentPadding: const EdgeInsets.all(16.0),
+      content: SizedBox(
         width: MediaQuery.of(context).size.width * 0.5,
         height: MediaQuery.of(context).size.height * 0.9,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AppBar(
-                elevation: 0,
-                leading: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.black),
-                  onPressed: () => Navigator.of(context).pop(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Row(
+                  mainAxisAlignment:
+                      MainAxisAlignment.end, // Align to the right
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.black),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
                 ),
               ),
-              Center(
+              Padding(
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
                     Image.asset(
@@ -458,13 +516,6 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                       'Connecting Filipino families to a Nutritious Future!',
                       style:
                           TextStyle(fontSize: 16, fontStyle: FontStyle.italic),
-                    ),
-                    const SizedBox(height: 20),
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.grey[300],
-                      child:
-                          Icon(Icons.person, size: 50, color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 20),
                     Form(
@@ -519,29 +570,19 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                             decoration: const InputDecoration(
                               labelText: 'Password',
                               border: OutlineInputBorder(),
+                              helperText:
+                                  'Must contain: 8+ characters, uppercase, lowercase, number, special character (@\$!%*?&)',
+                              helperMaxLines:
+                                  2, // In case of text wrap on smaller screens
+                              helperStyle: TextStyle(fontSize: 12),
                             ),
                             onChanged: _validatePasswordRealTime,
-                            validator: _validatePassword,
-                          ),
-                          ValueListenableBuilder<Map<String, bool>>(
-                            valueListenable: _passwordRequirements,
-                            builder: (context, value, child) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildRequirementRow('At least 8 characters',
-                                      value['length']!),
-                                  _buildRequirementRow('One uppercase letter',
-                                      value['uppercase']!),
-                                  _buildRequirementRow('One lowercase letter',
-                                      value['lowercase']!),
-                                  _buildRequirementRow(
-                                      'One number', value['number']!),
-                                  _buildRequirementRow(
-                                      'One special character (@\$!%*?&)',
-                                      value['specialChar']!),
-                                ],
-                              );
+                            validator: (value) {
+                              if (value?.isEmpty ?? true) return 'Required';
+                              if (!RegExp(_passwordPattern).hasMatch(value!)) {
+                                return 'Password must meet all requirements';
+                              }
+                              return null;
                             },
                           ),
                           const SizedBox(height: 10),
@@ -561,6 +602,20 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                               }
                               return null;
                             },
+                          ),
+                          const SizedBox(height: 10),
+                          TextFormField(
+                            controller: dateOfBirthController,
+                            readOnly: true,
+                            decoration: const InputDecoration(
+                              labelText: 'Date of Birth',
+                              border: OutlineInputBorder(),
+                              suffixIcon: Icon(Icons.calendar_today),
+                            ),
+                            onTap: () => _selectDate(context),
+                            validator: (value) => value?.isEmpty ?? true
+                                ? 'Please input your date of birth'
+                                : null,
                           ),
                           const SizedBox(height: 10),
                           Row(
@@ -604,17 +659,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                               ),
                             ],
                           ),
-                          const SizedBox(height: 10),
-                          TextFormField(
-                            controller: dateOfBirthController,
-                            readOnly: true,
-                            decoration: const InputDecoration(
-                              labelText: 'Date of Birth',
-                              border: OutlineInputBorder(),
-                              suffixIcon: Icon(Icons.calendar_today),
-                            ),
-                            onTap: () => _selectDate(context),
-                          ),
+
                           const SizedBox(height: 10),
                           TextFormField(
                             controller: phoneController,
@@ -649,24 +694,46 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                             'Availability Days:',
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          Wrap(
-                            spacing: 8.0,
-                            children: daysOfWeek.map((day) {
-                              return ChoiceChip(
-                                label: Text(day),
-                                selected: daySelection[day] ?? false,
-                                onSelected: (selected) {
-                                  setState(() {
-                                    daySelection[day] = selected;
-                                    if (selected) {
-                                      availabilityDays.add(day);
-                                    } else {
-                                      availabilityDays.remove(day);
-                                    }
-                                  });
-                                },
+                          FormField<List<String>>(
+                            validator: (value) {
+                              if (availabilityDays.isEmpty)
+                                return 'Please select availability days';
+                              return null;
+                            },
+                            builder: (state) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Wrap(
+                                    spacing: 8.0,
+                                    children: daysOfWeek.map((day) {
+                                      return ChoiceChip(
+                                        label: Text(day),
+                                        selected: daySelection[day] ?? false,
+                                        onSelected: (selected) {
+                                          setState(() {
+                                            daySelection[day] = selected;
+                                            if (selected) {
+                                              availabilityDays.add(day);
+                                            } else {
+                                              availabilityDays.remove(day);
+                                            }
+                                            state.didChange(availabilityDays);
+                                          });
+                                        },
+                                      );
+                                    }).toList(),
+                                  ),
+                                  if (state.hasError)
+                                    Text(
+                                      state.errorText!,
+                                      style: TextStyle(
+                                          color: Color(0xFFB00020),
+                                          fontSize: 12),
+                                    ),
+                                ],
                               );
-                            }).toList(),
+                            },
                           ),
                           const SizedBox(height: 10),
                           Row(
@@ -684,6 +751,11 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                                         ? timeFrom!.format(context)
                                         : '',
                                   ),
+                                  validator: (value) {
+                                    if (value?.isEmpty ?? true)
+                                      return 'Please select start time';
+                                    return null;
+                                  },
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -700,55 +772,104 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                                         ? timeTo!.format(context)
                                         : '',
                                   ),
+                                  validator: (value) {
+                                    if (value?.isEmpty ?? true)
+                                      return 'Please select end time';
+                                    return null;
+                                  },
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 20),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Upload Certification and Licenses',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              const SizedBox(height: 10),
-                              Row(
+                          FormField<String>(
+                            validator: (value) {
+                              if (uploadedFileName == null) {
+                                return 'Please upload certification and licenses';
+                              }
+                              return null;
+                            },
+                            builder: (FormFieldState<String> state) {
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  ElevatedButton(
-                                    onPressed: uploadFile,
-                                    child: const Text('Upload File'),
+                                  const Text(
+                                    'Upload Certification and Licenses',
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold),
                                   ),
-                                  const SizedBox(width: 20),
-                                  if (uploadedFileName != null)
-                                    Text(
-                                      uploadedFileName!,
-                                      style: const TextStyle(
-                                          color: Colors.black87),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      ElevatedButton(
+                                        onPressed: () {
+                                          uploadFile();
+                                          state.didChange(uploadedFileName);
+                                        },
+                                        child: const Text('Upload File'),
+                                      ),
+                                      const SizedBox(width: 20),
+                                      if (uploadedFileName != null)
+                                        Text(
+                                          uploadedFileName!,
+                                          style: const TextStyle(
+                                              color: Colors.black87),
+                                        ),
+                                    ],
+                                  ),
+                                  if (state.hasError)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 8),
+                                      child: Text(
+                                        state.errorText!,
+                                        style: const TextStyle(
+                                          color: Color(
+                                              0xFFB00020), // This matches the error red color
+                                          fontSize: 12,
+                                        ),
+                                      ),
                                     ),
                                 ],
-                              ),
-                            ],
+                              );
+                            },
                           ),
                           const SizedBox(height: 20),
                           Row(
                             children: [
-                              Checkbox(
-                                value: _isChecked,
-                                onChanged: (bool? value) {
-                                  setState(() {
-                                    _isChecked = value ?? false;
-                                  });
-                                },
+                              Theme(
+                                data: Theme.of(context).copyWith(
+                                  unselectedWidgetColor: Colors.grey[600],
+                                  // This ensures checkbox hover matches terms text hover
+                                  hoverColor: Colors.green[50],
+                                ),
+                                child: Checkbox(
+                                  value: _isChecked,
+                                  onChanged: (bool? value) {
+                                    setState(() {
+                                      _isChecked = value ?? false;
+                                    });
+                                  },
+                                ),
                               ),
                               Expanded(
-                                child: GestureDetector(
-                                  onTap: () => _showTermsDialog(context),
-                                  child: const Text(
-                                    'I agree to the Terms and Conditions and Privacy Policy',
-                                    style: TextStyle(
-                                      color: Colors.blue,
-                                      decoration: TextDecoration.underline,
+                                child: MouseRegion(
+                                  cursor: SystemMouseCursors.click,
+                                  child: GestureDetector(
+                                    onTap: () => _showTermsDialog(context),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 4.0),
+                                      decoration: BoxDecoration(
+                                        // This creates hover effect area
+                                        color: Colors.transparent,
+                                      ),
+                                      child: Text(
+                                        'I agree to the Terms and Conditions and Privacy Policy',
+                                        style: TextStyle(
+                                          color: Colors.blue,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -760,10 +881,10 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                             child: ElevatedButton(
                               onPressed: handleFormSubmission,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.yellow,
+                                backgroundColor: Colors.yellow[700],
                                 padding: const EdgeInsets.symmetric(
-                                  vertical: 16.0,
-                                  horizontal: 32.0,
+                                  vertical: 15,
+                                  horizontal: 60,
                                 ),
                               ),
                               child: const Text('Submit'),
