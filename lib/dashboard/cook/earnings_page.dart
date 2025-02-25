@@ -90,7 +90,9 @@ class _EarningsPageState extends State<EarningsPage> {
             'amount': double.tryParse(response['amount'].toString()) ?? 0.0,
             'payment_method': response[
                 'payment_method_text'], // Use the text version from the view
-            'payment_date': response['created_at'],
+            // Prioritize payment_date over created_at if available
+            'payment_date': response['payment_date'] ?? response['created_at'],
+            'transaction_date': response['transaction_date'],
             'reference_number': response['reference_number'] ?? 'N/A',
             'status': response['status'],
             'familymember': booking['familymember']
@@ -248,14 +250,16 @@ class _EarningsPageState extends State<EarningsPage> {
     // Parse the payment date
     DateTime date;
     try {
+      // Handle the timestamp (no timezone)
       date = DateTime.parse(paymentDate);
     } catch (e) {
       print('Error parsing date for transaction $index: $e');
       date = DateTime.now();
     }
 
-    // Format date with correct time
-    String formattedDate = DateFormat('MMM dd, yyyy • hh:mm a').format(date);
+    // Format date with correct time (local timezone)
+    String formattedDate =
+        DateFormat('MMM dd, yyyy • hh:mm a').format(date.toLocal());
 
     // Customer name extraction
     String customerName = 'Customer';
