@@ -134,17 +134,21 @@ class CustomDrawer extends StatelessWidget {
               onTap: () => onItemTap(4),
             ),
             SidebarMenuItem(
-              title: 'Transactions',
+              title: 'Payment',           // Added Payment menu item
               isSelected: selectedIndex == 5,
               onTap: () => onItemTap(5),
+            ),
+            SidebarMenuItem(
+              title: 'Transactions',      // Moved below Payment
+              isSelected: selectedIndex == 6,
+              onTap: () => onItemTap(6),
             ),
             const Spacer(),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: TextButton(
                 onPressed: () => _showLogoutConfirmation(context),
-                child:
-                    const Text('Logout', style: TextStyle(color: Colors.red)),
+                child: const Text('Logout', style: TextStyle(color: Colors.red)),
               ),
             ),
           ],

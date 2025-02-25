@@ -10,6 +10,7 @@ import 'famhead_notifications_page.dart';
 import 'transactions_page.dart';
 import 'meal_completion_handler.dart';
 import 'custom_drawer.dart';
+import 'payment_page.dart';
 
 class FamHeadDashboard extends StatefulWidget {
   final String firstName;
@@ -44,6 +45,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     'Chat',
     'Bookings',
     'Notifications',
+    'Payment',
     'Transactions',
   ];
 
@@ -381,7 +383,13 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           onPageChange: changePage,
           currentUserId: widget.currentUserId,
         ),
-        const TransactionPage(),
+        PaymentPage(
+          currentUserId: widget.currentUserId,
+          bookingrequestId: '',
+        ),
+        TransactionPage(
+          currentUserId: widget.currentUserId,
+        ),
       ];
 
   @override
