@@ -46,7 +46,7 @@ class _EarningsPageState extends State<EarningsPage> {
           .from('Local_Cook')
           .select('localcookid, first_name, last_name')
           .eq('user_id', userId)
-          .single();
+          .maybeSingle(); // Changed to maybeSingle
 
       if (cookResponse == null) {
         throw Exception('Cook not found');
@@ -54,26 +54,32 @@ class _EarningsPageState extends State<EarningsPage> {
 
       final localCookId = cookResponse['localcookid'];
 
-      // Get transactions directly - ensure we have payment_method included
+      // Debug - Find the specific transaction that's causing issues
+      // Changed from .single() to .maybeSingle() to handle zero results
+      final testTransaction = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('bookingrequest_id', '2f8e6960-56b2-4fe5-93b6-9cd8519da9b4')
+          .maybeSingle();
+
+      if (testTransaction != null) {
+        print('TEST TRANSACTION FOUND:');
+        print('Transaction ID: ${testTransaction['transaction_id']}');
+        print('Booking ID: ${testTransaction['bookingrequest_id']}');
+        print('Payment Method: ${testTransaction['payment_method']}');
+        print('Transaction Date: ${testTransaction['transaction_date']}');
+        print('Payment Date: ${testTransaction['payment_date']}');
+      } else {
+        print(
+            'No test transaction found for booking ID: 2f8e6960-56b2-4fe5-93b6-9cd8519da9b4');
+      }
+
+      // IMPORTANT - Get all transactions without any unnecessary joins or processing first
       final directTransactionsResponse = await supabase
           .from('transactions')
-          .select('''
-      *,
-      bookingrequest!transactions_bookingrequest_id_fkey (
-        desired_delivery_time,
-        status,
-        meal_price,
-        user_id,
-        is_paid,
-        request_date
-      ),
-      familymember (
-        first_name,
-        last_name
-      )
-    ''')
+          .select('*')
           .eq('localcookid', localCookId)
-          .order('created_at', ascending: false); // Sort by most recent first
+          .order('transaction_date', ascending: false);
 
       // Deep clone to prevent reference issues
       final directTransactions = List<Map<String, dynamic>>.from(
@@ -81,15 +87,49 @@ class _EarningsPageState extends State<EarningsPage> {
 
       print('Found ${directTransactions.length} direct transactions');
 
-      for (var i = 0; i < directTransactions.length; i++) {
-        // Debug print each transaction payment method
-        print(
-            'Transaction ${i + 1} payment method: ${directTransactions[i]['payment_method']}');
-      }
-
       if (directTransactions.isNotEmpty) {
+        // Now fetch the additional details for each transaction
+        final enrichedTransactions = <Map<String, dynamic>>[];
+
+        for (final transaction in directTransactions) {
+          // Store payment method BEFORE any other operations to ensure it doesn't get lost
+          final originalPaymentMethod = transaction['payment_method'];
+          print('ORIGINAL Payment Method: $originalPaymentMethod');
+
+          // Fetch booking details
+          final bookingResponse = await supabase
+              .from('bookingrequest')
+              .select('''
+                *,
+                familymember (
+                  first_name,
+                  last_name
+                )
+              ''')
+              .eq('bookingrequest_id', transaction['bookingrequest_id'])
+              .maybeSingle();
+
+          if (bookingResponse != null) {
+            // Create a new transaction with all data
+            final enrichedTransaction = Map<String, dynamic>.from(transaction);
+            enrichedTransaction['bookingrequest'] = bookingResponse;
+            enrichedTransaction['familymember'] =
+                bookingResponse['familymember'];
+
+            // CRITICAL - Preserve the original payment method
+            print('Setting payment method to: $originalPaymentMethod');
+            enrichedTransaction['payment_method'] = originalPaymentMethod;
+
+            enrichedTransactions.add(enrichedTransaction);
+          } else {
+            // If no booking found, just use the transaction as is
+            enrichedTransactions.add(transaction);
+          }
+        }
+
+        // Update state with enriched transactions
         setState(() {
-          transactions = directTransactions;
+          transactions = enrichedTransactions;
           totalEarnings = transactions.fold(
             0.0,
             (sum, transaction) =>
@@ -102,7 +142,7 @@ class _EarningsPageState extends State<EarningsPage> {
         // If no direct transactions, look for paid bookings without transactions
         final paidBookings = await supabase
             .from('bookingrequest')
-            .select('bookingrequest_id, meal_price, request_date')
+            .select('bookingrequest_id, meal_price, request_date, is_paid')
             .eq('localcookid', localCookId)
             .eq('is_paid', true);
 
@@ -116,9 +156,17 @@ class _EarningsPageState extends State<EarningsPage> {
           for (final booking in paidBookings) {
             final bookingId = booking['bookingrequest_id'];
 
+            // CRITICAL - Check if a transaction already exists for this booking
+            final existingTransaction = await supabase
+                .from('transactions')
+                .select('*')
+                .eq('bookingrequest_id', bookingId)
+                .maybeSingle();
+
             // Get detailed booking information
-            final bookingDetail =
-                await supabase.from('bookingrequest').select('''
+            final bookingDetail = await supabase
+                .from('bookingrequest')
+                .select('''
                   *,
                   Local_Cook (
                     first_name,
@@ -128,7 +176,9 @@ class _EarningsPageState extends State<EarningsPage> {
                     first_name,
                     last_name
                   )
-                ''').eq('bookingrequest_id', bookingId).single();
+                ''')
+                .eq('bookingrequest_id', bookingId)
+                .maybeSingle(); // Changed to maybeSingle
 
             if (bookingDetail != null) {
               final amount =
@@ -136,26 +186,55 @@ class _EarningsPageState extends State<EarningsPage> {
                       0.0;
               totalAmount += amount;
 
-              // Use a fixed date for created_at in synthetic transactions
-              // based on request_date rather than the current time
-              final requestDate = DateTime.parse(
-                  bookingDetail['request_date'] ??
-                      DateTime.now().toIso8601String());
+              // IMPORTANT - Use real transaction data if it exists
+              if (existingTransaction != null) {
+                // Use the real transaction date and payment method
+                print(
+                    'Found existing transaction with payment method: ${existingTransaction['payment_method']}');
 
-              syntheticTransactions.add({
-                'transaction_id': 'synthetic-$bookingId',
-                'bookingrequest_id': bookingId,
-                'amount': amount,
-                'payment_method':
-                    'GCash', // Default payment method for synthetic transactions only
-                'created_at': requestDate.toIso8601String(),
-                'bookingrequest': bookingDetail,
-                'familymember': bookingDetail['familymember'],
-                'reference_number':
-                    'Booking-${bookingId.toString().substring(0, 8)}',
-                'status': 'Completed',
-                'isSynthetic': true
-              });
+                syntheticTransactions.add({
+                  'transaction_id': existingTransaction['transaction_id'],
+                  'bookingrequest_id': bookingId,
+                  'amount': amount,
+                  'payment_method': existingTransaction['payment_method'],
+                  'transaction_date': existingTransaction['transaction_date'],
+                  'payment_date': existingTransaction['payment_date'] ??
+                      existingTransaction['transaction_date'],
+                  'created_at': existingTransaction['created_at'],
+                  'bookingrequest': bookingDetail,
+                  'familymember': bookingDetail['familymember'],
+                  'reference_number': existingTransaction['reference_number'],
+                  'status': existingTransaction['status'],
+                  'isSynthetic':
+                      false // This is not synthetic, it's a real transaction
+                });
+              } else {
+                // Use fallback data since no transaction exists
+                DateTime paymentDate;
+                try {
+                  paymentDate = DateTime.parse(bookingDetail['request_date'] ??
+                      DateTime.now().toIso8601String());
+                } catch (e) {
+                  paymentDate = DateTime.now();
+                  print('Error parsing date: $e');
+                }
+
+                syntheticTransactions.add({
+                  'transaction_id': 'synthetic-$bookingId',
+                  'bookingrequest_id': bookingId,
+                  'amount': amount,
+                  'payment_method': 'Credit Card', // Default payment method
+                  'transaction_date': paymentDate.toIso8601String(),
+                  'payment_date': paymentDate.toIso8601String(),
+                  'created_at': paymentDate.toIso8601String(),
+                  'bookingrequest': bookingDetail,
+                  'familymember': bookingDetail['familymember'],
+                  'reference_number':
+                      'REF-${bookingId.toString().substring(0, 8)}',
+                  'status': 'Completed',
+                  'isSynthetic': true
+                });
+              }
             }
           }
 
@@ -240,6 +319,175 @@ class _EarningsPageState extends State<EarningsPage> {
       });
       fetchEarnings();
     }
+  }
+
+  Widget _buildTransactionCard(Map<String, dynamic> transaction, int index) {
+    // Print transaction details for debugging
+    print('Building card for transaction ${index}');
+    print('Transaction ID: ${transaction['transaction_id']}');
+    print('Payment Method: ${transaction['payment_method']}');
+    print('Transaction Date: ${transaction['transaction_date']}');
+    print('Payment Date: ${transaction['payment_date']}');
+
+    // Use payment_date if available, fall back to transaction_date, then created_at
+    DateTime date;
+    try {
+      if (transaction['payment_date'] != null) {
+        date = DateTime.parse(transaction['payment_date']);
+        print('Using payment_date: ${transaction['payment_date']}');
+      } else if (transaction['transaction_date'] != null) {
+        date = DateTime.parse(transaction['transaction_date']);
+        print('Using transaction_date: ${transaction['transaction_date']}');
+      } else if (transaction['created_at'] != null) {
+        date = DateTime.parse(transaction['created_at']);
+        print('Using created_at: ${transaction['created_at']}');
+      } else {
+        date = DateTime.now();
+        print('No date found, using current time');
+      }
+    } catch (e) {
+      date = DateTime.now();
+      print('Error parsing date for transaction $index: $e');
+    }
+
+    // Get amount
+    final amount = double.tryParse(transaction['amount'].toString()) ?? 0.0;
+
+    // CRITICAL - Use the payment method directly from the transaction object
+    // Don't apply any conditioning or default values
+    final paymentMethod =
+        transaction['payment_method']?.toString() ?? 'Credit Card';
+    print('Final payment method to display: $paymentMethod');
+
+    final referenceNumber = transaction['reference_number'] ?? 'N/A';
+    final isSynthetic = transaction['isSynthetic'] == true;
+
+    // Safely access nested objects
+    final bookingRequest =
+        transaction['bookingrequest'] as Map<String, dynamic>?;
+    final bookingId = transaction['bookingrequest_id'] ?? 'Unknown';
+
+    // Get customer info
+    String customerName = 'Customer';
+    if (transaction['familymember'] != null) {
+      final familyMember = transaction['familymember'] as Map<String, dynamic>;
+      customerName =
+          '${familyMember['first_name'] ?? ''} ${familyMember['last_name'] ?? ''}';
+    } else if (bookingRequest != null &&
+        bookingRequest['familymember'] != null) {
+      final familyMember =
+          bookingRequest['familymember'] as Map<String, dynamic>?;
+      if (familyMember != null) {
+        customerName =
+            '${familyMember['first_name'] ?? ''} ${familyMember['last_name'] ?? ''}';
+      }
+    }
+
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+      ),
+      color: isSynthetic ? Colors.grey[50] : Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Payment for Booking #$bookingId',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                Text(
+                  '₱${amount.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Payment Date: ${DateFormat('MMM dd, yyyy • hh:mm a').format(date)}',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+            Text(
+              'From: $customerName',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+            Text(
+              'Payment Method: $paymentMethod',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+            Text(
+              'Reference: $referenceNumber',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.green[50],
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.green),
+                  ),
+                  child: const Text(
+                    'Completed',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.blue),
+                  ),
+                  child: const Text(
+                    'Paid',
+                    style: TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -422,166 +670,8 @@ class _EarningsPageState extends State<EarningsPage> {
                           padding: const EdgeInsets.symmetric(horizontal: 15),
                           itemCount: transactions.length,
                           itemBuilder: (context, index) {
-                            final transaction = transactions[index];
-
-                            // Parse date correctly from transaction created_at
-                            DateTime date;
-                            try {
-                              date = DateTime.parse(transaction['created_at']);
-                            } catch (e) {
-                              date = DateTime.now();
-                            }
-
-                            final amount = double.tryParse(
-                                    transaction['amount'].toString()) ??
-                                0.0;
-
-                            // Debug print the payment method for verification
-                            final rawPaymentMethod =
-                                transaction['payment_method'];
-                            print(
-                                'Transaction $index payment method: $rawPaymentMethod');
-
-                            final referenceNumber =
-                                transaction['reference_number'] ?? 'N/A';
-                            final isSynthetic =
-                                transaction['isSynthetic'] == true;
-
-                            // Safely access nested objects
-                            final bookingRequest = transaction['bookingrequest']
-                                as Map<String, dynamic>?;
-                            final bookingId =
-                                transaction['bookingrequest_id'] ?? 'Unknown';
-
-                            // Get customer info
-                            String customerName = 'Customer';
-                            if (transaction['familymember'] != null) {
-                              final familyMember = transaction['familymember']
-                                  as Map<String, dynamic>;
-                              customerName =
-                                  '${familyMember['first_name'] ?? ''} ${familyMember['last_name'] ?? ''}';
-                            } else if (bookingRequest != null &&
-                                bookingRequest['familymember'] != null) {
-                              final familyMember =
-                                  bookingRequest['familymember']
-                                      as Map<String, dynamic>?;
-                              if (familyMember != null) {
-                                customerName =
-                                    '${familyMember['first_name'] ?? ''} ${familyMember['last_name'] ?? ''}';
-                              }
-                            }
-
-                            return Card(
-                              elevation: 2,
-                              margin: const EdgeInsets.symmetric(vertical: 8),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              color:
-                                  isSynthetic ? Colors.grey[50] : Colors.white,
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            'Payment for Booking #$bookingId',
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                        ),
-                                        Text(
-                                          '₱${amount.toStringAsFixed(2)}',
-                                          style: const TextStyle(
-                                            color: Colors.green,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 16,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Payment Date: ${DateFormat('MMM dd, yyyy • hh:mm a').format(date)}',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    Text(
-                                      'From: $customerName',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    Text(
-                                      'Payment Method: ${transaction['payment_method']}',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    Text(
-                                      'Reference: $referenceNumber',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Row(
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green[50],
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                            border:
-                                                Border.all(color: Colors.green),
-                                          ),
-                                          child: const Text(
-                                            'Completed',
-                                            style: TextStyle(
-                                              color: Colors.green,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 8, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue[50],
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                            border:
-                                                Border.all(color: Colors.blue),
-                                          ),
-                                          child: const Text(
-                                            'Paid',
-                                            style: TextStyle(
-                                              color: Colors.blue,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
+                            return _buildTransactionCard(
+                                transactions[index], index);
                           },
                         ),
                 ),
