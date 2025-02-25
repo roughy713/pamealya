@@ -46,7 +46,7 @@ class _EarningsPageState extends State<EarningsPage> {
           .from('Local_Cook')
           .select('localcookid, first_name, last_name')
           .eq('user_id', userId)
-          .maybeSingle(); // Changed to maybeSingle
+          .maybeSingle();
 
       if (cookResponse == null) {
         throw Exception('Cook not found');
@@ -54,203 +54,88 @@ class _EarningsPageState extends State<EarningsPage> {
 
       final localCookId = cookResponse['localcookid'];
 
-      // Debug - Find the specific transaction that's causing issues
-      // Changed from .single() to .maybeSingle() to handle zero results
-      final testTransaction = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('bookingrequest_id', '2f8e6960-56b2-4fe5-93b6-9cd8519da9b4')
-          .maybeSingle();
+      // Get paid bookings for this cook
+      final paidBookings = await supabase.from('bookingrequest').select('''
+            bookingrequest_id,
+            meal_price,
+            request_date,
+            familymember (
+              first_name,
+              last_name
+            )
+          ''').eq('localcookid', localCookId).eq('is_paid', true);
 
-      if (testTransaction != null) {
-        print('TEST TRANSACTION FOUND:');
-        print('Transaction ID: ${testTransaction['transaction_id']}');
-        print('Booking ID: ${testTransaction['bookingrequest_id']}');
-        print('Payment Method: ${testTransaction['payment_method']}');
-        print('Transaction Date: ${testTransaction['transaction_date']}');
-        print('Payment Date: ${testTransaction['payment_date']}');
-      } else {
-        print(
-            'No test transaction found for booking ID: 2f8e6960-56b2-4fe5-93b6-9cd8519da9b4');
-      }
+      print('Found ${paidBookings.length} paid bookings');
 
-      // IMPORTANT - Get all transactions without any unnecessary joins or processing first
-      final directTransactionsResponse = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('localcookid', localCookId)
-          .order('transaction_date', ascending: false);
+      // Process each booking
+      List<Map<String, dynamic>> processedTransactions = [];
+      double totalEarningsAmount = 0.0;
 
-      // Deep clone to prevent reference issues
-      final directTransactions = List<Map<String, dynamic>>.from(
-          directTransactionsResponse.map((t) => Map<String, dynamic>.from(t)));
+      for (final booking in paidBookings) {
+        final bookingId = booking['bookingrequest_id'];
 
-      print('Found ${directTransactions.length} direct transactions');
+        // Get transaction using the transaction_details view
+        final response = await supabase
+            .from('transaction_details')
+            .select()
+            .eq('bookingrequest_id', bookingId)
+            .maybeSingle();
 
-      if (directTransactions.isNotEmpty) {
-        // Now fetch the additional details for each transaction
-        final enrichedTransactions = <Map<String, dynamic>>[];
+        print('Transaction response for booking $bookingId: $response');
 
-        for (final transaction in directTransactions) {
-          // Store payment method BEFORE any other operations to ensure it doesn't get lost
-          final originalPaymentMethod = transaction['payment_method'];
-          print('ORIGINAL Payment Method: $originalPaymentMethod');
+        if (response != null) {
+          final processedTransaction = {
+            'transaction_id': response['transaction_id'],
+            'bookingrequest_id': bookingId,
+            'amount': double.tryParse(response['amount'].toString()) ?? 0.0,
+            'payment_method': response[
+                'payment_method_text'], // Use the text version from the view
+            'payment_date': response['created_at'],
+            'reference_number': response['reference_number'] ?? 'N/A',
+            'status': response['status'],
+            'familymember': booking['familymember']
+          };
 
-          // Fetch booking details
-          final bookingResponse = await supabase
-              .from('bookingrequest')
-              .select('''
-                *,
-                familymember (
-                  first_name,
-                  last_name
-                )
-              ''')
-              .eq('bookingrequest_id', transaction['bookingrequest_id'])
-              .maybeSingle();
-
-          if (bookingResponse != null) {
-            // Create a new transaction with all data
-            final enrichedTransaction = Map<String, dynamic>.from(transaction);
-            enrichedTransaction['bookingrequest'] = bookingResponse;
-            enrichedTransaction['familymember'] =
-                bookingResponse['familymember'];
-
-            // CRITICAL - Preserve the original payment method
-            print('Setting payment method to: $originalPaymentMethod');
-            enrichedTransaction['payment_method'] = originalPaymentMethod;
-
-            enrichedTransactions.add(enrichedTransaction);
-          } else {
-            // If no booking found, just use the transaction as is
-            enrichedTransactions.add(transaction);
-          }
-        }
-
-        // Update state with enriched transactions
-        setState(() {
-          transactions = enrichedTransactions;
-          totalEarnings = transactions.fold(
-            0.0,
-            (sum, transaction) =>
-                sum +
-                (double.tryParse(transaction['amount'].toString()) ?? 0.0),
-          );
-          isLoading = false;
-        });
-      } else {
-        // If no direct transactions, look for paid bookings without transactions
-        final paidBookings = await supabase
-            .from('bookingrequest')
-            .select('bookingrequest_id, meal_price, request_date, is_paid')
-            .eq('localcookid', localCookId)
-            .eq('is_paid', true);
-
-        print(
-            'Found ${paidBookings.length} paid bookings but no direct transactions');
-
-        if (paidBookings.isNotEmpty) {
-          List<Map<String, dynamic>> syntheticTransactions = [];
-          double totalAmount = 0.0;
-
-          for (final booking in paidBookings) {
-            final bookingId = booking['bookingrequest_id'];
-
-            // CRITICAL - Check if a transaction already exists for this booking
-            final existingTransaction = await supabase
-                .from('transactions')
-                .select('*')
-                .eq('bookingrequest_id', bookingId)
-                .maybeSingle();
-
-            // Get detailed booking information
-            final bookingDetail = await supabase
-                .from('bookingrequest')
-                .select('''
-                  *,
-                  Local_Cook (
-                    first_name,
-                    last_name
-                  ),
-                  familymember (
-                    first_name,
-                    last_name
-                  )
-                ''')
-                .eq('bookingrequest_id', bookingId)
-                .maybeSingle(); // Changed to maybeSingle
-
-            if (bookingDetail != null) {
-              final amount =
-                  double.tryParse(bookingDetail['meal_price'].toString()) ??
-                      0.0;
-              totalAmount += amount;
-
-              // IMPORTANT - Use real transaction data if it exists
-              if (existingTransaction != null) {
-                // Use the real transaction date and payment method
-                print(
-                    'Found existing transaction with payment method: ${existingTransaction['payment_method']}');
-
-                syntheticTransactions.add({
-                  'transaction_id': existingTransaction['transaction_id'],
-                  'bookingrequest_id': bookingId,
-                  'amount': amount,
-                  'payment_method': existingTransaction['payment_method'],
-                  'transaction_date': existingTransaction['transaction_date'],
-                  'payment_date': existingTransaction['payment_date'] ??
-                      existingTransaction['transaction_date'],
-                  'created_at': existingTransaction['created_at'],
-                  'bookingrequest': bookingDetail,
-                  'familymember': bookingDetail['familymember'],
-                  'reference_number': existingTransaction['reference_number'],
-                  'status': existingTransaction['status'],
-                  'isSynthetic':
-                      false // This is not synthetic, it's a real transaction
-                });
-              } else {
-                // Use fallback data since no transaction exists
-                DateTime paymentDate;
-                try {
-                  paymentDate = DateTime.parse(bookingDetail['request_date'] ??
-                      DateTime.now().toIso8601String());
-                } catch (e) {
-                  paymentDate = DateTime.now();
-                  print('Error parsing date: $e');
-                }
-
-                syntheticTransactions.add({
-                  'transaction_id': 'synthetic-$bookingId',
-                  'bookingrequest_id': bookingId,
-                  'amount': amount,
-                  'payment_method': 'Credit Card', // Default payment method
-                  'transaction_date': paymentDate.toIso8601String(),
-                  'payment_date': paymentDate.toIso8601String(),
-                  'created_at': paymentDate.toIso8601String(),
-                  'bookingrequest': bookingDetail,
-                  'familymember': bookingDetail['familymember'],
-                  'reference_number':
-                      'REF-${bookingId.toString().substring(0, 8)}',
-                  'status': 'Completed',
-                  'isSynthetic': true
-                });
-              }
-            }
-          }
-
-          setState(() {
-            transactions = syntheticTransactions;
-            totalEarnings = totalAmount;
-            isLoading = false;
-          });
+          processedTransactions.add(processedTransaction);
+          totalEarningsAmount += processedTransaction['amount'];
         } else {
-          setState(() {
-            transactions = [];
-            totalEarnings = 0.0;
-            isLoading = false;
-          });
+          // Fallback to using booking data if no transaction found
+          final amount =
+              double.tryParse(booking['meal_price'].toString()) ?? 0.0;
+          final processedTransaction = {
+            'transaction_id': 'transaction-${booking['bookingrequest_id']}',
+            'bookingrequest_id': booking['bookingrequest_id'],
+            'amount': amount,
+            'payment_method':
+                'Unknown', // Default for bookings without transactions
+            'payment_date': booking['request_date'],
+            'reference_number':
+                'REF-${booking['bookingrequest_id'].toString().substring(0, 8)}',
+            'status': 'Completed',
+            'familymember': booking['familymember']
+          };
+
+          processedTransactions.add(processedTransaction);
+          totalEarningsAmount += amount;
         }
       }
+
+      // Apply time frame filtering if needed
+      if (selectedTimeFrame != 'All Time') {
+        processedTransactions =
+            _filterTransactionsByTimeFrame(processedTransactions);
+        totalEarningsAmount = processedTransactions.fold(
+            0.0, (sum, transaction) => sum + (transaction['amount'] ?? 0.0));
+      }
+
+      setState(() {
+        transactions = processedTransactions;
+        totalEarnings = totalEarningsAmount;
+        isLoading = false;
+      });
+
+      print('Processed ${transactions.length} transactions');
+      print('Total earnings: $totalEarnings');
     } catch (e) {
       print('Error fetching earnings: $e');
       if (mounted) {
@@ -259,8 +144,37 @@ class _EarningsPageState extends State<EarningsPage> {
           transactions = [];
           totalEarnings = 0.0;
         });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching earnings: $e')),
+        );
       }
     }
+  }
+
+  List<Map<String, dynamic>> _filterTransactionsByTimeFrame(
+      List<Map<String, dynamic>> allTransactions) {
+    if (selectedStartDate == null || selectedEndDate == null) {
+      return allTransactions;
+    }
+
+    return allTransactions.where((transaction) {
+      final paymentDateStr = transaction['payment_date'];
+      if (paymentDateStr == null) return false;
+
+      DateTime transactionDate;
+      try {
+        transactionDate = DateTime.parse(paymentDateStr);
+      } catch (e) {
+        print('Error parsing date: $e');
+        return false;
+      }
+
+      // Add one day to end date to include the full end date
+      final adjustedEndDate = selectedEndDate!.add(const Duration(days: 1));
+
+      return transactionDate.isAfter(selectedStartDate!) &&
+          transactionDate.isBefore(adjustedEndDate);
+    }).toList();
   }
 
   Future<void> _selectTimeFrame(String timeFrame) async {
@@ -322,65 +236,34 @@ class _EarningsPageState extends State<EarningsPage> {
   }
 
   Widget _buildTransactionCard(Map<String, dynamic> transaction, int index) {
-    // Print transaction details for debugging
-    print('Building card for transaction ${index}');
-    print('Transaction ID: ${transaction['transaction_id']}');
-    print('Payment Method: ${transaction['payment_method']}');
-    print('Transaction Date: ${transaction['transaction_date']}');
-    print('Payment Date: ${transaction['payment_date']}');
+    // Ensure critical fields are non-null
+    final paymentDate =
+        transaction['payment_date'] ?? DateTime.now().toIso8601String();
+    final paymentMethod = transaction['payment_method'] ?? 'Unknown';
+    final amount = double.tryParse(transaction['amount'].toString()) ?? 0.0;
+    final bookingId = transaction['bookingrequest_id'] ?? 'Unknown';
+    final referenceNumber = transaction['reference_number'] ?? 'N/A';
+    final status = transaction['status'] ?? 'Completed';
 
-    // Use payment_date if available, fall back to transaction_date, then created_at
+    // Parse the payment date
     DateTime date;
     try {
-      if (transaction['payment_date'] != null) {
-        date = DateTime.parse(transaction['payment_date']);
-        print('Using payment_date: ${transaction['payment_date']}');
-      } else if (transaction['transaction_date'] != null) {
-        date = DateTime.parse(transaction['transaction_date']);
-        print('Using transaction_date: ${transaction['transaction_date']}');
-      } else if (transaction['created_at'] != null) {
-        date = DateTime.parse(transaction['created_at']);
-        print('Using created_at: ${transaction['created_at']}');
-      } else {
-        date = DateTime.now();
-        print('No date found, using current time');
-      }
+      date = DateTime.parse(paymentDate);
     } catch (e) {
-      date = DateTime.now();
       print('Error parsing date for transaction $index: $e');
+      date = DateTime.now();
     }
 
-    // Get amount
-    final amount = double.tryParse(transaction['amount'].toString()) ?? 0.0;
+    // Format date with correct time
+    String formattedDate = DateFormat('MMM dd, yyyy • hh:mm a').format(date);
 
-    // CRITICAL - Use the payment method directly from the transaction object
-    // Don't apply any conditioning or default values
-    final paymentMethod =
-        transaction['payment_method']?.toString() ?? 'Credit Card';
-    print('Final payment method to display: $paymentMethod');
-
-    final referenceNumber = transaction['reference_number'] ?? 'N/A';
-    final isSynthetic = transaction['isSynthetic'] == true;
-
-    // Safely access nested objects
-    final bookingRequest =
-        transaction['bookingrequest'] as Map<String, dynamic>?;
-    final bookingId = transaction['bookingrequest_id'] ?? 'Unknown';
-
-    // Get customer info
+    // Customer name extraction
     String customerName = 'Customer';
-    if (transaction['familymember'] != null) {
-      final familyMember = transaction['familymember'] as Map<String, dynamic>;
+    final familyMember = transaction['familymember'];
+    if (familyMember != null) {
       customerName =
-          '${familyMember['first_name'] ?? ''} ${familyMember['last_name'] ?? ''}';
-    } else if (bookingRequest != null &&
-        bookingRequest['familymember'] != null) {
-      final familyMember =
-          bookingRequest['familymember'] as Map<String, dynamic>?;
-      if (familyMember != null) {
-        customerName =
-            '${familyMember['first_name'] ?? ''} ${familyMember['last_name'] ?? ''}';
-      }
+          '${familyMember['first_name'] ?? ''} ${familyMember['last_name'] ?? ''}'
+              .trim();
     }
 
     return Card(
@@ -389,7 +272,7 @@ class _EarningsPageState extends State<EarningsPage> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
       ),
-      color: isSynthetic ? Colors.grey[50] : Colors.white,
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -419,7 +302,7 @@ class _EarningsPageState extends State<EarningsPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Payment Date: ${DateFormat('MMM dd, yyyy • hh:mm a').format(date)}',
+              'Payment Date: $formattedDate',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
@@ -457,9 +340,9 @@ class _EarningsPageState extends State<EarningsPage> {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.green),
                   ),
-                  child: const Text(
-                    'Completed',
-                    style: TextStyle(
+                  child: Text(
+                    status,
+                    style: const TextStyle(
                       color: Colors.green,
                       fontWeight: FontWeight.w500,
                     ),
