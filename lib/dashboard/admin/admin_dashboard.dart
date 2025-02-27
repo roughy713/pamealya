@@ -7,6 +7,7 @@ import 'view_family_heads_page.dart';
 import 'approval_page.dart';
 import 'my_profile_page.dart';
 import 'add_meals_page.dart';
+import 'view_meals_page.dart'; // Add import for the new page
 
 class AdminDashboard extends StatefulWidget {
   final String firstName;
@@ -24,7 +25,8 @@ class AdminDashboardState extends State<AdminDashboard> {
   final List<Widget> _pages = const [
     DashboardPage(),
     AddAdminPage(),
-    AddMealsPage(), // Keep in pages but not in navigation
+    AddMealsPage(),
+    ViewMealsPage(), // Add the new page
     ViewCooksPage(),
     ViewFamilyHeadsPage(),
     ApprovalPage(),
@@ -35,6 +37,7 @@ class AdminDashboardState extends State<AdminDashboard> {
     'Dashboard',
     'Add Admin',
     'Add Meals',
+    'View Meals', // Add the title
     'View Cooks',
     'View Family Heads',
     'Cooks Approval',
@@ -104,7 +107,7 @@ class NavigationDrawer extends StatelessWidget {
             ),
           ),
           GestureDetector(
-            onTap: () => onSelectItem(6), // Redirect to profile page
+            onTap: () => onSelectItem(7), // Updated index for profile page
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -148,24 +151,29 @@ class NavigationDrawer extends StatelessWidget {
                     onTap: () => onSelectItem(2),
                   ),
                   SidebarMenuItem(
-                    title: 'View Cooks',
+                    title: 'View Meals',
                     isSelected: selectedIndex == 3,
                     onTap: () => onSelectItem(3),
                   ),
                   SidebarMenuItem(
-                    title: 'View Family Heads',
+                    title: 'View Cooks',
                     isSelected: selectedIndex == 4,
                     onTap: () => onSelectItem(4),
                   ),
                   SidebarMenuItem(
-                    title: 'Cooks Approval',
+                    title: 'View Family Heads',
                     isSelected: selectedIndex == 5,
                     onTap: () => onSelectItem(5),
                   ),
                   SidebarMenuItem(
-                    title: 'My Profile',
+                    title: 'Cooks Approval',
                     isSelected: selectedIndex == 6,
                     onTap: () => onSelectItem(6),
+                  ),
+                  SidebarMenuItem(
+                    title: 'My Profile',
+                    isSelected: selectedIndex == 7,
+                    onTap: () => onSelectItem(7),
                   ),
                 ],
               ),
