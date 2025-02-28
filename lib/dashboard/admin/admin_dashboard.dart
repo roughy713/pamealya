@@ -7,7 +7,8 @@ import 'view_family_heads_page.dart';
 import 'approval_page.dart';
 import 'my_profile_page.dart';
 import 'add_meals_page.dart';
-import 'view_meals_page.dart'; // Add import for the new page
+import 'view_meals_page.dart';
+import 'admin_notifications_page.dart'; // Import for the notifications page
 
 class AdminDashboard extends StatefulWidget {
   final String firstName;
@@ -26,10 +27,11 @@ class AdminDashboardState extends State<AdminDashboard> {
     DashboardPage(),
     AddAdminPage(),
     AddMealsPage(),
-    ViewMealsPage(), // Add the new page
+    ViewMealsPage(),
     ViewCooksPage(),
     ViewFamilyHeadsPage(),
     ApprovalPage(),
+    AdminNotificationsPage(), // Add the notifications page
     MyProfilePage(),
   ];
 
@@ -37,10 +39,11 @@ class AdminDashboardState extends State<AdminDashboard> {
     'Dashboard',
     'Add Admin',
     'Add Meals',
-    'View Meals', // Add the title
+    'View Meals',
     'View Cooks',
     'View Family Heads',
     'Cooks Approval',
+    'Notifications', // Add the notifications title
     'My Profile',
   ];
 
@@ -107,7 +110,8 @@ class NavigationDrawer extends StatelessWidget {
             ),
           ),
           GestureDetector(
-            onTap: () => onSelectItem(7), // Updated index for profile page
+            onTap: () =>
+                onSelectItem(8), // Updated from 7 to 8 for profile page
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Row(
@@ -171,9 +175,14 @@ class NavigationDrawer extends StatelessWidget {
                     onTap: () => onSelectItem(6),
                   ),
                   SidebarMenuItem(
-                    title: 'My Profile',
+                    title: 'Notifications',
                     isSelected: selectedIndex == 7,
                     onTap: () => onSelectItem(7),
+                  ),
+                  SidebarMenuItem(
+                    title: 'My Profile',
+                    isSelected: selectedIndex == 8,
+                    onTap: () => onSelectItem(8),
                   ),
                 ],
               ),

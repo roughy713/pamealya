@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../dashboard/famhead/famhead_dashboard.dart'; // Redirect to this page after successful login
+import '../dashboard/famhead/famhead_dashboard.dart';
 import 'package:pamealya/signup/signup_famhead_dialog.dart';
 
 class LoginDialog extends StatefulWidget {
@@ -14,6 +14,60 @@ class _LoginDialogState extends State<LoginDialog> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  // Function to show styled error dialog
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: const Color(0xFFF5F5F5),
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.amber[700],
+                size: 28,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: const TextStyle(
+              fontSize: 16,
+            ),
+          ),
+          actions: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'OK',
+                  style: TextStyle(
+                    color: Colors.blue[700],
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   // Function to handle the login logic
   Future<void> _handleLogin(BuildContext context) async {
@@ -32,8 +86,8 @@ class _LoginDialogState extends State<LoginDialog> {
       );
 
       if (response.user == null) {
-        _showWarning(
-            'Error: Authentication failed. Please check your credentials.');
+        _showErrorDialog('Login Failed',
+            'We couldn\'t find an account with those credentials. Please double-check and try again.');
         return;
       }
 
@@ -46,17 +100,19 @@ class _LoginDialogState extends State<LoginDialog> {
           .maybeSingle();
 
       if (familyHeadResponse == null) {
-        _showWarning('This account is not registered as a family head.');
+        _showErrorDialog('Access Denied',
+            'Your account isn\'t registered as a family head. Please use the appropriate login option for your account type.');
         // Sign out the user since they're not authorized as a family head
         await Supabase.instance.client.auth.signOut();
         return;
       }
 
       // Step 3: Check if the user is already logged in somewhere else (optional)
-      final currentSession = await Supabase.instance.client.auth.currentSession;
-      if (currentSession?.user?.id != response.user!.id) {
+      final currentSession = Supabase.instance.client.auth.currentSession;
+      if (currentSession?.user.id != response.user!.id) {
         await Supabase.instance.client.auth.signOut();
-        _showWarning('Session error. Please try logging in again.');
+        _showErrorDialog('Session Error',
+            'There seems to be a session issue. Please try logging in again.');
         return;
       }
 
@@ -75,17 +131,11 @@ class _LoginDialogState extends State<LoginDialog> {
         );
       }
     } catch (e) {
-      _showWarning('Error occurred while logging in: $e');
+      _showErrorDialog('Error',
+          'Something went wrong while trying to log you in. Please try again later.');
       // Ensure user is signed out in case of error
       await Supabase.instance.client.auth.signOut();
     }
-  }
-
-  // Function to show warning messages
-  void _showWarning(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
   }
 
   // Function to send password reset email
@@ -93,12 +143,13 @@ class _LoginDialogState extends State<LoginDialog> {
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(email);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password reset email sent!')),
+        const SnackBar(
+            content:
+                Text('Password reset email sent! Please check your inbox.')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      _showErrorDialog('Email Failed',
+          'We couldn\'t send the reset email. Please check your email address and try again.');
     }
   }
 
@@ -110,16 +161,17 @@ class _LoginDialogState extends State<LoginDialog> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Reset Password'),
+          title: const Text('Forgot Your Password?'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Enter your email to receive a password reset link.'),
+              const Text(
+                  'No worries! Enter your email below and we\'ll send you a link to reset your password.'),
               const SizedBox(height: 10),
               TextField(
                 controller: emailController,
                 decoration: const InputDecoration(
-                  labelText: 'Email',
+                  labelText: 'Your Email',
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -128,7 +180,7 @@ class _LoginDialogState extends State<LoginDialog> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: const Text('Go Back'),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -136,7 +188,7 @@ class _LoginDialogState extends State<LoginDialog> {
                 await _sendPasswordResetEmail(email);
                 Navigator.of(context).pop();
               },
-              child: const Text('Send Link'),
+              child: const Text('Send Reset Link'),
             ),
           ],
         );
@@ -165,7 +217,7 @@ class _LoginDialogState extends State<LoginDialog> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Hi Welcome Back To',
+                'Welcome Back!',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
@@ -177,12 +229,13 @@ class _LoginDialogState extends State<LoginDialog> {
               TextFormField(
                 controller: _usernameController,
                 decoration: const InputDecoration(
-                  labelText: 'Email',
+                  labelText: 'Your Email',
+                  hintText: 'Enter the email you signed up with',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter email';
+                    return 'We need your email to log you in';
                   }
                   return null;
                 },
@@ -192,12 +245,13 @@ class _LoginDialogState extends State<LoginDialog> {
                 controller: _passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(
-                  labelText: 'Password',
+                  labelText: 'Your Password',
+                  hintText: 'Enter your password',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
-                    return 'Please enter password';
+                    return 'Please enter your password to continue';
                   }
                   return null;
                 },
@@ -211,7 +265,7 @@ class _LoginDialogState extends State<LoginDialog> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
                 ),
-                child: const Text('Login'),
+                child: const Text('Sign In'),
               ),
               const SizedBox(height: 10),
               TextButton(
@@ -219,7 +273,7 @@ class _LoginDialogState extends State<LoginDialog> {
                   // Open the Forgot Password dialog
                   _showForgotPasswordDialog(context);
                 },
-                child: const Text('Forgot Password?'),
+                child: const Text('Forgot Your Password?'),
               ),
               const SizedBox(height: 10),
               TextButton(
@@ -232,7 +286,7 @@ class _LoginDialogState extends State<LoginDialog> {
                     },
                   );
                 },
-                child: const Text("Don't Have An Account?"),
+                child: const Text("New here? Create an account"),
               ),
             ],
           ),

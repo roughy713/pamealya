@@ -11,6 +11,7 @@ import 'transactions_page.dart';
 import 'meal_completion_handler.dart';
 import 'custom_drawer.dart';
 import 'payment_page.dart';
+import 'famhead_support_page.dart'; // Import the support page
 
 class FamHeadDashboard extends StatefulWidget {
   final String firstName;
@@ -47,6 +48,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
     'Notifications',
     'Payment',
     'Transactions',
+    'Support', // Added Support title
   ];
 
   @override
@@ -390,6 +392,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
         TransactionPage(
           currentUserId: widget.currentUserId,
         ),
+        const SupportPage(), // Added Support page
       ];
 
   @override

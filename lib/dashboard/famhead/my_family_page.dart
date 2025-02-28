@@ -44,8 +44,6 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
           .eq('user_id', widget.currentUserId)
           .single();
 
-      if (familyHeadRecord == null) return;
-
       final String familyHeadName = familyHeadRecord['family_head'] as String;
 
       // Then get all family members using that specific family_head value
@@ -94,7 +92,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
           .select()
           .eq('user_id', widget.currentUserId);
 
-      if (existingPlan != null && existingPlan.isNotEmpty && context.mounted) {
+      if (existingPlan.isNotEmpty && context.mounted) {
         await showDialog(
           context: context,
           barrierDismissible: false,
@@ -105,7 +103,8 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
               ),
               title: const Row(
                 children: [
-                  Icon(Icons.info, color: Colors.green, size: 28),
+                  Icon(Icons.info,
+                      color: Color.fromARGB(255, 76, 175, 80), size: 28),
                   SizedBox(width: 8),
                   Text(
                     'Meal Plan Exists',
@@ -113,34 +112,26 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                   ),
                 ],
               ),
-              content: const Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'You already have an existing meal plan.',
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ],
-              ),
+              content: const Text('You already have an existing meal plan.'),
               actions: [
                 ElevatedButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.yellow,
                     foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
                   ),
                   child: const Text('Okay'),
                 ),
               ],
-              actionsPadding: const EdgeInsets.all(16),
             );
           },
         );
       } else {
-        await _showGenerateMealPlanDialog(context);
+        // Show free trial popup first
+        final shouldProceed = await _showFreeTrialDialog(context);
+        if (shouldProceed) {
+          await _showGenerateMealPlanDialog(context);
+        }
       }
     } catch (e) {
       if (context.mounted) {
@@ -159,6 +150,289 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
         );
       }
     }
+  }
+
+  Future<bool> _showFreeTrialDialog(BuildContext context) async {
+    return await showDialog<bool>(
+          context: context,
+          barrierDismissible: false,
+          builder: (BuildContext context) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: SingleChildScrollView(
+                // Wrap with SingleChildScrollView
+                child: Container(
+                  width: 600, // Increased width
+                  padding: const EdgeInsets.all(40), // Increased padding
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Header with icon
+                      Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: const Color.fromARGB(255, 76, 175, 80)
+                                  .withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: const Color.fromARGB(255, 32, 223, 39)
+                                  .withOpacity(0.5),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.restaurant_menu,
+                              size: 30,
+                              color: Colors.black,
+                            ),
+                          ),
+                          Positioned(
+                            top: 0,
+                            right: 0, // Adjusted from -20 to 0
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'FREE',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Title and subtitle
+                      const Text(
+                        'Start Your Free Trial',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Text(
+                        'Experience comprehensive meal planning for your family!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Plans comparison
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Free Trial Features
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.1),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.timer, size: 20),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        '7-Day Free Trial',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildFeatureList([
+                                    'Basic meal recommendations',
+                                    'Standard ingredient options',
+                                    'Limited Allergen Support Selection',
+                                    '1 week meal plan',
+                                    'Limited recipe variety'
+                                        'Limited to only 2 booking slots of Cooks',
+                                  ], false),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          // Premium Features
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(16),
+                                border:
+                                    Border.all(color: Colors.green.shade200),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(Icons.star,
+                                          size: 20,
+                                          color: Colors.green.shade700),
+                                      const SizedBox(width: 8),
+                                      const Text(
+                                        'Premium Features',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  _buildFeatureList([
+                                    'Diverse recipes to choose from',
+                                    'Detailed nutrition analysis',
+                                    'Unlimited meal plan generation',
+                                    'Shopping list automation',
+                                    'Seasonal menu adaptation',
+                                    'Unlimited booking slots of Cooks',
+                                  ], true),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
+
+                      // Action buttons
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 160,
+                            child: TextButton(
+                              onPressed: () => Navigator.of(context).pop(false),
+                              style: TextButton.styleFrom(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                              ),
+                              child: const Text(
+                                'Maybe Later',
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          SizedBox(
+                            width: 160,
+                            child: ElevatedButton(
+                              onPressed: () => Navigator.of(context).pop(true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor:
+                                    const Color.fromARGB(255, 76, 175, 80),
+                                foregroundColor: Colors.white,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: const Text(
+                                'Start Free Trial',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Terms text
+                      const Text(
+                        'No credit card required. By starting your free trial, you agree to our Terms of Service and Privacy Policy.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ) ??
+        false;
+  }
+
+  Widget _buildFeatureList(List<String> features, bool isPremium) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: features
+          .map((feature) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      size: 18,
+                      color: isPremium ? Colors.green : Colors.grey.shade600,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        feature,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color:
+                              isPremium ? Colors.black87 : Colors.grey.shade800,
+                          height: 1.4,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ))
+          .toList(),
+    );
   }
 
   Future<void> _showGenerateMealPlanDialog(BuildContext context) async {
@@ -431,50 +705,52 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                                                               'Lunch selections',
                                                               'Dinner choices',
                                                               'Snack recommendations'
-                                                            ]
-                                                                .map(
-                                                                  (text) =>
-                                                                      Padding(
-                                                                    padding: const EdgeInsets
+                                                            ].map(
+                                                              (text) => Padding(
+                                                                padding:
+                                                                    const EdgeInsets
                                                                         .only(
                                                                         bottom:
                                                                             8),
-                                                                    child: Row(
-                                                                      children: [
-                                                                        Container(
-                                                                          width:
-                                                                              4,
-                                                                          height:
-                                                                              4,
-                                                                          margin: const EdgeInsets
-                                                                              .only(
-                                                                              right: 8,
-                                                                              top: 8),
-                                                                          decoration:
-                                                                              BoxDecoration(
-                                                                            color:
-                                                                                Colors.green.shade400,
-                                                                            borderRadius:
-                                                                                BorderRadius.circular(2),
-                                                                          ),
-                                                                        ),
-                                                                        Expanded(
-                                                                          child:
-                                                                              Text(
-                                                                            text,
-                                                                            style:
-                                                                                const TextStyle(
-                                                                              fontSize: 14,
-                                                                              color: Color(0xFF4A5056),
-                                                                              height: 1.4,
-                                                                            ),
-                                                                          ),
-                                                                        ),
-                                                                      ],
+                                                                child: Row(
+                                                                  children: [
+                                                                    Container(
+                                                                      width: 4,
+                                                                      height: 4,
+                                                                      margin: const EdgeInsets
+                                                                          .only(
+                                                                          right:
+                                                                              8,
+                                                                          top:
+                                                                              8),
+                                                                      decoration:
+                                                                          BoxDecoration(
+                                                                        color: Colors
+                                                                            .green
+                                                                            .shade400,
+                                                                        borderRadius:
+                                                                            BorderRadius.circular(2),
+                                                                      ),
                                                                     ),
-                                                                  ),
-                                                                )
-                                                                .toList(),
+                                                                    Expanded(
+                                                                      child:
+                                                                          Text(
+                                                                        text,
+                                                                        style:
+                                                                            const TextStyle(
+                                                                          fontSize:
+                                                                              14,
+                                                                          color:
+                                                                              Color(0xFF4A5056),
+                                                                          height:
+                                                                              1.4,
+                                                                        ),
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
+                                                            ),
                                                           ],
                                                         ),
                                                       ),
@@ -718,8 +994,8 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            title: Row(
-              children: const [
+            title: const Row(
+              children: [
                 Icon(Icons.check_circle, color: Colors.green, size: 30),
                 SizedBox(width: 10),
                 Text(
@@ -1013,10 +1289,10 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showMealPlanConfirmation(context),
-        backgroundColor: Colors.yellow,
+        backgroundColor: const Color.fromARGB(255, 76, 175, 80),
         label: const Text(
           'Generate Meal Plan',
-          style: TextStyle(color: Colors.black),
+          style: TextStyle(color: Colors.white),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,

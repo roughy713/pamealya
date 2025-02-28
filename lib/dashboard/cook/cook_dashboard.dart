@@ -8,7 +8,7 @@ import 'orders_page.dart';
 import 'cook_chat_page.dart';
 import 'reviews_page.dart';
 import 'earnings_page.dart';
-import 'support_page.dart';
+import 'cook_support_page.dart';
 import 'cook_notifications_page.dart';
 
 class CookDashboard extends StatefulWidget {

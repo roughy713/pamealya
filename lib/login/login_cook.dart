@@ -16,6 +16,60 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
+  // Function to show styled error dialog
+  void _showErrorDialog(String title, String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: const Color(0xFFF5F5F5),
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Colors.amber[700],
+                size: 28,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            message,
+            style: const TextStyle(
+              fontSize: 16,
+            ),
+          ),
+          actions: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'OK',
+                  style: TextStyle(
+                    color: Colors.blue[700],
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Future<void> _handleLogin(BuildContext context) async {
     if (!_formKey.currentState!.validate()) {
       return; // Form validation failed
@@ -36,8 +90,11 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
       );
 
       if (response.user == null) {
-        _showWarning(
-            'Error: Authentication failed. Please check your credentials.');
+        // Use error dialog instead of warning snackbar
+        _showErrorDialog(
+          'Error',
+          'Something went wrong while trying to log you in. Please try again later.',
+        );
         return;
       }
 
@@ -49,12 +106,18 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
           .maybeSingle(); // Returns `null` if no matching record is found
 
       if (cookResponse == null) {
-        _showWarning('This account is not registered as a cook.');
+        _showErrorDialog(
+          'Account Error',
+          'This account is not registered as a cook.',
+        );
         return;
       }
 
       if (cookResponse['is_accepted'] != true) {
-        _showWarning('Your account has not been approved by the admin.');
+        _showErrorDialog(
+          'Account Status',
+          'Your account has not been approved by the admin.',
+        );
         return;
       }
 
@@ -70,7 +133,10 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
         ),
       );
     } catch (e) {
-      _showWarning('Error during login: $e');
+      _showErrorDialog(
+        'Error',
+        'Something went wrong while trying to log you in. Please try again later.',
+      );
     } finally {
       setState(() {
         _isLoading = false; // Hide loading indicator
@@ -87,7 +153,10 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
           .single();
 
       if (cookResponse['is_accepted'] != true) {
-        _showWarning('Your account has not been approved by the admin.');
+        _showErrorDialog(
+          'Account Status',
+          'Your account has not been approved by the admin.',
+        );
         return;
       }
 
@@ -102,14 +171,11 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
         ),
       );
     } catch (e) {
-      _showWarning('Error loading cook details: $e');
+      _showErrorDialog(
+        'Error',
+        'Error loading cook details. Please try again later.',
+      );
     }
-  }
-
-  void _showWarning(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
   }
 
   // Function to send password reset email
@@ -120,8 +186,9 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
         const SnackBar(content: Text('Password reset email sent!')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+      _showErrorDialog(
+        'Error',
+        'Failed to send password reset email. Please check your email address and try again.',
       );
     }
   }

@@ -393,234 +393,251 @@ class _ViewMealsPageState extends State<ViewMealsPage> {
     // Set initial values from the meal data
     nameController.text = meal['name'] ?? '';
     descriptionController.text = meal['description'] ?? '';
-    isNuts = meal['is_nuts'] ?? false;
-    isHalal = meal['is_halal'] ?? false;
-    isDairy = meal['is_dairy'] ?? false;
-    isSeafood = meal['is_seafood'] ?? false;
-    selectedCategoryId = meal['meal_category_id']?.toString();
+
+    // Create local variables for the checkboxes that will be used in the StatefulBuilder
+    bool localIsNuts = meal['is_nuts'] ?? false;
+    bool localIsHalal = meal['is_halal'] ?? false;
+    bool localIsDairy = meal['is_dairy'] ?? false;
+    bool localIsSeafood = meal['is_seafood'] ?? false;
+    String? localSelectedCategoryId = meal['meal_category_id']?.toString();
 
     final formKey = GlobalKey<FormState>();
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
-            child: Form(
-              key: formKey,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Edit Meal',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: () => Navigator.of(context).pop(),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(),
-                  Expanded(
-                    child: SingleChildScrollView(
+        return StatefulBuilder(
+            // Use StatefulBuilder to manage state within the dialog
+            builder: (context, setState) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 500, maxHeight: 700),
+              child: Form(
+                key: formKey,
+                child: Column(
+                  children: [
+                    Padding(
                       padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // Image (Display only, not editable in this dialog)
-                          if (meal['image_url'] != null)
-                            Container(
-                              height: 150,
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                image: DecorationImage(
-                                  image: NetworkImage(meal['image_url']),
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                            )
-                          else
-                            Container(
-                              height: 150,
-                              width: double.infinity,
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                color: Colors.grey[300],
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.image_not_supported,
-                                      size: 40, color: Colors.grey),
-                                  SizedBox(height: 8),
-                                  Text('No Image Available'),
-                                ],
-                              ),
-                            ),
-                          const SizedBox(height: 16),
-
-                          // Editable Fields
-                          TextFormField(
-                            controller: nameController,
-                            decoration: const InputDecoration(
-                              labelText: 'Meal Name',
-                              border: OutlineInputBorder(),
-                            ),
-                            validator: (value) => value?.isEmpty ?? true
-                                ? 'Please enter a meal name'
-                                : null,
-                          ),
-                          const SizedBox(height: 16),
-
-                          TextFormField(
-                            controller: descriptionController,
-                            decoration: const InputDecoration(
-                              labelText: 'Description',
-                              border: OutlineInputBorder(),
-                            ),
-                            maxLines: 3,
-                          ),
-                          const SizedBox(height: 16),
-
-                          DropdownButtonFormField<String>(
-                            value: selectedCategoryId,
-                            decoration: const InputDecoration(
-                              labelText: 'Category',
-                              border: OutlineInputBorder(),
-                            ),
-                            items: categories.map((category) {
-                              return DropdownMenuItem(
-                                value: category['meal_category_id'].toString(),
-                                child: Text(category['category_name']),
-                              );
-                            }).toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                selectedCategoryId = value;
-                              });
-                            },
-                            validator: (value) => value == null
-                                ? 'Please select a category'
-                                : null,
-                          ),
-                          const SizedBox(height: 16),
-
                           const Text(
-                            'Dietary Information',
+                            'Edit Meal',
                             style: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          const SizedBox(height: 8),
-
-                          CheckboxListTile(
-                            title: const Text('Contains Nuts'),
-                            value: isNuts,
-                            onChanged: (value) {
-                              setState(() {
-                                isNuts = value ?? false;
-                              });
-                            },
-                            controlAffinity: ListTileControlAffinity.leading,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-
-                          CheckboxListTile(
-                            title: const Text('Halal'),
-                            value: isHalal,
-                            onChanged: (value) {
-                              setState(() {
-                                isHalal = value ?? false;
-                              });
-                            },
-                            controlAffinity: ListTileControlAffinity.leading,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-
-                          CheckboxListTile(
-                            title: const Text('Contains Dairy'),
-                            value: isDairy,
-                            onChanged: (value) {
-                              setState(() {
-                                isDairy = value ?? false;
-                              });
-                            },
-                            controlAffinity: ListTileControlAffinity.leading,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-
-                          CheckboxListTile(
-                            title: const Text('Contains Seafood'),
-                            value: isSeafood,
-                            onChanged: (value) {
-                              setState(() {
-                                isSeafood = value ?? false;
-                              });
-                            },
-                            controlAffinity: ListTileControlAffinity.leading,
-                            contentPadding: EdgeInsets.zero,
-                          ),
-
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Note: To edit ingredients and instructions, please use the full meal editor.',
-                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () => Navigator.of(context).pop(),
                           ),
                         ],
                       ),
                     ),
-                  ),
-                  const Divider(),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          child: const Text('Cancel'),
+                    const Divider(),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Image (Display only, not editable in this dialog)
+                            if (meal['image_url'] != null)
+                              Container(
+                                height: 150,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  image: DecorationImage(
+                                    image: NetworkImage(meal['image_url']),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              )
+                            else
+                              Container(
+                                height: 150,
+                                width: double.infinity,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.image_not_supported,
+                                        size: 40, color: Colors.grey),
+                                    SizedBox(height: 8),
+                                    Text('No Image Available'),
+                                  ],
+                                ),
+                              ),
+                            const SizedBox(height: 16),
+
+                            // Editable Fields
+                            TextFormField(
+                              controller: nameController,
+                              decoration: const InputDecoration(
+                                labelText: 'Meal Name',
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (value) => value?.isEmpty ?? true
+                                  ? 'Please enter a meal name'
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
+
+                            TextFormField(
+                              controller: descriptionController,
+                              decoration: const InputDecoration(
+                                labelText: 'Description',
+                                border: OutlineInputBorder(),
+                              ),
+                              maxLines: 3,
+                            ),
+                            const SizedBox(height: 16),
+
+                            DropdownButtonFormField<String>(
+                              value: localSelectedCategoryId,
+                              decoration: const InputDecoration(
+                                labelText: 'Category',
+                                border: OutlineInputBorder(),
+                              ),
+                              items: categories.map((category) {
+                                return DropdownMenuItem(
+                                  value:
+                                      category['meal_category_id'].toString(),
+                                  child: Text(category['category_name']),
+                                );
+                              }).toList(),
+                              onChanged: (value) {
+                                setState(() {
+                                  localSelectedCategoryId = value;
+                                });
+                              },
+                              validator: (value) => value == null
+                                  ? 'Please select a category'
+                                  : null,
+                            ),
+                            const SizedBox(height: 16),
+
+                            const Text(
+                              'Dietary Information',
+                              style: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+
+                            CheckboxListTile(
+                              title: const Text('Contains Nuts'),
+                              value: localIsNuts,
+                              onChanged: (value) {
+                                setState(() {
+                                  localIsNuts = value ?? false;
+                                });
+                              },
+                              controlAffinity: ListTileControlAffinity.leading,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+
+                            CheckboxListTile(
+                              title: const Text('Halal'),
+                              value: localIsHalal,
+                              onChanged: (value) {
+                                setState(() {
+                                  localIsHalal = value ?? false;
+                                });
+                              },
+                              controlAffinity: ListTileControlAffinity.leading,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+
+                            CheckboxListTile(
+                              title: const Text('Contains Dairy'),
+                              value: localIsDairy,
+                              onChanged: (value) {
+                                setState(() {
+                                  localIsDairy = value ?? false;
+                                });
+                              },
+                              controlAffinity: ListTileControlAffinity.leading,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+
+                            CheckboxListTile(
+                              title: const Text('Contains Seafood'),
+                              value: localIsSeafood,
+                              onChanged: (value) {
+                                setState(() {
+                                  localIsSeafood = value ?? false;
+                                });
+                              },
+                              controlAffinity: ListTileControlAffinity.leading,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+
+                            const SizedBox(height: 16),
+                            const Text(
+                              'Note: To edit ingredients and instructions, please use the full meal editor.',
+                              style:
+                                  TextStyle(color: Colors.grey, fontSize: 12),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 10),
-                        ElevatedButton(
-                          onPressed: () {
-                            if (formKey.currentState?.validate() ?? false) {
-                              _updateMeal(meal);
-                              Navigator.of(context).pop();
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                          ),
-                          child: const Text('Save Changes'),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                    const Divider(),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Cancel'),
+                          ),
+                          const SizedBox(width: 10),
+                          ElevatedButton(
+                            onPressed: () {
+                              if (formKey.currentState?.validate() ?? false) {
+                                // Now pass the local state variables to _updateMeal
+                                _updateMeal(
+                                    meal,
+                                    localIsNuts,
+                                    localIsHalal,
+                                    localIsDairy,
+                                    localIsSeafood,
+                                    localSelectedCategoryId);
+                                Navigator.of(context).pop();
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                            ),
+                            child: const Text('Save Changes'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        );
+          );
+        });
       },
     );
   }
 
-  Future<void> _updateMeal(dynamic meal) async {
+// Update this method to accept the checkbox values
+  Future<void> _updateMeal(dynamic meal, bool isNuts, bool isHalal,
+      bool isDairy, bool isSeafood, String? selectedCategoryId) async {
     try {
       final recipeId = meal['recipe_id'];
 
