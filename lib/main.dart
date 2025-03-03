@@ -185,8 +185,9 @@ class _MyAppState extends State<MyApp> {
 
 //mao ni sya and para sa admin login
 // import 'package:flutter/material.dart';
-// import 'package:pamealya/login/login_admin.dart';
 // import 'package:supabase_flutter/supabase_flutter.dart';
+// import 'package:pamealya/login/login_admin.dart';
+// import 'package:pamealya/dashboard/admin/admin_dashboard.dart';
 
 // void main() async {
 //   WidgetsFlutterBinding.ensureInitialized();
@@ -205,18 +206,88 @@ class _MyAppState extends State<MyApp> {
 //   runApp(const MyApp());
 // }
 
-// class MyApp extends StatelessWidget {
+// class MyApp extends StatefulWidget {
 //   const MyApp({super.key});
+
+//   @override
+//   State<MyApp> createState() => _MyAppState();
+// }
+
+// class _MyAppState extends State<MyApp> {
+//   bool isLoading = true;
+//   bool isAuthenticated = false;
+//   String firstName = '';
+//   String lastName = '';
+//   String email = '';
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _checkCurrentSession();
+//   }
+
+//   Future<void> _checkCurrentSession() async {
+//     setState(() {
+//       isLoading = true;
+//     });
+
+//     try {
+//       // Check if there's an active session
+//       final Session? session = Supabase.instance.client.auth.currentSession;
+
+//       if (session != null && session.isExpired == false) {
+//         // There's an active user session
+//         final user = Supabase.instance.client.auth.currentUser;
+
+//         if (user != null) {
+//           // Fetch the admin data using user_id instead of admin_id
+//           final adminData = await Supabase.instance.client
+//               .from('admin')
+//               .select('first_name, last_name, email')
+//               .eq('user_id', user.id)
+//               .maybeSingle();
+
+//           if (adminData != null) {
+//             setState(() {
+//               firstName = adminData['first_name'] ?? '';
+//               lastName = adminData['last_name'] ?? '';
+//               email = adminData['email'] ?? '';
+//               isAuthenticated = true;
+//             });
+//           } else {
+//             // Not an admin, sign out
+//             await Supabase.instance.client.auth.signOut();
+//           }
+//         }
+//       }
+//     } catch (e) {
+//       print('Error checking session: $e');
+//     } finally {
+//       setState(() {
+//         isLoading = false;
+//       });
+//     }
+//   }
 
 //   @override
 //   Widget build(BuildContext context) {
 //     return MaterialApp(
-//       debugShowCheckedModeBanner:
-//           false, // Disables the debug banner in release mode
+//       debugShowCheckedModeBanner: false,
 //       theme: ThemeData(
 //         primarySwatch: Colors.blue,
 //       ),
-//       home: const LoginAdmin(),
+//       home: isLoading
+//           ? const Center(child: CircularProgressIndicator())
+//           : isAuthenticated
+//               ? AdminDashboard(
+//                   firstName: firstName,
+//                   lastName: lastName,
+//                   email: email,
+//                 )
+//               : const LoginAdmin(),
+//       routes: {
+//         '/login_admin': (context) => const LoginAdmin(),
+//       },
 //     );
 //   }
 // }

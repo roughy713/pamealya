@@ -24,6 +24,7 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
   List<Map<String, dynamic>> notifications = [];
   bool isLoading = true;
   StreamSubscription? _notificationSubscription;
+  int unreadCount = 0;
 
   @override
   void initState() {
@@ -53,11 +54,16 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
           if (mounted) {
             setState(() {
               notifications = data;
+              _updateUnreadCount();
             });
           }
         }, onError: (error) {
           print('Family head notification subscription error: $error');
         });
+  }
+
+  void _updateUnreadCount() {
+    unreadCount = notifications.where((n) => !(n['is_read'] ?? false)).length;
   }
 
   Future<void> fetchNotifications() async {
@@ -79,6 +85,7 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
 
       setState(() {
         notifications = List<Map<String, dynamic>>.from(response);
+        _updateUnreadCount();
         isLoading = false;
       });
     } catch (e) {
@@ -110,10 +117,43 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
             (n) => n['notification_id'].toString() == notificationId);
         if (index != -1) {
           notifications[index]['is_read'] = true;
+          _updateUnreadCount();
         }
       });
     } catch (e) {
       rethrow;
+    }
+  }
+
+  Future<void> markAllAsRead() async {
+    if (!mounted || notifications.isEmpty) return;
+
+    try {
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) throw Exception('User not authenticated');
+
+      await supabase.rpc(
+        'mark_all_notifications_read',
+        params: {'p_user_id': userId},
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        for (var i = 0; i < notifications.length; i++) {
+          notifications[i]['is_read'] = true;
+        }
+        unreadCount = 0;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('All notifications marked as read')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error marking notifications as read: $e')),
+      );
     }
   }
 
@@ -302,22 +342,56 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (notifications.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.notifications_off, size: 64, color: Colors.grey),
-            SizedBox(height: 16),
-            Text(
-              'No notifications yet',
-              style: TextStyle(fontSize: 18, color: Colors.grey),
-            ),
-          ],
+    return Column(
+      children: [
+        _buildNotificationHeader(),
+        Expanded(
+          child: notifications.isEmpty
+              ? _buildEmptyNotificationsView()
+              : _buildNotificationsList(),
         ),
-      );
-    }
+      ],
+    );
+  }
 
+  Widget _buildNotificationHeader() {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Notifications',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          if (unreadCount > 0)
+            TextButton.icon(
+              icon: const Icon(Icons.done_all),
+              label: const Text('Mark all as read'),
+              onPressed: markAllAsRead,
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyNotificationsView() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.notifications_off, size: 64, color: Colors.grey),
+          SizedBox(height: 16),
+          Text(
+            'No notifications yet',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationsList() {
     return ListView.builder(
       itemCount: notifications.length,
       itemBuilder: (context, index) {
@@ -335,6 +409,28 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
             padding: const EdgeInsets.only(right: 20.0),
             child: const Icon(Icons.delete, color: Colors.white),
           ),
+          confirmDismiss: (direction) async {
+            return await showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text("Confirm"),
+                  content: const Text(
+                      "Are you sure you want to delete this notification?"),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(false),
+                      child: const Text("Cancel"),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(true),
+                      child: const Text("Delete"),
+                    ),
+                  ],
+                );
+              },
+            );
+          },
           onDismissed: (direction) async {
             try {
               await supabase
@@ -346,6 +442,7 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
 
               setState(() {
                 notifications.removeAt(index);
+                _updateUnreadCount();
               });
             } catch (e) {
               print('Error deleting notification: $e');
@@ -357,27 +454,82 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
           },
           child: Card(
             margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            child: ListTile(
-              leading: _buildNotificationIcon(
-                  notification['notification_type'], notification['title']),
-              title: Text(
-                notification['title'],
-                style: TextStyle(
-                  fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+            elevation: isRead ? 1 : 3,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: isRead
+                  ? BorderSide.none
+                  : BorderSide(
+                      color: Theme.of(context).primaryColor.withOpacity(0.3),
+                      width: 1),
+            ),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              child: ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                leading: Stack(
+                  children: [
+                    _buildNotificationIcon(notification['notification_type'],
+                        notification['title']),
+                    if (!isRead)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                title: Text(
+                  notification['title'],
+                  style: TextStyle(
+                    fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    Text(
+                      notification['message'],
+                      style: TextStyle(
+                        color: isRead ? Colors.grey.shade600 : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 12,
+                          color: Colors.grey.shade500,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          timeAgo,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                onTap: () => _handleNotificationTap(notification),
+                tileColor: isRead ? null : Colors.grey.withOpacity(0.05),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(notification['message']),
-                  Text(
-                    timeAgo,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-              onTap: () => _handleNotificationTap(notification),
-              tileColor: isRead ? null : Colors.grey.withOpacity(0.1),
             ),
           ),
         );

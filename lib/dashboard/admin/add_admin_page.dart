@@ -10,28 +10,104 @@ class AddAdminPage extends StatefulWidget {
 
 class _AddAdminPageState extends State<AddAdminPage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController nameController = TextEditingController();
+  final TextEditingController firstNameController = TextEditingController();
+  final TextEditingController lastNameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
-  final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPasswordController =
+      TextEditingController();
+
+  bool isLoading = false;
+  String? errorMessage;
+
+  @override
+  void dispose() {
+    firstNameController.dispose();
+    lastNameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmPasswordController.dispose();
+    super.dispose();
+  }
 
   Future<void> _handleAddAdmin() async {
+    // Remove any previous error message
+    setState(() {
+      errorMessage = null;
+    });
+
     if (_formKey.currentState?.validate() ?? false) {
-      try {
-        await Supabase.instance.client.from('admin').insert({
-          'name': nameController.text,
-          'email': emailController.text,
-          'username': usernameController.text,
-          'password': passwordController.text,
+      if (passwordController.text != confirmPasswordController.text) {
+        setState(() {
+          errorMessage = 'Passwords do not match';
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Admin added successfully!')),
+        return;
+      }
+
+      setState(() {
+        isLoading = true;
+      });
+
+      try {
+        // Check if the email already exists in the admin table
+        final existingAdminCheck = await Supabase.instance.client
+            .from('admin')
+            .select()
+            .eq('email', emailController.text.trim())
+            .maybeSingle();
+
+        if (existingAdminCheck != null) {
+          setState(() {
+            isLoading = false;
+            errorMessage = 'A user with this email is already an admin';
+          });
+          return;
+        }
+
+        // First, create the auth user
+        final authResponse = await Supabase.instance.client.auth.signUp(
+          email: emailController.text.trim(),
+          password: passwordController.text,
         );
-        _formKey.currentState?.reset();
+
+        if (authResponse.user == null) {
+          throw Exception('Failed to create auth user');
+        }
+
+        // Then insert the admin record with user_id from the new auth user
+        await Supabase.instance.client.from('admin').insert({
+          'user_id': authResponse.user!.id,
+          'first_name': firstNameController.text.trim(),
+          'last_name': lastNameController.text.trim(),
+          'email': emailController.text.trim(),
+          // No password field here
+        });
+
+        // Sign out the newly created user (so it doesn't affect current admin session)
+        await Supabase.instance.client.auth.signOut();
+
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Admin added successfully!')),
+          );
+
+          // Clear the form
+          _formKey.currentState?.reset();
+          firstNameController.clear();
+          lastNameController.clear();
+          emailController.clear();
+          passwordController.clear();
+          confirmPasswordController.clear();
+        }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error adding admin: $e')),
-        );
+        setState(() {
+          errorMessage = 'Error adding admin: $e';
+        });
+      } finally {
+        setState(() {
+          isLoading = false;
+        });
       }
     }
   }
@@ -60,9 +136,9 @@ class _AddAdminPageState extends State<AddAdminPage> {
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
-                    controller: nameController,
+                    controller: firstNameController,
                     decoration: InputDecoration(
-                      labelText: 'Name',
+                      labelText: 'First Name',
                       prefixIcon: const Icon(Icons.person),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8.0),
@@ -70,7 +146,24 @@ class _AddAdminPageState extends State<AddAdminPage> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Please enter a name';
+                        return 'Please enter first name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: lastNameController,
+                    decoration: InputDecoration(
+                      labelText: 'Last Name',
+                      prefixIcon: const Icon(Icons.person),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter last name';
                       }
                       return null;
                     },
@@ -85,26 +178,14 @@ class _AddAdminPageState extends State<AddAdminPage> {
                         borderRadius: BorderRadius.circular(8.0),
                       ),
                     ),
+                    keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter an email';
                       }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: usernameController,
-                    decoration: InputDecoration(
-                      labelText: 'Username',
-                      prefixIcon: const Icon(Icons.account_circle),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8.0),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter a username';
+                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                          .hasMatch(value)) {
+                        return 'Please enter a valid email';
                       }
                       return null;
                     },
@@ -130,11 +211,41 @@ class _AddAdminPageState extends State<AddAdminPage> {
                       return null;
                     },
                   ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: confirmPasswordController,
+                    obscureText: true,
+                    decoration: InputDecoration(
+                      labelText: 'Confirm Password',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please confirm the password';
+                      }
+                      if (value != passwordController.text) {
+                        return 'Passwords do not match';
+                      }
+                      return null;
+                    },
+                  ),
+                  if (errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16.0),
+                      child: Text(
+                        errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _handleAddAdmin,
+                      onPressed: isLoading ? null : _handleAddAdmin,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16.0),
                         shape: RoundedRectangleBorder(
@@ -142,13 +253,23 @@ class _AddAdminPageState extends State<AddAdminPage> {
                         ),
                         backgroundColor: Colors.yellow,
                       ),
-                      child: const Text(
-                        'Add Admin',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor:
+                                    AlwaysStoppedAnimation<Color>(Colors.black),
+                              ),
+                            )
+                          : const Text(
+                              'Add Admin',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                     ),
                   ),
                 ],

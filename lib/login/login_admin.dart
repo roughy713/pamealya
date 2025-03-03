@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart'; // Supabase package for database
-import '../dashboard/admin/admin_dashboard.dart'; // Import the AdminDashboard
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../dashboard/admin/admin_dashboard.dart';
 
 class LoginAdmin extends StatefulWidget {
   const LoginAdmin({super.key});
@@ -10,73 +10,87 @@ class LoginAdmin extends StatefulWidget {
 }
 
 class _LoginAdminState extends State<LoginAdmin> {
-  final TextEditingController usernameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   bool isLoading = false;
+  String? errorMessage;
 
-  // Login function to check credentials from Supabase admin table
+  // Login function to use Supabase Auth
   Future<void> _handleLogin() async {
     setState(() {
       isLoading = true;
+      errorMessage = null;
     });
 
-    final username = usernameController.text.trim();
+    final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
     // Check if fields are empty
-    if (username.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Username and Password cannot be empty')),
-      );
+    if (email.isEmpty || password.isEmpty) {
       setState(() {
+        errorMessage = 'Email and Password cannot be empty';
         isLoading = false;
       });
       return;
     }
 
     try {
-      // Query the admin table in the database
-      final PostgrestMap? response = await Supabase.instance.client
+      // Use Supabase Auth to sign in
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+
+      if (response.user == null) {
+        // If authentication fails
+        setState(() {
+          errorMessage = 'Invalid credentials';
+          isLoading = false;
+        });
+        return;
+      }
+
+      // Fetch admin data from the admin table using user_id instead of admin_id
+      final adminData = await Supabase.instance.client
           .from('admin')
-          .select()
-          .eq('username', username)
+          .select('first_name, last_name, email')
+          .eq('user_id', response.user!.id)
           .maybeSingle();
 
-      if (response == null) {
-        // If the response is null, show a message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('User not found')),
-        );
-      } else {
-        // Compare the provided password with the password stored in the database
-        if (response['password'] == password) {
-          // If the password matches, pass the first name to AdminDashboard
-          String firstName =
-              response['name']; // Assuming 'name' is the field for first name
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AdminDashboard(firstName: firstName),
-            ),
-          );
-        } else {
-          // Show an error if the password is incorrect
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Incorrect password')),
-          );
-        }
+      if (adminData == null) {
+        // If the user is not found in the admin table
+        await Supabase.instance.client.auth.signOut();
+        setState(() {
+          errorMessage = 'User is not an admin';
+          isLoading = false;
+        });
+        return;
       }
-    } catch (error) {
-      // Handle any other errors
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('An unexpected error occurred: $error')),
-      );
-    }
 
-    setState(() {
-      isLoading = false;
-    });
+      // If authentication is successful, navigate to AdminDashboard
+      if (mounted) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+            builder: (context) => AdminDashboard(
+              firstName: adminData['first_name'] ?? '',
+              lastName: adminData['last_name'] ?? '',
+              email: adminData['email'] ?? '',
+            ),
+          ),
+        );
+      }
+    } on AuthException catch (e) {
+      setState(() {
+        errorMessage = e.message;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = 'An unexpected error occurred: $e';
+        isLoading = false;
+      });
+    }
   }
 
   @override
@@ -116,9 +130,9 @@ class _LoginAdminState extends State<LoginAdmin> {
                   ),
                   const SizedBox(height: 20),
                   TextField(
-                    controller: usernameController,
+                    controller: emailController,
                     decoration: InputDecoration(
-                      labelText: 'Username',
+                      labelText: 'Email',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -126,6 +140,7 @@ class _LoginAdminState extends State<LoginAdmin> {
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.all(16),
                     ),
+                    keyboardType: TextInputType.emailAddress,
                   ),
                   const SizedBox(height: 20),
                   TextField(
@@ -141,6 +156,15 @@ class _LoginAdminState extends State<LoginAdmin> {
                       contentPadding: const EdgeInsets.all(16),
                     ),
                   ),
+                  if (errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: Text(
+                        errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   const SizedBox(height: 30),
                   SizedBox(
                     width: double.infinity,
