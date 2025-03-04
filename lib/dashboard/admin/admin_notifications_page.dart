@@ -13,6 +13,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
   List<Map<String, dynamic>> notifications = [];
   bool isLoading = true;
   bool hasError = false;
+  String? filterType;
 
   @override
   void initState() {
@@ -27,11 +28,18 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
     });
 
     try {
-      final response = await Supabase.instance.client
-          .from('notifications')
-          .select()
-          .order('created_at', ascending: false)
-          .limit(50);
+      // Create the base query
+      var query = Supabase.instance.client.from('notifications').select();
+
+      // Only add filter if filterType is not null
+      if (filterType != null) {
+        // This explicit approach might avoid the error
+        query = query.eq('notification_type', filterType as Object);
+      }
+
+      // Execute the query with ordering and limit
+      final response =
+          await query.order('created_at', ascending: false).limit(50);
 
       setState(() {
         notifications = List<Map<String, dynamic>>.from(response);
@@ -170,8 +178,18 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
         return Colors.blue;
       case 'new_family':
         return Colors.purple;
-      case 'order':
+      case 'meal_plan':
+        return Colors.green;
+      case 'booking':
         return Colors.orange;
+      case 'booking_accepted':
+        return Colors.teal;
+      case 'booking_declined':
+        return Colors.red;
+      case 'order':
+        return Colors.amber;
+      case 'payment':
+        return Colors.indigo;
       case 'system':
         return Colors.red;
       default:
@@ -185,8 +203,18 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
         return Icons.person_add;
       case 'new_family':
         return Icons.family_restroom;
+      case 'meal_plan':
+        return Icons.restaurant_menu;
+      case 'booking':
+        return Icons.book_online;
+      case 'booking_accepted':
+        return Icons.check_circle;
+      case 'booking_declined':
+        return Icons.cancel;
       case 'order':
         return Icons.food_bank;
+      case 'payment':
+        return Icons.payment;
       case 'system':
         return Icons.warning;
       default:
@@ -201,6 +229,8 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
     final String? type = notification['type'];
     final String createdAt = _formatDateTime(notification['created_at']);
     final int notificationId = notification['notification_id'];
+    final String? familyName = notification['family_name'];
+    final String? cookName = notification['cook_name'];
 
     return Card(
       elevation: isRead ? 1 : 3,
@@ -231,13 +261,67 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
             const SizedBox(height: 4),
             Text(message, maxLines: 2, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 4),
-            Text(
-              createdAt,
-              style: const TextStyle(
-                fontSize: 12,
-                color: Colors.grey,
-              ),
+            Row(
+              children: [
+                Icon(
+                  Icons.access_time,
+                  size: 12,
+                  color: Colors.grey,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  createdAt,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
             ),
+            if (familyName != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.family_restroom,
+                      size: 12,
+                      color: Colors.purple,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Family: $familyName',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.purple,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            if (cookName != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.restaurant,
+                      size: 12,
+                      color: Colors.blue,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Cook: $cookName',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
         trailing: Row(
@@ -280,6 +364,37 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
                         color: Colors.grey,
                       ),
                     ),
+                    if (familyName != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Family: $familyName',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                    if (cookName != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Cook: $cookName',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                    if (notification['additional_data'] != null) ...[
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Additional Information:',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(notification['additional_data'].toString()),
+                    ],
                   ],
                 ),
               ),
@@ -302,6 +417,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
       final response = await Supabase.instance.client
           .from('notifications')
           .select()
+          .eq('notification_type', 'admin_notification')
           .eq('is_read', false);
 
       // Count the results manually
@@ -310,6 +426,24 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
       debugPrint('Error fetching unread notifications count: $e');
       return 0;
     }
+  }
+
+  Widget _buildFilterChip(String type, String label, IconData icon) {
+    final isSelected = filterType == type;
+
+    return FilterChip(
+      selected: isSelected,
+      label: Text(label),
+      avatar: Icon(icon, size: 16),
+      onSelected: (selected) {
+        setState(() {
+          filterType = selected ? type : null;
+        });
+        _fetchNotifications();
+      },
+      selectedColor: _getNotificationTypeColor(type).withOpacity(0.2),
+      checkmarkColor: _getNotificationTypeColor(type),
+    );
   }
 
   @override
@@ -330,34 +464,87 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
                 ),
               ],
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
               children: [
-                const Text(
-                  'Notifications',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    TextButton.icon(
-                      onPressed: _fetchNotifications,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Refresh'),
-                    ),
-                    const SizedBox(width: 8),
-                    ElevatedButton.icon(
-                      onPressed: _markAllAsRead,
-                      icon: const Icon(Icons.done_all),
-                      label: const Text('Mark All as Read'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        foregroundColor: Colors.white,
+                    const Text(
+                      'Notifications',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
+                    Row(
+                      children: [
+                        TextButton.icon(
+                          onPressed: _fetchNotifications,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('Refresh'),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: _markAllAsRead,
+                          icon: const Icon(Icons.done_all),
+                          label: const Text('Mark All as Read'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
+                ),
+                const SizedBox(height: 16),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      if (filterType != null)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: TextButton.icon(
+                            onPressed: () {
+                              setState(() {
+                                filterType = null;
+                              });
+                              _fetchNotifications();
+                            },
+                            icon: const Icon(Icons.clear, size: 16),
+                            label: const Text('Clear Filter'),
+                            style: TextButton.styleFrom(
+                              backgroundColor: Colors.grey.withOpacity(0.1),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 0),
+                            ),
+                          ),
+                        ),
+                      _buildFilterChip(
+                          'new_family', 'New Family', Icons.family_restroom),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                          'new_cook', 'New Cook', Icons.person_add),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                          'meal_plan', 'Meal Plan', Icons.restaurant_menu),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('booking', 'Booking', Icons.book_online),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                          'booking_accepted', 'Accepted', Icons.check_circle),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                          'booking_declined', 'Declined', Icons.cancel),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('order', 'Order', Icons.food_bank),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('payment', 'Payment', Icons.payment),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('system', 'System', Icons.warning),
+                    ],
+                  ),
                 ),
               ],
             ),
