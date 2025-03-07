@@ -16,6 +16,10 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
 
+  //Password Visibility
+  bool _passwordVisible = false;
+  bool _confirmPasswordVisible = false;
+
   // Function to show styled error dialog
   void _showErrorDialog(String title, String message) {
     showDialog(
@@ -269,6 +273,7 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
                 controller: _emailController,
                 decoration: const InputDecoration(
                   labelText: 'Email',
+                  hintText: 'Enter your email you signed up with',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) {
@@ -277,14 +282,28 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
                   }
                   return null;
                 },
+                textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 10),
               TextFormField(
                 controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Password',
-                  border: OutlineInputBorder(),
+                obscureText: !_passwordVisible,
+                decoration: InputDecoration(
+                  labelText: 'Your Password',
+                  hintText: 'Enter your password',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _passwordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _passwordVisible = !_passwordVisible;
+                      });
+                    },
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -292,6 +311,8 @@ class _CookLoginDialogState extends State<CookLoginDialog> {
                   }
                   return null;
                 },
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _handleLogin(context),
               ),
               const SizedBox(height: 20),
               _isLoading

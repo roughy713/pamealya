@@ -181,18 +181,41 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
   }
 
   Future<void> markAllAsRead() async {
-    if (!mounted || notifications.isEmpty) return;
+    if (!mounted || notifications.isEmpty || unreadCount == 0) return;
 
     try {
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) throw Exception('User not authenticated');
-
-      await supabase.rpc(
-        'mark_all_notifications_read',
-        params: {'p_user_id': userId},
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Dialog(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 20),
+                  Text("Marking all notifications as read..."),
+                ],
+              ),
+            ),
+          );
+        },
       );
 
-      if (!mounted) return;
+      // Get all unread notifications
+      final unreadNotifications =
+          notifications.where((n) => !(n['is_read'] ?? false)).toList();
+
+      // Mark each notification as read one by one
+      for (var notification in unreadNotifications) {
+        await supabase.rpc(
+          'mark_notification_read',
+          params: {'p_notification_id': notification['notification_id']},
+        );
+      }
 
       setState(() {
         for (var i = 0; i < notifications.length; i++) {
@@ -202,15 +225,125 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
         _groupNotificationsByDate(); // Update groupings with new read status
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('All notifications marked as read')),
-      );
+      // Close loading dialog
+      if (mounted) Navigator.of(context).pop();
+
+      // Show success dialog
+      _showSuccessDialog(
+          context, 'Success', 'All notifications marked as read');
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error marking notifications as read: $e')),
-      );
+      // Close loading dialog if open
+      try {
+        if (mounted) Navigator.of(context).pop();
+      } catch (_) {
+        // Dialog might not be open
+      }
+
+      // Show error dialog
+      _showErrorDialog(
+          context, 'Error', 'Error marking notifications as read: $e');
     }
+  }
+
+  void _showSuccessDialog(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.green, size: 28),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              message,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 24),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showErrorDialog(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded,
+                    color: Colors.amber, size: 28),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              message,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 24),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _handleNotificationTap(Map<String, dynamic> notification) async {
@@ -390,6 +523,7 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
     );
   }
 
+  // Update _buildNotificationHeader in cook_notifications_page.dart to include the "Mark all as read" button
   Widget _buildNotificationHeader() {
     return Padding(
       padding: const EdgeInsets.all(8.0),
@@ -400,15 +534,25 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
             'Notifications',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
-          // Sort toggle button
-          IconButton(
-            icon: Icon(_sortOrder == 'newest'
-                ? Icons.arrow_downward
-                : Icons.arrow_upward),
-            tooltip: _sortOrder == 'newest'
-                ? 'Showing newest first'
-                : 'Showing oldest first',
-            onPressed: _toggleSortOrder,
+          Row(
+            children: [
+              // Sort toggle button
+              IconButton(
+                icon: Icon(_sortOrder == 'newest'
+                    ? Icons.arrow_downward
+                    : Icons.arrow_upward),
+                tooltip: _sortOrder == 'newest'
+                    ? 'Showing newest first'
+                    : 'Showing oldest first',
+                onPressed: _toggleSortOrder,
+              ),
+              if (unreadCount > 0)
+                TextButton.icon(
+                  icon: const Icon(Icons.done_all),
+                  label: const Text('Mark all as read'),
+                  onPressed: markAllAsRead,
+                ),
+            ],
           ),
         ],
       ),

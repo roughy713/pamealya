@@ -12,6 +12,8 @@ class SignUpFormDialog extends StatefulWidget {
 }
 
 class SignUpFormDialogState extends State<SignUpFormDialog> {
+  bool _passwordVisible = false;
+  bool _confirmPasswordVisible = false;
   final _formKey = GlobalKey<FormState>();
 
   // Controllers for form fields
@@ -170,9 +172,9 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          Text(
+                          const Text(
                             'paMEALya is committed to protecting your personal information in compliance with Republic Act 10173, also known as the Data Privacy Act of 2012. By using our platform, you agree to the following policies:',
-                            style: const TextStyle(fontSize: 14),
+                            style: TextStyle(fontSize: 14),
                             textAlign: TextAlign.justify,
                           ),
                           const SizedBox(height: 20),
@@ -303,11 +305,11 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
       barrierDismissible: true,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Row(
+          title: const Row(
             children: [
-              const Icon(Icons.error, color: Colors.red),
-              const SizedBox(width: 8),
-              const Text('Error'),
+              Icon(Icons.error, color: Colors.red),
+              SizedBox(width: 8),
+              Text('Error'),
             ],
           ),
           content: Text(message),
@@ -440,8 +442,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: Row(
-                    mainAxisAlignment:
-                        MainAxisAlignment.end, // Align to the right
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       IconButton(
                         icon: const Icon(Icons.close, color: Colors.black),
@@ -514,36 +515,67 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                       ),
                       const SizedBox(height: 10),
 
-                      // Password Section
                       TextFormField(
                         controller: _passwordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
+                        obscureText: !_passwordVisible,
+                        decoration: InputDecoration(
                           labelText: 'Password',
-                          border: OutlineInputBorder(),
+                          border: const OutlineInputBorder(),
                           helperText:
                               'Must contain: 8+ characters, uppercase, lowercase, number, special character (@\$!%*?&)',
-                          helperMaxLines:
-                              2, // In case of text wrap on smaller screens
-                          helperStyle: TextStyle(fontSize: 12),
+                          helperMaxLines: 2,
+                          helperStyle: const TextStyle(fontSize: 12),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _passwordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _passwordVisible = !_passwordVisible;
+                              });
+                            },
+                          ),
                         ),
                         onChanged: _validatePasswordRealTime,
                         validator: (value) {
-                          if (value?.isEmpty ?? true) return 'Required';
-                          if (!RegExp(_passwordPattern).hasMatch(value!)) {
-                            return 'Password must meet all requirements';
+                          if (value?.isEmpty ?? true) {
+                            return 'Please enter your password';
+                          } else if (!_passwordRequirements.value
+                              .containsValue(true)) {
+                            return 'Password does not meet requirements';
                           }
                           return null;
                         },
                       ),
                       const SizedBox(height: 10),
-                      // Confirm Password
+
+                      // Confirm Password - FIXED with proper spacing and padding
                       TextFormField(
                         controller: _confirmPasswordController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
+                        obscureText: !_confirmPasswordVisible,
+                        decoration: InputDecoration(
                           labelText: 'Confirm Password',
-                          border: OutlineInputBorder(),
+                          border: const OutlineInputBorder(),
+                          // Set explicit content padding to match other fields
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: 16, horizontal: 12),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _confirmPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                              color: Colors.grey,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _confirmPasswordVisible =
+                                    !_confirmPasswordVisible;
+                              });
+                            },
+                          ),
                         ),
                         validator: (value) {
                           if (value?.isEmpty ?? true) return 'Required';
@@ -553,61 +585,9 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 10),
-                      // Date of Birth and Religion
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextFormField(
-                              controller: _dobController,
-                              decoration: const InputDecoration(
-                                labelText: 'Date of Birth',
-                                border: OutlineInputBorder(),
-                                suffixIcon: Icon(Icons.calendar_today),
-                              ),
-                              readOnly: true,
-                              onTap: () => _selectDate(context),
-                              validator: (value) => value?.isEmpty ?? true
-                                  ? 'Please input your date of birth'
-                                  : null,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: DropdownButtonFormField<String>(
-                              decoration: const InputDecoration(
-                                labelText: 'Religion',
-                                border: OutlineInputBorder(),
-                              ),
-                              value: _selectedReligion,
-                              isExpanded: true,
-                              menuMaxHeight: 150,
-                              items: [
-                                'Roman Catholic',
-                                'Islam',
-                                'Christian',
-                                'Saksi ni Jehova',
-                                '7th Day Adventist',
-                                'Iglesia Ni Cristo',
-                                'Mormons'
-                              ].map((String religion) {
-                                return DropdownMenuItem<String>(
-                                  value: religion,
-                                  child: Text(religion),
-                                );
-                              }).toList(),
-                              onChanged: (String? value) {
-                                setState(() {
-                                  _selectedReligion = value;
-                                });
-                              },
-                              validator: (value) =>
-                                  value == null ? 'Required' : null,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
+                      const SizedBox(
+                          height:
+                              10), // Ensure proper spacing after confirm password field
 
                       // Personal Details
                       Row(
@@ -708,11 +688,11 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                                 child: Container(
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 4.0),
-                                  decoration: BoxDecoration(
+                                  decoration: const BoxDecoration(
                                     // This creates hover effect area
                                     color: Colors.transparent,
                                   ),
-                                  child: Text(
+                                  child: const Text(
                                     'I agree to the Terms and Conditions and Privacy Policy',
                                     style: TextStyle(
                                       color: Colors.blue,

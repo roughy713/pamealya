@@ -15,6 +15,10 @@ class _LoginDialogState extends State<LoginDialog> {
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
+  //Password Visibility
+  bool _passwordVisible = false;
+  bool _confirmPasswordVisible = false;
+
   // Function to show styled error dialog
   void _showErrorDialog(String title, String message) {
     showDialog(
@@ -239,15 +243,29 @@ class _LoginDialogState extends State<LoginDialog> {
                   }
                   return null;
                 },
+                textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 10),
+              // Password with visibility toggle
               TextFormField(
                 controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
+                obscureText: !_passwordVisible,
+                decoration: InputDecoration(
                   labelText: 'Your Password',
                   hintText: 'Enter your password',
                   border: OutlineInputBorder(),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _passwordVisible
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _passwordVisible = !_passwordVisible;
+                      });
+                    },
+                  ),
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) {
@@ -255,6 +273,8 @@ class _LoginDialogState extends State<LoginDialog> {
                   }
                   return null;
                 },
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _handleLogin(context),
               ),
               const SizedBox(height: 20),
               ElevatedButton(
@@ -265,7 +285,7 @@ class _LoginDialogState extends State<LoginDialog> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
                 ),
-                child: const Text('Sign In'),
+                child: const Text('Login'),
               ),
               const SizedBox(height: 10),
               TextButton(

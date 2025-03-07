@@ -21,6 +21,10 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
       r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$';
   final ValueNotifier<bool> _isPasswordMatch = ValueNotifier<bool>(true);
 
+  // Add password visibility toggles
+  bool _passwordVisible = false;
+  bool _confirmPasswordVisible = false;
+
   final ValueNotifier<Map<String, bool>> _passwordRequirements = ValueNotifier({
     'length': false,
     'uppercase': false,
@@ -174,31 +178,29 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
         uploadedFileName = fileName;
       });
 
-      if (fileBytes != null) {
-        try {
-          final filePath = 'cooks certifications/$fileName';
-          final response = await Supabase.instance.client.storage
+      try {
+        final filePath = 'cooks certifications/$fileName';
+        final response = await Supabase.instance.client.storage
+            .from('certifications')
+            .uploadBinary(filePath, fileBytes!);
+
+        if (response.isNotEmpty) {
+          final urlResponse = Supabase.instance.client.storage
               .from('certifications')
-              .uploadBinary(filePath, fileBytes);
+              .getPublicUrl(filePath);
 
-          if (response.isNotEmpty) {
-            final urlResponse = Supabase.instance.client.storage
-                .from('certifications')
-                .getPublicUrl(filePath);
+          setState(() {
+            certificationUrl = urlResponse;
+          });
 
-            setState(() {
-              certificationUrl = urlResponse;
-            });
-
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('File uploaded successfully!')),
-            );
-          }
-        } catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('File upload failed: $e')),
+            const SnackBar(content: Text('File uploaded successfully!')),
           );
         }
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('File upload failed: $e')),
+        );
       }
     }
   }
@@ -319,9 +321,9 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                             ),
                           ),
                           const SizedBox(height: 10),
-                          Text(
+                          const Text(
                             'paMEALya is committed to protecting your personal information in compliance with Republic Act 10173, also known as the Data Privacy Act of 2012. By using our platform, you agree to the following policies:',
-                            style: const TextStyle(fontSize: 14),
+                            style: TextStyle(fontSize: 14),
                             textAlign: TextAlign.justify,
                           ),
                           const SizedBox(height: 20),
@@ -564,17 +566,31 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                                 : null,
                           ),
                           const SizedBox(height: 10),
+
+                          // Password field with visibility toggle
                           TextFormField(
                             controller: passwordController,
-                            obscureText: true,
-                            decoration: const InputDecoration(
+                            obscureText: !_passwordVisible,
+                            decoration: InputDecoration(
                               labelText: 'Password',
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
                               helperText:
                                   'Must contain: 8+ characters, uppercase, lowercase, number, special character (@\$!%*?&)',
-                              helperMaxLines:
-                                  2, // In case of text wrap on smaller screens
-                              helperStyle: TextStyle(fontSize: 12),
+                              helperMaxLines: 2,
+                              helperStyle: const TextStyle(fontSize: 12),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _passwordVisible
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  color: Colors.grey,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _passwordVisible = !_passwordVisible;
+                                  });
+                                },
+                              ),
                             ),
                             onChanged: _validatePasswordRealTime,
                             validator: (value) {
@@ -586,12 +602,30 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                             },
                           ),
                           const SizedBox(height: 10),
+
+                          // Confirm Password field with visibility toggle
                           TextFormField(
                             controller: confirmPasswordController,
-                            obscureText: true,
-                            decoration: const InputDecoration(
+                            obscureText: !_confirmPasswordVisible,
+                            decoration: InputDecoration(
                               labelText: 'Confirm Password',
-                              border: OutlineInputBorder(),
+                              border: const OutlineInputBorder(),
+                              contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 16, horizontal: 12),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _confirmPasswordVisible
+                                      ? Icons.visibility
+                                      : Icons.visibility_off,
+                                  color: Colors.grey,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _confirmPasswordVisible =
+                                        !_confirmPasswordVisible;
+                                  });
+                                },
+                              ),
                             ),
                             validator: (value) {
                               if (value?.isEmpty ?? true) {
@@ -604,6 +638,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                             },
                           ),
                           const SizedBox(height: 10),
+
                           TextFormField(
                             controller: dateOfBirthController,
                             readOnly: true,
@@ -696,8 +731,9 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                           ),
                           FormField<List<String>>(
                             validator: (value) {
-                              if (availabilityDays.isEmpty)
+                              if (availabilityDays.isEmpty) {
                                 return 'Please select availability days';
+                              }
                               return null;
                             },
                             builder: (state) {
@@ -727,7 +763,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                                   if (state.hasError)
                                     Text(
                                       state.errorText!,
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                           color: Color(0xFFB00020),
                                           fontSize: 12),
                                     ),
@@ -752,8 +788,9 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                                         : '',
                                   ),
                                   validator: (value) {
-                                    if (value?.isEmpty ?? true)
+                                    if (value?.isEmpty ?? true) {
                                       return 'Please select start time';
+                                    }
                                     return null;
                                   },
                                 ),
@@ -773,8 +810,9 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                                         : '',
                                   ),
                                   validator: (value) {
-                                    if (value?.isEmpty ?? true)
+                                    if (value?.isEmpty ?? true) {
                                       return 'Please select end time';
+                                    }
                                     return null;
                                   },
                                 ),
@@ -823,8 +861,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                                       child: Text(
                                         state.errorText!,
                                         style: const TextStyle(
-                                          color: Color(
-                                              0xFFB00020), // This matches the error red color
+                                          color: Color(0xFFB00020),
                                           fontSize: 12,
                                         ),
                                       ),
@@ -839,7 +876,6 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                               Theme(
                                 data: Theme.of(context).copyWith(
                                   unselectedWidgetColor: Colors.grey[600],
-                                  // This ensures checkbox hover matches terms text hover
                                   hoverColor: Colors.green[50],
                                 ),
                                 child: Checkbox(
@@ -859,11 +895,10 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                                     child: Container(
                                       padding: const EdgeInsets.symmetric(
                                           vertical: 4.0),
-                                      decoration: BoxDecoration(
-                                        // This creates hover effect area
+                                      decoration: const BoxDecoration(
                                         color: Colors.transparent,
                                       ),
-                                      child: Text(
+                                      child: const Text(
                                         'I agree to the Terms and Conditions and Privacy Policy',
                                         style: TextStyle(
                                           color: Colors.blue,

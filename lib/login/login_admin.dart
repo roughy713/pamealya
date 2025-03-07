@@ -141,6 +141,7 @@ class _LoginAdminState extends State<LoginAdmin> {
                       contentPadding: const EdgeInsets.all(16),
                     ),
                     keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 20),
                   TextField(
@@ -155,6 +156,8 @@ class _LoginAdminState extends State<LoginAdmin> {
                       fillColor: Colors.white,
                       contentPadding: const EdgeInsets.all(16),
                     ),
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _handleLogin(),
                   ),
                   if (errorMessage != null)
                     Padding(
