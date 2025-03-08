@@ -5,6 +5,118 @@ import 'package:intl/intl.dart';
 import '/common/chat_room_page.dart';
 import 'dart:async';
 
+// OrderActionButton class at top level
+class OrderActionButton extends StatefulWidget {
+  final Map<String, dynamic> notification;
+  final Function(Map<String, dynamic>) onTap;
+
+  const OrderActionButton({
+    Key? key,
+    required this.notification,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  _OrderActionButtonState createState() => _OrderActionButtonState();
+}
+
+class _OrderActionButtonState extends State<OrderActionButton> {
+  bool _isLoading = true;
+  bool _isMealCompleted = false;
+  bool _isReceived = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkStatus();
+  }
+
+  Future<void> _checkStatus() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final bookingRequestId = widget.notification['related_id'];
+
+      if (bookingRequestId != null) {
+        // Check if the booking has received status
+        final bookingDetails = await supabase
+            .from('bookingrequest')
+            .select('is_received, mealplan_id')
+            .eq('bookingrequest_id', bookingRequestId)
+            .maybeSingle();
+
+        if (bookingDetails != null) {
+          _isReceived = bookingDetails['is_received'] == true;
+
+          // If we have a mealplan_id, check if it's completed
+          if (bookingDetails['mealplan_id'] != null) {
+            final mealDetails = await supabase
+                .from('mealplan')
+                .select('is_completed')
+                .eq('mealplan_id', bookingDetails['mealplan_id'])
+                .maybeSingle();
+
+            if (mealDetails != null) {
+              _isMealCompleted = mealDetails['is_completed'] == true;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('Error checking order status: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Show a loading indicator while checking
+    if (_isLoading) {
+      return const SizedBox(
+        height: 25,
+        width: 25,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+        ),
+      );
+    }
+
+    // If the order has been received or meal is completed, show completed text
+    if (_isReceived || _isMealCompleted) {
+      return const Text(
+        'Completed',
+        style: TextStyle(
+          color: Colors.green,
+          fontWeight: FontWeight.bold,
+          fontSize: 13,
+        ),
+      );
+    }
+
+    // Otherwise show the confirm button
+    return ElevatedButton(
+      onPressed: () => widget.onTap(widget.notification),
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.green,
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 14),
+        minimumSize: const Size(0, 0),
+        textStyle: const TextStyle(
+          color: Colors.white,
+          fontSize: 13,
+        ),
+      ),
+      child: const Text(
+        'Confirm Order',
+        style: TextStyle(color: Colors.white),
+      ),
+    );
+  }
+}
+
 class FamHeadNotificationsPage extends StatefulWidget {
   final Function(int)? onPageChange;
   final String? currentUserId;
@@ -42,6 +154,50 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
   void dispose() {
     _notificationSubscription?.cancel();
     super.dispose();
+  }
+
+  // Helper method to check if the meal related to a notification is already completed
+  Future<bool> _checkIfMealCompleted(Map<String, dynamic> notification) async {
+    try {
+      final bookingRequestId = notification['related_id'];
+      if (bookingRequestId == null) return false;
+
+      // First get the mealplan_id from the booking request
+      final bookingDetails = await supabase
+          .from('bookingrequest')
+          .select('mealplan_id, is_received')
+          .eq('bookingrequest_id', bookingRequestId)
+          .maybeSingle();
+
+      // If order is already received or there's no mealplan_id, return appropriate status
+      if (bookingDetails == null) {
+        return false;
+      }
+
+      // If order is already received, consider it completed
+      if (bookingDetails['is_received'] == true) {
+        return true;
+      }
+
+      // If there's no mealplan_id, we can't check meal status
+      if (bookingDetails['mealplan_id'] == null) {
+        return false;
+      }
+
+      final mealplanId = bookingDetails['mealplan_id'];
+
+      // Check if the meal is completed
+      final mealDetails = await supabase
+          .from('mealplan')
+          .select('is_completed')
+          .eq('mealplan_id', mealplanId)
+          .maybeSingle();
+
+      return mealDetails != null && mealDetails['is_completed'] == true;
+    } catch (e) {
+      print('Error checking meal completion status: $e');
+      return false;
+    }
   }
 
   // Add dialog methods to replace SnackBars
@@ -486,6 +642,33 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
                           await markAsRead(
                               notification['notification_id'].toString());
 
+                          // Get the meal plan ID from the booking request
+                          final bookingDetails = await supabase
+                              .from('bookingrequest')
+                              .select('mealplan_id')
+                              .eq('bookingrequest_id', bookingRequestId)
+                              .single();
+
+                          // If there's a mealplan_id, mark it as completed
+                          if (bookingDetails != null &&
+                              bookingDetails['mealplan_id'] != null) {
+                            try {
+                              final mealplanId = bookingDetails['mealplan_id'];
+
+                              // Update the meal plan to mark it as completed
+                              await supabase
+                                  .from('mealplan')
+                                  .update({'is_completed': true}).eq(
+                                      'mealplan_id', mealplanId);
+
+                              print(
+                                  'Meal with ID $mealplanId marked as completed');
+                            } catch (e) {
+                              print('Error marking meal as completed: $e');
+                              // Continue with the process even if this update fails
+                            }
+                          }
+
                           try {
                             // Try to update is_received, but handle missing column gracefully
                             await supabase
@@ -503,6 +686,29 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
                               .from('bookingrequest')
                               .update({'is_received': true}).eq(
                                   'bookingrequest_id', bookingRequestId);
+
+                          if (!mounted) return;
+
+                          // Update the notification's local state to reflect the receipt confirmation
+                          setState(() {
+                            final notificationId =
+                                notification['notification_id'];
+
+                            // Find and update the notification in our local state
+                            for (var dateKey in groupedNotifications.keys) {
+                              final notifications =
+                                  groupedNotifications[dateKey]!;
+                              for (var i = 0; i < notifications.length; i++) {
+                                if (notifications[i]['notification_id'] ==
+                                    notificationId) {
+                                  // Mark the notification with a custom property to indicate receipt
+                                  notifications[i]['is_receipt_confirmed'] =
+                                      true;
+                                  break;
+                                }
+                              }
+                            }
+                          });
 
                           // Send notification to cook about confirmation
                           if (cookUserId != null) {
@@ -736,7 +942,7 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
     final bookingRequestId = notification['related_id'];
 
     try {
-      final statusTitle = notification['title'];
+      var statusTitle = notification['title'];
       final message = notification['message'];
 
       // Get more details about this order
@@ -744,7 +950,8 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
             bookingrequest_id, 
             delivery_status_id,
             desired_delivery_time,
-            mealplan:mealplan_id(meal_name),
+            is_received,
+            mealplan:mealplan_id(meal_name, is_completed),
             Local_Cook:localcookid(first_name, last_name, phone)
           ''').eq('bookingrequest_id', bookingRequestId).single();
 
@@ -754,6 +961,9 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
       final cookLastName = orderResponse['Local_Cook']?['last_name'] ?? '';
       final cookPhone = orderResponse['Local_Cook']?['phone'] ?? 'N/A';
       final cookName = '$cookFirstName $cookLastName'.trim();
+      final isReceived = orderResponse['is_received'] == true;
+      final isMealCompleted =
+          orderResponse['mealplan']?['is_completed'] == true;
 
       // Format delivery time
       String deliveryTime = 'N/A';
@@ -787,6 +997,14 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
         default:
           statusIcon = Icons.hourglass_bottom;
           statusColor = Colors.amber;
+      }
+
+      // Check if order has been received
+      if (isReceived) {
+        statusIcon = Icons.verified;
+        statusColor = Colors.green;
+        // Update status title to show it's received
+        statusTitle = 'Order Received';
       }
 
       if (!mounted) return;
@@ -845,7 +1063,7 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
                       ? MainAxisAlignment.spaceBetween
                       : MainAxisAlignment.end,
                   children: [
-                    if (statusId == 4)
+                    if (statusId == 4 && !isReceived)
                       TextButton(
                         onPressed: () {
                           Navigator.of(context).pop();
@@ -854,6 +1072,15 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
                         child: const Text(
                           'Order received?',
                           style: TextStyle(color: Colors.green),
+                        ),
+                      ),
+                    if (isReceived)
+                      Text(
+                        'Order confirmed on ${DateFormat('MMM dd, yyyy - hh:mm a').format(DateTime.parse(notification['updated_at'] ?? notification['created_at']))}',
+                        style: TextStyle(
+                          color: Colors.green,
+                          fontStyle: FontStyle.italic,
+                          fontSize: 12,
                         ),
                       ),
                     TextButton(
@@ -1342,26 +1569,12 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
                                 ],
                               ),
 
-                              // Add action button for completed orders
+                              // Add action button for completed orders using the OrderActionButton widget
                               if (isOrderCompletion)
-                                ElevatedButton(
-                                    onPressed: () {
-                                      _showOrderCompletionDialog(notification);
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 7, vertical: 14),
-                                      minimumSize: const Size(0, 0),
-                                      textStyle: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      'Confirm Order',
-                                      style: TextStyle(color: Colors.white),
-                                    )),
+                                OrderActionButton(
+                                  notification: notification,
+                                  onTap: _showOrderCompletionDialog,
+                                ),
                             ],
                           ),
                         ],
