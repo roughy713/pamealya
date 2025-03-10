@@ -666,10 +666,10 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                                               status,
                                               style: TextStyle(
                                                 color: status.toLowerCase() ==
-                                                        'pending'
+                                                        'Pending'
                                                     ? Colors.orange
                                                     : status.toLowerCase() ==
-                                                            'accepted'
+                                                            'Accepted'
                                                         ? Colors.green
                                                         : Colors.black,
                                                 fontWeight: FontWeight.bold,
