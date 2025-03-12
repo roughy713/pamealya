@@ -346,6 +346,98 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
     );
   }
 
+  Future<void> _handleSupportResponseNotification(
+      Map<String, dynamic> notification) async {
+    final relatedId = notification['related_id'];
+    if (relatedId == null) return;
+
+    try {
+      // Fetch the support request details
+      final supportRequest = await supabase
+          .from('support_requests')
+          .select('*')
+          .eq('request_id', relatedId)
+          .single();
+
+      if (mounted) {
+        _showSupportResponseDialog(supportRequest);
+      }
+
+      // Mark notification as read
+      if (!(notification['is_read'] ?? false)) {
+        await markAsRead(notification['notification_id'].toString());
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading support response: $e')),
+        );
+      }
+    }
+  }
+
+  void _showSupportResponseDialog(Map<String, dynamic> supportRequest) {
+    final issueType = supportRequest['issue_type'] ?? 'No issue type';
+    final message = supportRequest['message'] ?? 'No message';
+    final adminResponse = supportRequest['admin_response'] ?? 'No response yet';
+    final status = supportRequest['status'] ?? 'pending';
+    final timestamp = supportRequest['timestamp'] != null
+        ? DateTime.parse(supportRequest['timestamp'])
+        : DateTime.now();
+    final formattedDate = DateFormat('MMM d, y - h:mm a').format(timestamp);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Support Request Response'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow('Issue Type', issueType),
+              _buildDetailRow('Submitted', formattedDate),
+              _buildDetailRow('Status', status.toUpperCase()),
+              const Divider(),
+              const Text(
+                'Your Message:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(message),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Admin Response:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue[200]!),
+                ),
+                child: Text(adminResponse),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleNotificationTap(Map<String, dynamic> notification) async {
     final notificationType = notification['notification_type'];
     final senderId = notification['sender_id'];
@@ -408,6 +500,9 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
         }
         break;
 
+      case 'support_response':
+        await _handleSupportResponseNotification(notification);
+        break;
       default:
         print('Unknown notification type: $notificationType');
     }
@@ -432,6 +527,33 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
     } catch (e) {
       throw Exception('Error creating or retrieving chat room: $e');
     }
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildNotificationIcon(String type, [String? title]) {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:timeago/timeago.dart' as timeago;
+import 'dart:async';
 
 class AdminNotificationsPage extends StatefulWidget {
   const AdminNotificationsPage({super.key});
@@ -10,15 +12,102 @@ class AdminNotificationsPage extends StatefulWidget {
 }
 
 class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
+  final supabase = Supabase.instance.client;
   List<Map<String, dynamic>> notifications = [];
+  Map<String, List<Map<String, dynamic>>> groupedNotifications = {};
   bool isLoading = true;
   bool hasError = false;
-  String? filterType;
+  StreamSubscription? _notificationSubscription;
+  int unreadCount = 0;
+
+  // Sorting options
+  String _sortOrder = 'newest'; // 'newest' or 'oldest'
 
   @override
   void initState() {
     super.initState();
     _fetchNotifications();
+    _setupNotificationSubscription();
+  }
+
+  @override
+  void dispose() {
+    _notificationSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _setupNotificationSubscription() {
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return;
+
+    print('Setting up notifications for admin with ID: $userId');
+
+    _notificationSubscription = supabase
+        .from('notifications')
+        .stream(primaryKey: ['notification_id'])
+        .eq('recipient_id', userId)
+        .order('created_at', ascending: _sortOrder == 'oldest')
+        .listen((List<Map<String, dynamic>> data) {
+          print('Admin received notification data: $data');
+          if (mounted) {
+            setState(() {
+              notifications = data;
+              _updateUnreadCount();
+              _groupNotificationsByDate();
+            });
+          }
+        }, onError: (error) {
+          print('Admin notification subscription error: $error');
+        });
+  }
+
+  void _updateUnreadCount() {
+    unreadCount = notifications.where((n) => !(n['is_read'] ?? false)).length;
+  }
+
+  void _groupNotificationsByDate() {
+    groupedNotifications = {};
+
+    for (var notification in notifications) {
+      final createdAt = DateTime.parse(notification['created_at']);
+      final today = DateTime.now();
+      final yesterday = DateTime.now().subtract(const Duration(days: 1));
+
+      String dateKey;
+
+      if (createdAt.year == today.year &&
+          createdAt.month == today.month &&
+          createdAt.day == today.day) {
+        dateKey = 'Today';
+      } else if (createdAt.year == yesterday.year &&
+          createdAt.month == yesterday.month &&
+          createdAt.day == yesterday.day) {
+        dateKey = 'Yesterday';
+      } else if (today.difference(createdAt).inDays < 7) {
+        dateKey =
+            DateFormat('EEEE').format(createdAt); // Day name (e.g., 'Monday')
+      } else {
+        dateKey =
+            DateFormat('MMM d, yyyy').format(createdAt); // e.g., 'Feb 17, 2025'
+      }
+
+      if (!groupedNotifications.containsKey(dateKey)) {
+        groupedNotifications[dateKey] = [];
+      }
+
+      groupedNotifications[dateKey]!.add(notification);
+    }
+  }
+
+  void _toggleSortOrder() {
+    setState(() {
+      _sortOrder = _sortOrder == 'newest' ? 'oldest' : 'newest';
+    });
+    // Re-fetch notifications with the new sort order
+    _fetchNotifications();
+    // Update the subscription with the new sort order
+    _notificationSubscription?.cancel();
+    _setupNotificationSubscription();
   }
 
   Future<void> _fetchNotifications() async {
@@ -28,30 +117,34 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
     });
 
     try {
-      // Create the base query
-      var query = Supabase.instance.client.from('notifications').select();
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null) throw Exception('User not authenticated');
 
-      // Only add filter if filterType is not null
-      if (filterType != null) {
-        // This explicit approach might avoid the error
-        query = query.eq('notification_type', filterType as Object);
-      }
+      print('Fetching notifications for admin: $userId');
 
-      // Execute the query with ordering and limit
-      final response =
-          await query.order('created_at', ascending: false).limit(50);
+      final response = await supabase
+          .from('notifications')
+          .select()
+          .eq('recipient_id', userId)
+          .order('created_at', ascending: _sortOrder == 'oldest');
 
-      setState(() {
-        notifications = List<Map<String, dynamic>>.from(response);
-        isLoading = false;
-      });
-    } catch (e) {
-      debugPrint('Error fetching notifications: $e');
-      setState(() {
-        isLoading = false;
-        hasError = true;
-      });
+      print('Admin fetched notifications: $response');
+
       if (mounted) {
+        setState(() {
+          notifications = List<Map<String, dynamic>>.from(response);
+          _updateUnreadCount();
+          _groupNotificationsByDate();
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching admin notifications: $e');
+      if (mounted) {
+        setState(() {
+          isLoading = false;
+          hasError = true;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error fetching notifications: $e')),
         );
@@ -59,368 +152,936 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
     }
   }
 
-  Future<void> _markAsRead(int notificationId) async {
+  Future<void> markAsRead(String notificationId) async {
     try {
-      await Supabase.instance.client
-          .from('notifications')
-          .update({'is_read': true}).eq('notification_id', notificationId);
-
-      // Update the local list
-      setState(() {
-        final index = notifications.indexWhere((notification) =>
-            notification['notification_id'] == notificationId);
-        if (index != -1) {
-          notifications[index]['is_read'] = true;
-        }
-      });
-    } catch (e) {
-      debugPrint('Error marking notification as read: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error marking notification as read: $e')),
+      await supabase.rpc(
+        'mark_notification_read',
+        params: {'p_notification_id': notificationId},
       );
-    }
-  }
 
-  Future<void> _markAllAsRead() async {
-    try {
-      // Get list of unread notification IDs
-      final unreadNotifications = notifications
-          .where((notification) => notification['is_read'] == false)
-          .toList();
-
-      if (unreadNotifications.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No unread notifications')),
-        );
-        return;
-      }
-
-      // Update each unread notification one by one
-      for (var notification in unreadNotifications) {
-        await Supabase.instance.client
-            .from('notifications')
-            .update({'is_read': true}).eq(
-                'notification_id', notification['notification_id']);
-      }
-
-      // Update the local list
-      setState(() {
-        for (var notification in notifications) {
-          if (notification['is_read'] == false) {
-            notification['is_read'] = true;
+      if (mounted) {
+        setState(() {
+          final index = notifications.indexWhere(
+              (n) => n['notification_id'].toString() == notificationId);
+          if (index != -1) {
+            notifications[index]['is_read'] = true;
+            _updateUnreadCount();
           }
-        }
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('All notifications marked as read')),
-      );
-    } catch (e) {
-      debugPrint('Error marking all notifications as read: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error marking notifications as read: $e')),
-      );
-    }
-  }
-
-  Future<void> _deleteNotification(int notificationId) async {
-    try {
-      await Supabase.instance.client
-          .from('notifications')
-          .delete()
-          .eq('notification_id', notificationId);
-
-      // Remove from local list
-      setState(() {
-        notifications.removeWhere((notification) =>
-            notification['notification_id'] == notificationId);
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Notification deleted')),
-      );
-    } catch (e) {
-      debugPrint('Error deleting notification: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting notification: $e')),
-      );
-    }
-  }
-
-  String _formatDateTime(String? dateTimeString) {
-    if (dateTimeString == null) return 'N/A';
-    try {
-      final dateTime = DateTime.parse(dateTimeString);
-      final now = DateTime.now();
-      final difference = now.difference(dateTime);
-
-      if (difference.inDays == 0) {
-        // Today - show time
-        return 'Today at ${DateFormat.jm().format(dateTime)}';
-      } else if (difference.inDays == 1) {
-        // Yesterday
-        return 'Yesterday at ${DateFormat.jm().format(dateTime)}';
-      } else if (difference.inDays < 7) {
-        // Within a week
-        return '${DateFormat('EEEE').format(dateTime)} at ${DateFormat.jm().format(dateTime)}';
-      } else {
-        // More than a week ago
-        return DateFormat('MMM d, yyyy').format(dateTime);
+        });
       }
     } catch (e) {
-      return 'Invalid date';
+      print('Error marking notification as read: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error marking notification as read: $e')),
+        );
+      }
     }
   }
 
-  Color _getNotificationTypeColor(String? type) {
-    switch (type?.toLowerCase()) {
-      case 'new_cook':
-        return Colors.blue;
-      case 'new_family':
-        return Colors.purple;
-      case 'meal_plan':
-        return Colors.green;
-      case 'booking':
-        return Colors.orange;
-      case 'booking_accepted':
-        return Colors.teal;
-      case 'booking_declined':
-        return Colors.red;
-      case 'order':
-        return Colors.amber;
-      case 'payment':
-        return Colors.indigo;
-      case 'system':
-        return Colors.red;
-      default:
-        return Colors.grey;
+  Future<void> markAllAsRead() async {
+    if (!mounted || notifications.isEmpty || unreadCount == 0) return;
+
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Dialog(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 20),
+                  Text("Marking all notifications as read..."),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      // Get all unread notifications
+      final unreadNotifications =
+          notifications.where((n) => !(n['is_read'] ?? false)).toList();
+
+      // Mark each notification as read one by one
+      for (var notification in unreadNotifications) {
+        await supabase.rpc(
+          'mark_notification_read',
+          params: {'p_notification_id': notification['notification_id']},
+        );
+      }
+
+      setState(() {
+        for (var i = 0; i < notifications.length; i++) {
+          notifications[i]['is_read'] = true;
+        }
+        unreadCount = 0;
+        _groupNotificationsByDate(); // Update groupings with new read status
+      });
+
+      // Close loading dialog
+      if (mounted) Navigator.of(context).pop();
+
+      // Show success dialog
+      _showSuccessDialog(
+          context, 'Success', 'All notifications marked as read');
+    } catch (e) {
+      // Close loading dialog if open
+      try {
+        if (mounted) Navigator.of(context).pop();
+      } catch (_) {
+        // Dialog might not be open
+      }
+
+      // Show error dialog
+      _showErrorDialog(
+          context, 'Error', 'Error marking notifications as read: $e');
     }
   }
 
-  IconData _getNotificationTypeIcon(String? type) {
-    switch (type?.toLowerCase()) {
-      case 'new_cook':
-        return Icons.person_add;
-      case 'new_family':
-        return Icons.family_restroom;
-      case 'meal_plan':
-        return Icons.restaurant_menu;
-      case 'booking':
-        return Icons.book_online;
-      case 'booking_accepted':
-        return Icons.check_circle;
-      case 'booking_declined':
-        return Icons.cancel;
-      case 'order':
-        return Icons.food_bank;
-      case 'payment':
-        return Icons.payment;
-      case 'system':
-        return Icons.warning;
-      default:
-        return Icons.notifications;
-    }
-  }
-
-  Widget _buildNotificationItem(Map<String, dynamic> notification) {
-    final bool isRead = notification['is_read'] ?? false;
-    final String title = notification['title'] ?? 'No Title';
-    final String message = notification['message'] ?? 'No Message';
-    final String? type = notification['type'];
-    final String createdAt = _formatDateTime(notification['created_at']);
-    final int notificationId = notification['notification_id'];
-    final String? familyName = notification['family_name'];
-    final String? cookName = notification['cook_name'];
-
-    return Card(
-      elevation: isRead ? 1 : 3,
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: isRead
-            ? BorderSide.none
-            : BorderSide(color: _getNotificationTypeColor(type), width: 1.5),
-      ),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: _getNotificationTypeColor(type).withOpacity(0.2),
-          child: Icon(
-            _getNotificationTypeIcon(type),
-            color: _getNotificationTypeColor(type),
-          ),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
-          ),
-        ),
-        subtitle: Column(
+  void _showSuccessDialog(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 4),
-            Text(message, maxLines: 2, overflow: TextOverflow.ellipsis),
-            const SizedBox(height: 4),
             Row(
               children: [
-                Icon(
-                  Icons.access_time,
-                  size: 12,
-                  color: Colors.grey,
-                ),
-                const SizedBox(width: 4),
+                const Icon(Icons.check_circle, color: Colors.green, size: 28),
+                const SizedBox(width: 12),
                 Text(
-                  createdAt,
+                  title,
                   style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.green,
                   ),
                 ),
               ],
             ),
-            if (familyName != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.family_restroom,
-                      size: 12,
-                      color: Colors.purple,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Family: $familyName',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.purple,
-                      ),
-                    ),
-                  ],
+            const SizedBox(height: 20),
+            Text(
+              message,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 24),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-            if (cookName != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.restaurant,
-                      size: 12,
-                      color: Colors.blue,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Cook: $cookName',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-          ],
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!isRead)
-              IconButton(
-                icon: const Icon(Icons.check, color: Colors.green),
-                onPressed: () => _markAsRead(notificationId),
-                tooltip: 'Mark as read',
-              ),
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
-              onPressed: () => _deleteNotification(notificationId),
-              tooltip: 'Delete notification',
             ),
           ],
         ),
-        onTap: () {
-          if (!isRead) {
-            _markAsRead(notificationId);
-          }
-
-          // Show full notification details
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text(title),
-              content: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(message),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Created: $createdAt',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    if (familyName != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Family: $familyName',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                    if (cookName != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Cook: $cookName',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                    if (notification['additional_data'] != null) ...[
-                      const SizedBox(height: 16),
-                      const Divider(),
-                      const SizedBox(height: 8),
-                      const Text(
-                        'Additional Information:',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(notification['additional_data'].toString()),
-                    ],
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('Close'),
-                ),
-              ],
-            ),
-          );
-        },
       ),
     );
   }
 
-  // Static method to get unread count
+  void _showErrorDialog(BuildContext context, String title, String message) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 20, 24, 10),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded,
+                    color: Colors.amber, size: 28),
+                const SizedBox(width: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Text(
+              message,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 24),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text(
+                  'OK',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleNotificationTap(Map<String, dynamic> notification) async {
+    final notificationType = notification['notification_type'];
+    final notificationId = notification['notification_id'].toString();
+    final relatedId = notification['related_id'];
+
+    print('Handling notification type: $notificationType');
+
+    // Mark notification as read when clicked
+    if (!(notification['is_read'] ?? false)) {
+      await markAsRead(notificationId);
+    }
+
+    // Handle support_request notifications
+    if (notificationType == 'support_request' && relatedId != null) {
+      try {
+        // Fetch the support request details
+        final supportRequest = await supabase
+            .from('support_requests')
+            .select('*')
+            .eq('request_id', relatedId)
+            .single();
+
+        // Show support request details dialog
+        if (mounted) {
+          _showSupportRequestDialog(supportRequest);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error loading support request: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  void _showSupportRequestDialog(Map<String, dynamic> supportRequest) {
+    final requestId = supportRequest['request_id'];
+    final email = supportRequest['email'] ?? 'No email';
+    final issueType = supportRequest['issue_type'] ?? 'No issue type';
+    final message = supportRequest['message'] ?? 'No message';
+
+    // Format user type (replace underscores with spaces and capitalize)
+    String userType = supportRequest['user_type'] ?? 'Unknown';
+    userType = userType
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) => word.isNotEmpty
+            ? '${word[0].toUpperCase()}${word.substring(1)}'
+            : '')
+        .join(' ');
+
+    // Format status (replace underscores with spaces and capitalize)
+    String status = supportRequest['status'] ?? 'pending';
+    status = status
+        .replaceAll('_', ' ')
+        .split(' ')
+        .map((word) => word.isNotEmpty
+            ? '${word[0].toUpperCase()}${word.substring(1)}'
+            : '')
+        .join(' ');
+
+    final timestamp = supportRequest['timestamp'] != null
+        ? DateTime.parse(supportRequest['timestamp'])
+        : DateTime.now();
+    final formattedDate = DateFormat('MMM d, y - h:mm a').format(timestamp);
+
+    // Get admin response from supportRequest
+    final adminResponse = supportRequest['admin_response'];
+
+    // Controller for admin response
+    final responseController = TextEditingController(text: adminResponse);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Support Request from $email'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow('User Type', userType),
+              _buildDetailRow('Issue Type', issueType),
+              _buildDetailRow('Submitted', formattedDate),
+              _buildDetailRow('Status', status),
+              const Divider(),
+              const Text(
+                'Message:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(message),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Your Response:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              TextField(
+                controller: responseController,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  hintText: 'Type your response here...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Status change buttons
+              DropdownButton<String>(
+                value: supportRequest['status'],
+                hint: const Text('Update Status'),
+                items:
+                    ['pending', 'in_progress', 'resolved'].map((String value) {
+                  // Format display text
+                  String displayText = value
+                      .replaceAll('_', ' ')
+                      .split(' ')
+                      .map((word) => word.isNotEmpty
+                          ? '${word[0].toUpperCase()}${word.substring(1)}'
+                          : '')
+                      .join(' ');
+
+                  return DropdownMenuItem<String>(
+                    value: value,
+                    child: Text(displayText),
+                  );
+                }).toList(),
+                onChanged: (newValue) async {
+                  if (newValue != null) {
+                    try {
+                      await supabase.from('support_requests').update(
+                          {'status': newValue}).eq('request_id', requestId);
+
+                      if (newValue == 'resolved') {
+                        await supabase.from('support_requests').update({
+                          'resolved_at': DateTime.now().toIso8601String(),
+                          'resolved_by': supabase.auth.currentUser?.id,
+                        }).eq('request_id', requestId);
+                      }
+
+                      // Refresh interface
+                      Navigator.pop(context);
+                      _fetchNotifications();
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(
+                                'Status updated to ${newValue.toUpperCase()}')),
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error updating status: $e')),
+                      );
+                    }
+                  }
+                },
+              ),
+
+              // Submit response button
+              ElevatedButton(
+                onPressed: () async {
+                  final response = responseController.text;
+
+                  // Validate response
+                  if (response.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please enter a response')),
+                    );
+                    return;
+                  }
+
+                  // Show loading indicator
+                  showDialog(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (BuildContext loadingContext) {
+                      return const Dialog(
+                        child: Padding(
+                          padding: EdgeInsets.all(20.0),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(width: 20),
+                              Text("Submitting response..."),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+
+                  try {
+                    // Update the support request
+                    await supabase
+                        .from('support_requests')
+                        .update({'admin_response': response}).eq(
+                            'request_id', requestId);
+
+                    // Close the loading dialog
+                    if (mounted) Navigator.of(context).pop();
+
+                    // Close the support request dialog
+                    if (mounted) Navigator.of(context).pop();
+
+                    // Show success dialog - added delay to ensure previous dialogs are closed
+                    Future.delayed(Duration(milliseconds: 300), () {
+                      if (mounted) {
+                        showDialog(
+                          context: context,
+                          builder: (successContext) => AlertDialog(
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            contentPadding:
+                                const EdgeInsets.fromLTRB(24, 20, 24, 10),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(Icons.check_circle,
+                                        color: Colors.green, size: 28),
+                                    const SizedBox(width: 12),
+                                    const Text(
+                                      "Success",
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 20),
+                                const Text(
+                                  "Your response has been submitted successfully.",
+                                  style: TextStyle(fontSize: 16),
+                                ),
+                                const SizedBox(height: 24),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(),
+                                    child: const Text(
+                                      'OK',
+                                      style: TextStyle(
+                                        color: Colors.blue,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+                    });
+
+                    // Refresh notifications
+                    _fetchNotifications();
+                  } catch (e) {
+                    // Close loading dialog if open
+                    if (mounted) Navigator.of(context).pop();
+
+                    print('Error submitting response: $e');
+
+                    // Show error dialog
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text('Error submitting response: $e')),
+                      );
+                    }
+                  }
+                },
+                child: const Text('Submit Response'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationIcon(String type, [String? title]) {
+    IconData iconData;
+    Color iconColor;
+
+    // Only handling support_request type
+    if (type == 'support_request') {
+      iconData = Icons.contact_support;
+      iconColor = Colors.blue;
+    } else {
+      iconData = Icons.notifications;
+      iconColor = Colors.grey;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: iconColor.withOpacity(0.1),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(iconData, color: iconColor),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Column(
+      children: [
+        _buildNotificationHeader(),
+        Expanded(
+          child: notifications.isEmpty
+              ? _buildEmptyNotificationsView()
+              : _buildNotificationsList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNotificationHeader() {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'Notifications',
+            style: Theme.of(context).textTheme.headlineSmall,
+          ),
+          Row(
+            children: [
+              // Sort toggle button
+              IconButton(
+                icon: Icon(_sortOrder == 'newest'
+                    ? Icons.arrow_downward
+                    : Icons.arrow_upward),
+                tooltip: _sortOrder == 'newest'
+                    ? 'Showing newest first'
+                    : 'Showing oldest first',
+                onPressed: _toggleSortOrder,
+              ),
+              if (unreadCount > 0)
+                TextButton.icon(
+                  icon: const Icon(Icons.done_all),
+                  label: const Text('Mark all as read'),
+                  onPressed: markAllAsRead,
+                ),
+              // Refresh button
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: 'Refresh notifications',
+                onPressed: _fetchNotifications,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyNotificationsView() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.notifications_off, size: 64, color: Colors.grey),
+          SizedBox(height: 16),
+          Text(
+            'No notifications yet',
+            style: TextStyle(fontSize: 18, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationsList() {
+    if (groupedNotifications.isEmpty) {
+      return _buildEmptyNotificationsView();
+    }
+
+    // Get the sorted date keys based on chronological order
+    final sortedDateKeys = groupedNotifications.keys.toList()
+      ..sort((a, b) {
+        // Always keep 'Today' and 'Yesterday' at the top in that order
+        if (a == 'Today') return _sortOrder == 'newest' ? -1 : 1;
+        if (b == 'Today') return _sortOrder == 'newest' ? 1 : -1;
+        if (a == 'Yesterday') return _sortOrder == 'newest' ? -1 : 1;
+        if (b == 'Yesterday') return _sortOrder == 'newest' ? 1 : -1;
+
+        // For day names of the week
+        final weekdays = [
+          'Monday',
+          'Tuesday',
+          'Wednesday',
+          'Thursday',
+          'Friday',
+          'Saturday',
+          'Sunday'
+        ];
+        if (weekdays.contains(a) && weekdays.contains(b)) {
+          // Convert to day indices
+          final aIndex = weekdays.indexOf(a);
+          final bIndex = weekdays.indexOf(b);
+          return _sortOrder == 'newest'
+              ? bIndex.compareTo(aIndex)
+              : aIndex.compareTo(bIndex);
+        }
+
+        // For dates in MMM d, yyyy format
+        if (!weekdays.contains(a) &&
+            !weekdays.contains(b) &&
+            a != 'Today' &&
+            a != 'Yesterday' &&
+            b != 'Today' &&
+            b != 'Yesterday') {
+          try {
+            final aDate = DateFormat('MMM d, yyyy').parse(a);
+            final bDate = DateFormat('MMM d, yyyy').parse(b);
+            return _sortOrder == 'newest'
+                ? bDate.compareTo(aDate)
+                : aDate.compareTo(bDate);
+          } catch (e) {
+            return a.compareTo(b); // Fallback to string comparison
+          }
+        }
+
+        // Mixed cases (day name vs. date)
+        if (weekdays.contains(a)) return _sortOrder == 'newest' ? -1 : 1;
+        if (weekdays.contains(b)) return _sortOrder == 'newest' ? 1 : -1;
+
+        return a.compareTo(b); // Fallback
+      });
+
+    return ListView.builder(
+      itemCount: sortedDateKeys.length,
+      itemBuilder: (context, groupIndex) {
+        final dateKey = sortedDateKeys[groupIndex];
+        final dateNotifications = groupedNotifications[dateKey]!;
+
+        // Sort notifications within each group if needed
+        if (_sortOrder == 'oldest') {
+          dateNotifications.sort((a, b) => DateTime.parse(a['created_at'])
+              .compareTo(DateTime.parse(b['created_at'])));
+        } else {
+          dateNotifications.sort((a, b) => DateTime.parse(b['created_at'])
+              .compareTo(DateTime.parse(a['created_at'])));
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Text(
+                dateKey,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: Theme.of(context).primaryColor,
+                ),
+              ),
+            ),
+            ...dateNotifications.map((notification) {
+              final createdAt = DateTime.parse(notification['created_at']);
+              final timeAgo = timeago.format(createdAt);
+              final isRead = notification['is_read'] ?? false;
+
+              return Dismissible(
+                key: Key(notification['notification_id'].toString()),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  color: Colors.red,
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20.0),
+                  child: const Icon(Icons.delete, color: Colors.white),
+                ),
+                confirmDismiss: (direction) async {
+                  return await showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: const Text("Confirm"),
+                        content: const Text(
+                            "Are you sure you want to delete this notification?"),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: const Text("Cancel"),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: const Text("Delete"),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+                },
+                onDismissed: (direction) async {
+                  try {
+                    await supabase
+                        .from('notifications')
+                        .delete()
+                        .eq('notification_id', notification['notification_id']);
+
+                    if (!mounted) return;
+
+                    setState(() {
+                      final notificationId = notification['notification_id'];
+                      // Remove from the notifications list
+                      notifications.removeWhere(
+                          (n) => n['notification_id'] == notificationId);
+                      // Remove from the grouped notifications
+                      groupedNotifications[dateKey]!.removeWhere(
+                          (n) => n['notification_id'] == notificationId);
+                      // If the group is now empty, remove it
+                      if (groupedNotifications[dateKey]!.isEmpty) {
+                        groupedNotifications.remove(dateKey);
+                      }
+                      _updateUnreadCount();
+                    });
+                  } catch (e) {
+                    print('Error deleting notification: $e');
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                          content: Text('Error deleting notification: $e')),
+                    );
+                  }
+                },
+                child: Card(
+                  margin:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  elevation: isRead ? 1 : 3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: isRead
+                        ? BorderSide.none
+                        : BorderSide(
+                            color:
+                                Theme.of(context).primaryColor.withOpacity(0.3),
+                            width: 1),
+                  ),
+                  child: ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    leading: Stack(
+                      children: [
+                        _buildNotificationIcon(
+                            notification['notification_type'],
+                            notification['title']),
+                        if (!isRead)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).primaryColor,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    title: Text(
+                      notification['title'] ?? 'No Title',
+                      style: TextStyle(
+                        fontWeight:
+                            isRead ? FontWeight.normal : FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 4),
+                        Text(
+                          notification['message'] ?? 'No Message',
+                          style: TextStyle(
+                            color:
+                                isRead ? Colors.grey.shade600 : Colors.black87,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.access_time,
+                              size: 12,
+                              color: Colors.grey.shade500,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              DateFormat('hh:mm a').format(createdAt),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade500,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '($timeAgo)',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade500,
+                              ),
+                            ),
+
+                            // Show user type badge for support requests
+                            if (notification['notification_type'] ==
+                                    'support_request' &&
+                                notification['additional_data'] != null)
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8.0),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: notification['additional_data']
+                                            .toString()
+                                            .contains('cook')
+                                        ? Colors.blue.withOpacity(0.1)
+                                        : Colors.purple.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    notification['additional_data']
+                                            .toString()
+                                            .contains('cook')
+                                        ? 'COOK'
+                                        : 'FAMILY',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: notification['additional_data']
+                                              .toString()
+                                              .contains('cook')
+                                          ? Colors.blue
+                                          : Colors.purple,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    onTap: () => _handleNotificationTap(notification),
+                    tileColor: isRead ? null : Colors.grey.withOpacity(0.05),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    trailing: !isRead
+                        ? IconButton(
+                            icon: const Icon(Icons.check, color: Colors.green),
+                            onPressed: () => markAsRead(
+                                notification['notification_id'].toString()),
+                            tooltip: 'Mark as read',
+                          )
+                        : null,
+                  ),
+                ),
+              );
+            }).toList(),
+          ],
+        );
+      },
+    );
+  }
+
+  // Static method to get unread count (for badges in UI)
   static Future<int> getUnreadCount() async {
     try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return 0;
+
       final response = await Supabase.instance.client
           .from('notifications')
           .select()
-          .eq('notification_type', 'admin_notification')
+          .eq('recipient_id', userId)
           .eq('is_read', false);
 
-      // Count the results manually
+      // Count the results
       return response.length;
     } catch (e) {
       debugPrint('Error fetching unread notifications count: $e');
@@ -428,154 +1089,29 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
     }
   }
 
-  Widget _buildFilterChip(String type, String label, IconData icon) {
-    final isSelected = filterType == type;
+  // Helper method to delete a notification
+  Future<void> _deleteNotification(String notificationId) async {
+    try {
+      await supabase
+          .from('notifications')
+          .delete()
+          .eq('notification_id', notificationId);
 
-    return FilterChip(
-      selected: isSelected,
-      label: Text(label),
-      avatar: Icon(icon, size: 16),
-      onSelected: (selected) {
-        setState(() {
-          filterType = selected ? type : null;
-        });
-        _fetchNotifications();
-      },
-      selectedColor: _getNotificationTypeColor(type).withOpacity(0.2),
-      checkmarkColor: _getNotificationTypeColor(type),
-    );
-  }
+      // Refresh notifications
+      _fetchNotifications();
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Notifications',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        TextButton.icon(
-                          onPressed: _fetchNotifications,
-                          icon: const Icon(Icons.refresh),
-                          label: const Text('Refresh'),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton.icon(
-                          onPressed: _markAllAsRead,
-                          icon: const Icon(Icons.done_all),
-                          label: const Text('Mark All as Read'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      if (filterType != null)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8.0),
-                          child: TextButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                filterType = null;
-                              });
-                              _fetchNotifications();
-                            },
-                            icon: const Icon(Icons.clear, size: 16),
-                            label: const Text('Clear Filter'),
-                            style: TextButton.styleFrom(
-                              backgroundColor: Colors.grey.withOpacity(0.1),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 0),
-                            ),
-                          ),
-                        ),
-                      _buildFilterChip(
-                          'new_family', 'New Family', Icons.family_restroom),
-                      const SizedBox(width: 8),
-                      _buildFilterChip(
-                          'new_cook', 'New Cook', Icons.person_add),
-                      const SizedBox(width: 8),
-                      _buildFilterChip(
-                          'meal_plan', 'Meal Plan', Icons.restaurant_menu),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('booking', 'Booking', Icons.book_online),
-                      const SizedBox(width: 8),
-                      _buildFilterChip(
-                          'booking_accepted', 'Accepted', Icons.check_circle),
-                      const SizedBox(width: 8),
-                      _buildFilterChip(
-                          'booking_declined', 'Declined', Icons.cancel),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('order', 'Order', Icons.food_bank),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('payment', 'Payment', Icons.payment),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('system', 'System', Icons.warning),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : hasError
-                    ? const Center(
-                        child: Text(
-                          'Error loading notifications',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      )
-                    : notifications.isEmpty
-                        ? const Center(
-                            child: Text(
-                              'No notifications',
-                              style: TextStyle(color: Colors.grey),
-                            ),
-                          )
-                        : ListView.builder(
-                            itemCount: notifications.length,
-                            itemBuilder: (context, index) {
-                              return _buildNotificationItem(
-                                  notifications[index]);
-                            },
-                          ),
-          ),
-        ],
-      ),
-    );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Notification deleted')),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error deleting notification: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting notification: $e')),
+        );
+      }
+    }
   }
 }

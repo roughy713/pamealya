@@ -302,6 +302,98 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
     );
   }
 
+  Future<void> _handleSupportResponseNotification(
+      Map<String, dynamic> notification) async {
+    final relatedId = notification['related_id'];
+    if (relatedId == null) return;
+
+    try {
+      // Fetch the support request details
+      final supportRequest = await supabase
+          .from('support_requests')
+          .select('*')
+          .eq('request_id', relatedId)
+          .single();
+
+      if (mounted) {
+        _showSupportResponseDialog(supportRequest);
+      }
+
+      // Mark notification as read
+      if (!(notification['is_read'] ?? false)) {
+        await markAsRead(notification['notification_id'].toString());
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading support response: $e')),
+        );
+      }
+    }
+  }
+
+  void _showSupportResponseDialog(Map<String, dynamic> supportRequest) {
+    final issueType = supportRequest['issue_type'] ?? 'No issue type';
+    final message = supportRequest['message'] ?? 'No message';
+    final adminResponse = supportRequest['admin_response'] ?? 'No response yet';
+    final status = supportRequest['status'] ?? 'pending';
+    final timestamp = supportRequest['timestamp'] != null
+        ? DateTime.parse(supportRequest['timestamp'])
+        : DateTime.now();
+    final formattedDate = DateFormat('MMM d, y - h:mm a').format(timestamp);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Support Request Response'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow('Issue Type', issueType),
+              _buildDetailRow('Submitted', formattedDate),
+              _buildDetailRow('Status', status.toUpperCase()),
+              const Divider(),
+              const Text(
+                'Your Message:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(message),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Admin Response:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue[200]!),
+                ),
+                child: Text(adminResponse),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _setupNotificationSubscription() {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return;
@@ -933,6 +1025,10 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
       case 'delivery_status':
         _showOrderStatusDetails(notification);
         break;
+
+      case 'support_response':
+        await _handleSupportResponseNotification(notification);
+        break;
     }
   }
 
@@ -1242,6 +1338,10 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
       case 'delivery_status':
         iconData = Icons.delivery_dining;
         iconColor = Colors.purple;
+        break;
+      case 'support_response':
+        iconData = Icons.question_answer;
+        iconColor = Colors.green;
         break;
       default:
         iconData = Icons.notifications;
