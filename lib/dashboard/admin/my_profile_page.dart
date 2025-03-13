@@ -7,11 +7,11 @@ class MyProfilePage extends StatefulWidget {
   final String email;
 
   const MyProfilePage({
-    Key? key,
+    super.key,
     required this.firstName,
     required this.lastName,
     required this.email,
-  }) : super(key: key);
+  });
 
   @override
   State<MyProfilePage> createState() => _MyProfilePageState();
@@ -82,9 +82,20 @@ class _MyProfilePageState extends State<MyProfilePage> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profile updated successfully')),
-        );
+        showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Success'),
+                content: const Text('Profile updated successfully'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            });
         setState(() {
           _isEditingProfile = false;
         });
@@ -128,9 +139,20 @@ class _MyProfilePageState extends State<MyProfilePage> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Password changed successfully')),
-        );
+        showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Success'),
+                content: const Text('Password updated successfully'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            });
         setState(() {
           _isChangingPassword = false;
           _currentPasswordController.clear();

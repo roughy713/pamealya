@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ViewFamilyHeadsPage extends StatefulWidget {
-  const ViewFamilyHeadsPage({Key? key}) : super(key: key);
+  const ViewFamilyHeadsPage({super.key});
 
   @override
   _ViewFamilyHeadsPageState createState() => _ViewFamilyHeadsPageState();
@@ -253,8 +253,20 @@ class _ViewFamilyHeadsPageState extends State<ViewFamilyHeadsPage> {
       debugPrint('Error in showing family details: $e');
       if (context.mounted) {
         Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Error loading family details')),
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text(e.toString()),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
         );
       }
     }

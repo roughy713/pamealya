@@ -105,8 +105,20 @@ class _ViewMealsPageState extends State<ViewMealsPage> {
         hasError = true;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching meals: $e')),
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text('Error loading meals. Please try again. $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
         );
       }
     }
@@ -382,8 +394,20 @@ class _ViewMealsPageState extends State<ViewMealsPage> {
       debugPrint('Error showing meal details: $e');
       if (context.mounted) {
         Navigator.of(context).pop(); // Dismiss loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading meal details: $e')),
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text('Error showing meal details. Please try again. $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
         );
       }
     }
@@ -651,16 +675,40 @@ class _ViewMealsPageState extends State<ViewMealsPage> {
         'is_seafood': isSeafood,
       }).eq('recipe_id', recipeId);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Meal updated successfully!')),
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Success'),
+            content: const Text('Meal updated successfully!'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
       );
 
       // Refresh the meals list
       _fetchMeals();
     } catch (e) {
       debugPrint('Error updating meal: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating meal: $e')),
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Error'),
+            content: Text('Error updating meal, please try again. $e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
       );
     }
   }
@@ -750,17 +798,39 @@ class _ViewMealsPageState extends State<ViewMealsPage> {
           .delete()
           .eq('recipe_id', recipeId);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Meal deleted successfully')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Success'),
+              content: const Text('Meal deleted successfully!'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          });
 
       // Refresh the meals list
       _fetchMeals();
     } catch (e) {
       debugPrint('Error deleting meal: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting meal: $e')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text('Error deleting meal, please try again. $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          });
     }
   }
 
@@ -827,7 +897,7 @@ class _ViewMealsPageState extends State<ViewMealsPage> {
                               value: category['meal_category_id'].toString(),
                               child: Text(category['category_name']),
                             );
-                          }).toList(),
+                          }),
                         ],
                       ),
                     ),

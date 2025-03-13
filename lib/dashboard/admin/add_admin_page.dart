@@ -88,9 +88,21 @@ class _AddAdminPageState extends State<AddAdminPage> {
 
         // Show success message
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Admin added successfully!')),
-          );
+          showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Admin Added'),
+                  content:
+                      const Text('The new admin has been added successfully.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('OK'),
+                    ),
+                  ],
+                );
+              });
 
           // Clear the form
           _formKey.currentState?.reset();

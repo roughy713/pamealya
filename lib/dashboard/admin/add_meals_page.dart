@@ -81,7 +81,8 @@ class _AddMealsPageState extends State<AddMealsPage> {
       await Supabase.instance.client.storage.from('meal-images').uploadBinary(
             fileName,
             _imageBytes!,
-            fileOptions: FileOptions(contentType: 'image/jpeg', upsert: true),
+            fileOptions:
+                const FileOptions(contentType: 'image/jpeg', upsert: true),
           );
       print('Image uploaded successfully');
 
@@ -95,9 +96,23 @@ class _AddMealsPageState extends State<AddMealsPage> {
       return publicUrl;
     } catch (e) {
       print('Error during image upload: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error uploading image: $e')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog.adaptive(
+              title: const Text('Error'),
+              content: const Text(
+                  'Failed to upload image. Please try again.'), //Balikan nako this week, nice untag matic na re upload. di na muusab pag pindot sa re-upload.
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          });
       return null;
     }
   }
@@ -144,9 +159,23 @@ class _AddMealsPageState extends State<AddMealsPage> {
         // 1. Upload image first
         final imageUrl = await _uploadImage();
         if (imageUrl == null && _imageBytes != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to upload image')),
-          );
+          showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Error'),
+                  content:
+                      const Text('Failed to upload image. Please try again.'),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('OK'),
+                    ),
+                  ],
+                );
+              });
           return;
         }
 
@@ -196,14 +225,40 @@ class _AddMealsPageState extends State<AddMealsPage> {
               );
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Meal added successfully!')),
-        );
+        showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Success'),
+                content: const Text('Meal added successfully'),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            });
         _clearForm();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error adding meal: $e')),
-        );
+        showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Error'),
+                content: Text('Failed to add meal: $e'),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            });
       }
     }
   }

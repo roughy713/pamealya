@@ -4,7 +4,7 @@ import 'dart:html' as html;
 import 'dart:typed_data';
 
 class ApprovalPage extends StatefulWidget {
-  const ApprovalPage({Key? key}) : super(key: key);
+  const ApprovalPage({super.key});
 
   @override
   _ApprovalPageState createState() => _ApprovalPageState();
@@ -47,22 +47,29 @@ class _ApprovalPageState extends State<ApprovalPage> {
           .select()
           .eq('is_accepted', false);
 
-      if (response != null) {
-        setState(() {
-          cooks = response as List<dynamic>;
-          isLoading = false;
-        });
-      } else {
-        throw Exception('Failed to fetch cooks');
-      }
+      setState(() {
+        cooks = response as List<dynamic>;
+        isLoading = false;
+      });
     } catch (e) {
       setState(() {
         isLoading = false;
         hasError = true;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching cooks: $e')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error loading data, please try again.'),
+              content: Text(e.toString()),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          });
     }
   }
 
@@ -263,16 +270,28 @@ class _ApprovalPageState extends State<ApprovalPage> {
                                                           Navigator.of(context)
                                                               .pop(); // Close dialog
 
-                                                          ScaffoldMessenger.of(
-                                                                  context)
-                                                              .showSnackBar(
-                                                            const SnackBar(
-                                                              content: Text(
-                                                                  'File downloaded successfully!'),
-                                                              backgroundColor:
-                                                                  Colors.green,
-                                                            ),
-                                                          );
+                                                          showDialog(
+                                                              context: context,
+                                                              builder:
+                                                                  (BuildContext
+                                                                      context) {
+                                                                return AlertDialog(
+                                                                  title: const Text(
+                                                                      'Download complete.'),
+                                                                  content:
+                                                                      const Text(
+                                                                          'The file has been downloaded successfully.'),
+                                                                  actions: [
+                                                                    TextButton(
+                                                                      onPressed:
+                                                                          () =>
+                                                                              Navigator.pop(context),
+                                                                      child: const Text(
+                                                                          'Close'),
+                                                                    ),
+                                                                  ],
+                                                                );
+                                                              });
                                                         } catch (e) {
                                                           print(
                                                               'Download error: $e');
@@ -280,15 +299,28 @@ class _ApprovalPageState extends State<ApprovalPage> {
                                                             isDownloading =
                                                                 false;
                                                           });
-                                                          ScaffoldMessenger.of(
-                                                                  context)
-                                                              .showSnackBar(
-                                                            SnackBar(
-                                                              content: Text(
-                                                                  'Error downloading file: $e'),
-                                                              backgroundColor:
-                                                                  Colors.red,
-                                                            ),
+                                                          showDialog(
+                                                            context: context,
+                                                            builder:
+                                                                (BuildContext
+                                                                    context) {
+                                                              return AlertDialog(
+                                                                title: const Text(
+                                                                    'Error downloading file, please try again.'),
+                                                                content: Text(e
+                                                                    .toString()),
+                                                                actions: [
+                                                                  TextButton(
+                                                                    onPressed: () =>
+                                                                        Navigator.pop(
+                                                                            context),
+                                                                    child:
+                                                                        const Text(
+                                                                            'OK'),
+                                                                  ),
+                                                                ],
+                                                              );
+                                                            },
                                                           );
                                                         }
                                                       },
@@ -331,12 +363,22 @@ class _ApprovalPageState extends State<ApprovalPage> {
                                 },
                               );
                             } catch (e) {
-                              print('Error details: $e');
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content:
-                                        Text('Error with certification: $e')),
-                              );
+                              showDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return AlertDialog(
+                                      title: const Text(
+                                          'Error downloading file, please try again.'),
+                                      content: Text(e.toString()),
+                                      actions: [
+                                        TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: const Text('OK'),
+                                        ),
+                                      ],
+                                    );
+                                  });
                             }
                           },
                           child: const Text(
@@ -432,14 +474,35 @@ class _ApprovalPageState extends State<ApprovalPage> {
           .from('Local_Cook')
           .update({'is_accepted': true}).eq('localcookid', cook['localcookid']);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cook successfully approved!')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Cook successfully approved.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          });
       _fetchCooks();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error approving cook: $e')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error approving cook, please try again.'),
+              content: Text(e.toString()),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          });
     }
   }
 
@@ -450,14 +513,35 @@ class _ApprovalPageState extends State<ApprovalPage> {
           .delete()
           .eq('localcookid', cook['localcookid']);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cook successfully rejected!')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Cook successfully denied.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          });
       _fetchCooks();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error rejecting cook: $e')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error denying cook, please try again.'),
+              content: Text(e.toString()),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          });
     }
   }
 
