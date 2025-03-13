@@ -208,9 +208,20 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching meal plan: $e')),
-        );
+        showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Error'),
+                content: Text('Error fetching meal plan: $e'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            });
       }
     }
   }
@@ -366,13 +377,36 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         }).toList();
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Meal regenerated successfully!')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Meal Regenerated'),
+              content: Text(
+                  'Meal for Day ${day + 1} has been regenerated to: ${newMeal['name']}'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error regenerating meal: $e')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text('Meal regeneration failed: $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          });
     }
   }
 
@@ -487,9 +521,15 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text(
-            'Success',
-            style: TextStyle(color: Colors.green),
+          title: const Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green),
+              SizedBox(width: 10),
+              Text(
+                'Success!',
+                style: TextStyle(color: Colors.green),
+              ),
+            ],
           ),
           content: Text(message),
           actions: [
@@ -534,8 +574,22 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     if (userLocation == null ||
         userLocation['city'] == null ||
         userLocation['barangay'] == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('User location not found.')),
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Location Not Found'),
+            content: const Text(
+              'Your city and barangay information is not available. Please update your profile to continue.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
       );
       return;
     }
@@ -546,8 +600,24 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
     final cooks = await fetchCooks(userCity, userBarangay);
 
     if (cooks.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No cooks available in your area.')),
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('No Cooks Available'),
+            content: const Text(
+              'No cooks are available in your area at the moment. Please try again later.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
       );
       return;
     }
@@ -561,82 +631,90 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: SizedBox(
-            width: 500,
-            height: 500,
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  const Text(
-                    'Available cooks near you',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+            width: 600,
+            height: 580,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Available cooks near you',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: cooks.length,
-                      itemBuilder: (context, index) {
-                        final cook = cooks[index];
-                        final firstName = cook['first_name'] ?? 'N/A';
-                        final lastName = cook['last_name'] ?? 'N/A';
-                        final city = cook['city'] ?? 'N/A';
+                ),
+                const SizedBox(height: 14),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: cooks.length,
+                    itemBuilder: (context, index) {
+                      final cook = cooks[index];
+                      final firstName = cook['first_name'] ?? 'N/A';
+                      final lastName = cook['last_name'] ?? 'N/A';
+                      final city = cook['city'] ?? 'N/A';
 
-                        final addressLine1 =
-                            cook['address_line1']?.toString().trim();
-                        final barangay = cook['barangay']?.toString().trim();
-                        final formattedAddress =
-                            (addressLine1 != null && addressLine1.isNotEmpty)
-                                ? (barangay != null && barangay.isNotEmpty
-                                    ? '$addressLine1, $barangay'
-                                    : addressLine1)
-                                : 'No address provided';
+                      final addressLine1 =
+                          cook['address_line1']?.toString().trim();
+                      final barangay = cook['barangay']?.toString().trim();
+                      final formattedAddress =
+                          (addressLine1 != null && addressLine1.isNotEmpty)
+                              ? (barangay != null && barangay.isNotEmpty
+                                  ? '$addressLine1, $barangay'
+                                  : addressLine1)
+                              : 'No address provided';
 
-                        return Card(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 4,
-                          margin: const EdgeInsets.symmetric(vertical: 8),
-                          child: ListTile(
-                            leading: CircleAvatar(
-                              radius: 24,
-                              backgroundColor: Colors.green,
-                              child: Text(
-                                firstName.isNotEmpty
-                                    ? firstName[0].toUpperCase()
-                                    : 'C',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                      return Card(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 4,
+                        margin: const EdgeInsets.symmetric(vertical: 8),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            radius: 24,
+                            backgroundColor: Colors.green,
+                            child: Text(
+                              firstName.isNotEmpty
+                                  ? firstName[0].toUpperCase()
+                                  : 'C',
+                              style: const TextStyle(
+                                fontSize: 24,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                            title: Text(
-                              '$firstName $lastName',
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text(
-                              'City: ${cook['city'] ?? 'N/A'}\n'
-                              'Barangay: ${cook['barangay'] ?? 'N/A'}\n'
-                              'Address: $formattedAddress\n'
-                              'Availability: ${cook['availability_days'] ?? 'N/A'} '
-                              '(${cook['time_available_from'] ?? 'N/A'} - ${cook['time_available_to'] ?? 'N/A'})',
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            onTap: () => _showCookDetailsDialog(
-                                context, cook, mealPlanId),
                           ),
-                        );
-                      },
-                    ),
+                          title: Text(
+                            '$firstName $lastName',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            'City: ${cook['city'] ?? 'N/A'}\n'
+                            'Barangay: ${cook['barangay'] ?? 'N/A'}\n'
+                            'Address: $formattedAddress\n'
+                            'Availability: ${cook['availability_days'] ?? 'N/A'} '
+                            '(${cook['time_available_from'] ?? 'N/A'} - ${cook['time_available_to'] ?? 'N/A'})',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                          onTap: () =>
+                              _showCookDetailsDialog(context, cook, mealPlanId),
+                        ),
+                      );
+                    },
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
@@ -942,53 +1020,86 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
             child: SizedBox(
               width: 600, // Adjust dialog size
               height: 500,
-              child: DefaultTabController(
-                length: 2,
-                child: Column(
-                  children: [
-                    // Tab Bar
-                    const TabBar(
-                      labelColor: Colors.green,
-                      indicatorColor: Colors.green,
-                      tabs: [
-                        Tab(icon: Icon(Icons.pie_chart), text: 'Pie'),
-                        Tab(icon: Icon(Icons.area_chart), text: 'Pyramid'),
-                      ],
+              child: Column(
+                children: [
+                  // Close button at the top-right
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(
+                          Icons.close,
+                          size: 20,
+                          color: Colors.grey,
+                        ),
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(),
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.grey.withOpacity(0.1),
+                        ),
+                      ),
                     ),
-                    // Tab Views
-                    Expanded(
-                      child: TabBarView(
+                  ),
+
+                  // Existing DefaultTabController content
+                  Expanded(
+                    child: DefaultTabController(
+                      length: 2,
+                      child: Column(
                         children: [
-                          // Pie Image
-                          Center(
-                            child: pieUrl != null && pieUrl.isNotEmpty
-                                ? Image.network(
-                                    pieUrl,
-                                    fit: BoxFit.contain,
-                                    errorBuilder: (context, error,
-                                            stackTrace) =>
-                                        const Text('Pie Image not available'),
-                                  )
-                                : const Text('Pie Image not available'),
+                          // Tab Bar
+                          const TabBar(
+                            labelColor: Colors.green,
+                            indicatorColor: Colors.green,
+                            tabs: [
+                              Tab(icon: Icon(Icons.pie_chart), text: 'Pie'),
+                              Tab(
+                                  icon: Icon(Icons.area_chart),
+                                  text: 'Pyramid'),
+                            ],
                           ),
-                          // Pyramid Image
-                          Center(
-                            child: pyramidUrl != null && pyramidUrl.isNotEmpty
-                                ? Image.network(
-                                    pyramidUrl,
-                                    fit: BoxFit.contain,
-                                    errorBuilder:
-                                        (context, error, stackTrace) =>
-                                            const Text(
-                                                'Pyramid Image not available'),
-                                  )
-                                : const Text('Pyramid Image not available'),
+                          // Tab Views
+                          Expanded(
+                            child: TabBarView(
+                              children: [
+                                // Pie Image
+                                Center(
+                                  child: pieUrl != null && pieUrl.isNotEmpty
+                                      ? Image.network(
+                                          pieUrl,
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (context, error,
+                                                  stackTrace) =>
+                                              const Text(
+                                                  'Pie Image not available'),
+                                        )
+                                      : const Text('Pie Image not available'),
+                                ),
+                                // Pyramid Image
+                                Center(
+                                  child: pyramidUrl != null &&
+                                          pyramidUrl.isNotEmpty
+                                      ? Image.network(
+                                          pyramidUrl,
+                                          fit: BoxFit.contain,
+                                          errorBuilder: (context, error,
+                                                  stackTrace) =>
+                                              const Text(
+                                                  'Pyramid Image not available'),
+                                        )
+                                      : const Text(
+                                          'Pyramid Image not available'),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           );
@@ -1491,11 +1602,21 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                       isTimeValid = valid;
                     });
                     if (!valid) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text(
-                                'Selected time is not within cook\'s availability.')),
-                      );
+                      showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: const Text('Invalid Time'),
+                              content: const Text(
+                                  'Selected time is not within the cook\'s availability.'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            );
+                          });
                     }
                   }
                 }
@@ -1789,11 +1910,11 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                         ],
                       ),
                     ),
-                    TabBar(
+                    const TabBar(
                       indicatorColor: Colors.green,
                       labelColor: Colors.green,
                       unselectedLabelColor: Colors.grey,
-                      tabs: const [
+                      tabs: [
                         Tab(
                           icon: Icon(Icons.list),
                           text: 'Ingredients',
@@ -1851,11 +1972,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                           .eq('user_id', widget.currentUserId)
                                           .single();
 
-                                      if (mealCheck == null) {
-                                        throw Exception(
-                                            'Meal not found or unauthorized');
-                                      }
-
                                       // Update database
                                       await supabase
                                           .from('mealplan')
@@ -1891,10 +2007,8 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                         _showCompletionSuccessDialog(context);
 
                                         // Call the completion callback
-                                        if (onCompleteMeal != null) {
-                                          onCompleteMeal(
-                                              meal['mealplan_id'].toString());
-                                        }
+                                        onCompleteMeal(
+                                            meal['mealplan_id'].toString());
 
                                         // If week is completed, show the week completion dialog
                                         if (weekCompleted) {
@@ -1937,11 +2051,23 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                       }
                                     } catch (e) {
                                       if (context.mounted) {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(
-                                          SnackBar(
-                                              content: Text(
-                                                  'Error completing meal: $e')),
+                                        showDialog(
+                                          context: context,
+                                          builder: (BuildContext context) {
+                                            return AlertDialog(
+                                              title: const Text('Error'),
+                                              content: const Text(
+                                                  'An error occurred while completing the meal. Please try again.'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () =>
+                                                      Navigator.of(context)
+                                                          .pop(),
+                                                  child: const Text('OK'),
+                                                ),
+                                              ],
+                                            );
+                                          },
                                         );
                                       }
                                     }
@@ -1965,9 +2091,21 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
       );
     } catch (error) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading meal details: $error')),
-        );
+        showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Error'),
+                content: const Text(
+                    'An error occurred while fetching meal details. Please try again.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            });
       }
     }
   }

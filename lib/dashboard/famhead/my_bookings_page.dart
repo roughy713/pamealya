@@ -5,9 +5,9 @@ class MyBookingsPage extends StatefulWidget {
   final String currentUserId;
 
   const MyBookingsPage({
-    Key? key,
+    super.key,
     required this.currentUserId,
-  }) : super(key: key);
+  });
 
   @override
   _MyBookingsPageState createState() => _MyBookingsPageState();
@@ -120,7 +120,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
           .eq('user_id', widget.currentUserId)
           .single();
 
-      if (familyMemberResponse == null || familyMemberResponse.isEmpty) {
+      if (familyMemberResponse.isEmpty) {
         throw Exception("No family member found for the current user.");
       }
 
@@ -157,9 +157,18 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching bookings: $e')),
-        );
+        showDialog(
+            context: context,
+            builder: (BuildContext context) => AlertDialog(
+                  title: const Text('Error fetching bookings'),
+                  content: Text('An error occurred: $e'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('OK', style: TextStyle(fontSize: 16)),
+                    ),
+                  ],
+                ));
       }
       setState(() {
         isLoading = false;
@@ -178,7 +187,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
         : (deliveryTime.hour == 0 ? 12 : deliveryTime.hour);
     final amPm = deliveryTime.hour >= 12 ? 'PM' : 'AM';
     final formattedTime =
-        '${hour}:${deliveryTime.minute.toString().padLeft(2, '0')} $amPm';
+        '$hour:${deliveryTime.minute.toString().padLeft(2, '0')} $amPm';
 
     final mealName = booking['mealplan']?['meal_name'] ?? 'N/A';
     final statusName = booking['delivery_status']?['status_name'] ?? 'Unknown';
@@ -301,7 +310,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            '${deliveryTime.day}/${deliveryTime.month}/${deliveryTime.year} at ${formattedTime}',
+                            '${deliveryTime.day}/${deliveryTime.month}/${deliveryTime.year} at $formattedTime',
                             style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
@@ -599,7 +608,7 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                               final amPm =
                                   deliveryTime.hour >= 12 ? 'PM' : 'AM';
                               final formattedTime =
-                                  '${hour}:${deliveryTime.minute.toString().padLeft(2, '0')} $amPm';
+                                  '$hour:${deliveryTime.minute.toString().padLeft(2, '0')} $amPm';
 
                               final mealName =
                                   booking['mealplan']?['meal_name'] ?? 'N/A';
@@ -666,10 +675,10 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
                                               status,
                                               style: TextStyle(
                                                 color: status.toLowerCase() ==
-                                                        'Pending'
+                                                        'pending'
                                                     ? Colors.orange
                                                     : status.toLowerCase() ==
-                                                            'Accepted'
+                                                            'accepted'
                                                         ? Colors.green
                                                         : Colors.black,
                                                 fontWeight: FontWeight.bold,
@@ -705,8 +714,8 @@ class _MyBookingsPageState extends State<MyBookingsPage> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => fetchBookings(),
-        child: const Icon(Icons.refresh),
         tooltip: 'Refresh bookings',
+        child: const Icon(Icons.refresh),
       ),
     );
   }

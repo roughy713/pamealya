@@ -48,15 +48,15 @@ class _PaymentPageState extends State<PaymentPage> {
       final response = await supabase
           .from('bookingrequest')
           .select('''
-          *,
-          Local_Cook (
-            localcookid,
-            first_name,
-            last_name,
-            city,
-            barangay
-          )
-        ''')
+            *,
+            Local_Cook (
+              localcookid,
+              first_name,
+              last_name,
+              city,
+              barangay
+            )
+          ''')
           .eq('user_id', widget.currentUserId!)
           .eq('status', 'accepted')
           .eq('_isBookingAccepted', true)
@@ -88,16 +88,16 @@ class _PaymentPageState extends State<PaymentPage> {
       setState(() => isLoading = true);
 
       final response = await supabase.from('bookingrequest').select('''
-            *,
-            Local_Cook (
-              localcookid,
-              first_name,
-              last_name,
-              city,
-              barangay,
-              user_id
-            )
-          ''').eq('bookingrequest_id', bookingId).single();
+              *,
+              Local_Cook (
+                localcookid,
+                first_name,
+                last_name,
+                city,
+                barangay,
+                user_id
+              )
+            ''').eq('bookingrequest_id', bookingId).single();
 
       setState(() {
         bookingDetails = response;

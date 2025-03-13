@@ -22,10 +22,6 @@ Future<bool> generateMealPlan(
         .eq('position', 'Family Head')
         .single();
 
-    if (familyHeadCheck == null) {
-      throw 'Family head record not found';
-    }
-
     final verifiedFamilyHead = familyHeadCheck['family_head'] as String;
 
     // Delete any existing meal plans
@@ -39,7 +35,7 @@ Future<bool> generateMealPlan(
     final mealsResponse =
         await supabase.from('meal').select().not('recipe_id', 'is', null);
 
-    if (mealsResponse == null || mealsResponse.isEmpty) {
+    if (mealsResponse.isEmpty) {
       throw 'No meals available in the database';
     }
 
@@ -138,6 +134,6 @@ Future<void> _saveMealToDatabase(
     });
   } catch (e) {
     print('Error saving meal to database: $e');
-    throw e;
+    rethrow;
   }
 }

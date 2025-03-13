@@ -79,9 +79,20 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
         dairyAllergy = response?['is_dairy'] ?? false;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching allergens: $e')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text('Failed to fetch allergens: $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          });
     }
   }
 
@@ -106,9 +117,20 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching special conditions: $e')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text('Failed to fetch special condition: $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          });
     }
   }
 
@@ -331,7 +353,7 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
                       'last_name': lastNameController.text.isNotEmpty
                           ? lastNameController.text
                           : null,
-                      'age': int.tryParse(ageController.text) ?? null,
+                      'age': int.tryParse(ageController.text),
                       'dob': dobController.text.isNotEmpty
                           ? dobController.text
                           : null,

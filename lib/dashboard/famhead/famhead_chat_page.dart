@@ -6,9 +6,9 @@ class FamHeadChatPage extends StatefulWidget {
   final String currentUserId;
 
   const FamHeadChatPage({
-    Key? key,
+    super.key,
     required this.currentUserId,
-  }) : super(key: key);
+  });
 
   @override
   _FamHeadChatPageState createState() => _FamHeadChatPageState();
@@ -63,42 +63,37 @@ class _FamHeadChatPageState extends State<FamHeadChatPage> {
               .or('participant1_id.eq.${widget.currentUserId},participant2_id.eq.${widget.currentUserId}')
               .single();
 
-          if (chatRoomResponse != null) {
-            // Fetch messages separately
-            final messagesResponse = await Supabase.instance.client
-                .from('messages')
-                .select()
-                .eq('chat_room_id', chatRoomResponse['id'])
-                .order('created_at', ascending: false);
+          // Fetch messages separately
+          final messagesResponse = await Supabase.instance.client
+              .from('messages')
+              .select()
+              .eq('chat_room_id', chatRoomResponse['id'])
+              .order('created_at', ascending: false);
 
-            int unreadCount = 0;
-            Map<String, dynamic>? lastMessage;
+          int unreadCount = 0;
+          Map<String, dynamic>? lastMessage;
 
-            if (messagesResponse != null) {
-              final messages = messagesResponse as List;
+          final messages = messagesResponse as List;
 
-              // Calculate unread messages
-              unreadCount = messages
-                  .where((msg) =>
-                      msg['receiver_id'] == widget.currentUserId &&
-                      !msg['is_read'])
-                  .length;
+          // Calculate unread messages
+          unreadCount = messages
+              .where((msg) =>
+                  msg['receiver_id'] == widget.currentUserId && !msg['is_read'])
+              .length;
 
-              // Get last message
-              if (messages.isNotEmpty) {
-                lastMessage = {
-                  'content': messages[0]['content'],
-                  'timestamp': messages[0]['created_at'],
-                };
-              }
-            }
-
-            processedCooks.add({
-              ...cook,
-              'unread_count': unreadCount,
-              'last_message': lastMessage,
-            });
+          // Get last message
+          if (messages.isNotEmpty) {
+            lastMessage = {
+              'content': messages[0]['content'],
+              'timestamp': messages[0]['created_at'],
+            };
           }
+
+          processedCooks.add({
+            ...cook,
+            'unread_count': unreadCount,
+            'last_message': lastMessage,
+          });
         } catch (e) {
           print('Error processing cook ${cook['localcookid']}: $e');
           // Add cook without message data
@@ -296,10 +291,17 @@ class _FamHeadChatPageState extends State<FamHeadChatPage> {
                       ),
                     );
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Error opening chat room: $e'),
-                        backgroundColor: Colors.red,
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Error'),
+                        content: Text('Error opening chat: $e'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('OK'),
+                          ),
+                        ],
                       ),
                     );
                   }

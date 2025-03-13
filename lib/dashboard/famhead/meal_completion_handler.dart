@@ -37,7 +37,7 @@ class MealPlanCompletionHandler {
         .eq('user_id', userId)
         .eq('family_head', familyHeadName);
 
-    if (mealPlanQuery == null || mealPlanQuery.isEmpty) {
+    if (mealPlanQuery.isEmpty) {
       return;
     }
 
@@ -249,8 +249,8 @@ class MealPlanCompletionHandler {
                                         crossAxisAlignment:
                                             CrossAxisAlignment.start,
                                         children: [
-                                          Row(
-                                            children: const [
+                                          const Row(
+                                            children: [
                                               Icon(
                                                 Icons.check_circle,
                                                 color: Color(0xFF4CAF50),

@@ -79,8 +79,17 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
       Navigator.of(context).pop();
       _showSuccessDialog('Family member added successfully!');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error adding family member: $e')),
+      showDialog(
+        context: context,
+        builder: (BuildContext context) => AlertDialog(
+            title: const Text('Error'),
+            content: Text('An error occurred: $e'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('OK'),
+              ),
+            ]),
       );
     } finally {
       setState(() {

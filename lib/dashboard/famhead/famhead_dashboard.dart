@@ -11,7 +11,9 @@ import 'transactions_page.dart';
 import 'meal_completion_handler.dart';
 import 'custom_drawer.dart';
 import 'payment_page.dart';
-import 'famhead_support_page.dart'; // Import the support page
+import 'famhead_support_page.dart';
+
+// Import the support page
 
 class FamHeadDashboard extends StatefulWidget {
   final String firstName;
@@ -20,12 +22,12 @@ class FamHeadDashboard extends StatefulWidget {
   final String currentUserId;
 
   const FamHeadDashboard({
-    Key? key,
+    super.key,
     required this.firstName,
     required this.lastName,
     required this.currentUserUsername,
     required this.currentUserId,
-  }) : super(key: key);
+  });
 
   @override
   FamHeadDashboardState createState() => FamHeadDashboardState();
@@ -109,8 +111,6 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           .eq('user_id', widget.currentUserId)
           .single();
 
-      if (familyHeadRecord == null) return;
-
       final familyHeadName = familyHeadRecord['family_head'];
 
       // Then get all family members associated with this specific family head
@@ -151,8 +151,6 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           .eq('user_id', widget.currentUserId)
           .single();
 
-      if (familyHeadRecord == null) return;
-
       final familyHeadName = familyHeadRecord['family_head'];
 
       final response = await Supabase.instance.client
@@ -181,20 +179,18 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
       );
 
       // Process response and populate the meal plan
-      if (response != null) {
-        for (var meal in response) {
-          int day = (meal['day'] ?? 1) - 1;
-          int categoryIndex = (meal['meal_category_id'] ?? 1) - 1;
+      for (var meal in response) {
+        int day = (meal['day'] ?? 1) - 1;
+        int categoryIndex = (meal['meal_category_id'] ?? 1) - 1;
 
-          if (day >= 0 && day < 7 && categoryIndex >= 0 && categoryIndex < 4) {
-            fetchedMealPlan[day][categoryIndex] = {
-              'meal_category_id': meal['meal_category_id'],
-              'meal_name': meal['meal_name'] ?? 'N/A',
-              'recipe_id': meal['recipe_id'] ?? null,
-              'mealplan_id': meal['mealplan_id'],
-              'is_completed': meal['is_completed'] ?? false,
-            };
-          }
+        if (day >= 0 && day < 7 && categoryIndex >= 0 && categoryIndex < 4) {
+          fetchedMealPlan[day][categoryIndex] = {
+            'meal_category_id': meal['meal_category_id'],
+            'meal_name': meal['meal_name'] ?? 'N/A',
+            'recipe_id': meal['recipe_id'],
+            'mealplan_id': meal['mealplan_id'],
+            'is_completed': meal['is_completed'] ?? false,
+          };
         }
       }
 
@@ -206,8 +202,22 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
       checkMealPlanCompletion();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error fetching meal plan: $e')),
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text('Failed to fetch meal plan: $e'),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
         );
       }
     }
@@ -224,8 +234,6 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           .eq('user_id', widget.currentUserId)
           .single();
 
-      if (familyHeadRecord == null) return;
-
       final familyHeadName = familyHeadRecord['family_head'];
 
       // Get the meal details
@@ -234,8 +242,6 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
           .select('day, meal_category_id, meal_name')
           .eq('mealplan_id', mealPlanId)
           .single();
-
-      if (mealDetails == null) return;
 
       // Update in database
       await supabase
@@ -289,12 +295,18 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
 
       if (mounted) {
         // Show completion message
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Meal marked as completed!'),
-            duration: Duration(seconds: 2),
+        showDialog(
+          context: context,
+          builder: (BuildContext context) => const AlertDialog(
+            title: Text('Meal Completed'),
+            content: Text('You have successfully completed the meal!'),
           ),
         );
+
+        // Auto-dismiss the dialog after 2 seconds
+        Future.delayed(const Duration(seconds: 2), () {
+          Navigator.of(context).pop();
+        });
 
         // Check completion status
         checkMealPlanCompletion();
@@ -314,8 +326,22 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to mark meal as completed: $e')),
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text('Failed to mark meal as completed: $e'),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
         );
       }
     }
@@ -334,13 +360,13 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
 
         if (ageGroup != null) {
           if (ageGroup == 'Pregnant') {
-            portionSizeMap['Pregnant'] = row as Map<String, dynamic>;
+            portionSizeMap['Pregnant'] = row;
           } else if (ageGroup == 'Lactating') {
-            portionSizeMap['Lactating'] = row as Map<String, dynamic>;
+            portionSizeMap['Lactating'] = row;
           }
 
           if (gender != null) {
-            portionSizeMap['$ageGroup$gender'] = row as Map<String, dynamic>;
+            portionSizeMap['$ageGroup$gender'] = row;
           }
         }
       }
