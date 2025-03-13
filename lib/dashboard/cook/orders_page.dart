@@ -271,7 +271,7 @@ class _OrdersPageState extends State<OrdersPage> {
         : (deliveryTime.hour == 0 ? 12 : deliveryTime.hour);
     final amPm = deliveryTime.hour >= 12 ? 'PM' : 'AM';
     final formattedTime =
-        '${hour}:${deliveryTime.minute.toString().padLeft(2, '0')} $amPm';
+        '$hour:${deliveryTime.minute.toString().padLeft(2, '0')} $amPm';
     final formattedDate =
         '${deliveryTime.day}/${deliveryTime.month}/${deliveryTime.year}';
 
@@ -544,9 +544,9 @@ class _OrdersPageState extends State<OrdersPage> {
                               ),
                               elevation: 0,
                             ),
-                            child: Row(
+                            child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Icon(Icons.chat, size: 20),
                                 SizedBox(width: 8),
                                 Text(
@@ -589,9 +589,9 @@ class _OrdersPageState extends State<OrdersPage> {
                               ),
                               elevation: 0,
                             ),
-                            child: Row(
+                            child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Icon(Icons.restaurant_menu, size: 20),
                                 SizedBox(width: 8),
                                 Text(
@@ -630,9 +630,9 @@ class _OrdersPageState extends State<OrdersPage> {
                               ),
                               elevation: 0,
                             ),
-                            child: Row(
+                            child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Icon(Icons.menu_book, size: 20),
                                 SizedBox(width: 8),
                                 Text(
@@ -692,7 +692,7 @@ class _OrdersPageState extends State<OrdersPage> {
           .eq('mealplan_id', mealplanId)
           .single();
 
-      if (mealplanResponse == null || mealplanResponse.isEmpty) {
+      if (mealplanResponse.isEmpty) {
         throw Exception('No recipe linked to this meal.');
       }
 
@@ -922,7 +922,7 @@ class _OrdersPageState extends State<OrdersPage> {
           .limit(1)
           .single();
 
-      if (mealplanResponse == null || mealplanResponse.isEmpty) {
+      if (mealplanResponse.isEmpty) {
         throw Exception('Could not find mealplan for this recipe.');
       }
 
@@ -942,7 +942,7 @@ class _OrdersPageState extends State<OrdersPage> {
           .eq('mealplan_id', mealplanId)
           .single();
 
-      if (mealplanResponse == null || mealplanResponse.isEmpty) {
+      if (mealplanResponse.isEmpty) {
         throw Exception('No recipe linked to this meal.');
       }
 
@@ -1329,7 +1329,7 @@ class _OrdersPageState extends State<OrdersPage> {
                               final amPm =
                                   deliveryTime.hour >= 12 ? 'PM' : 'AM';
                               final formattedTime =
-                                  '${hour}:${deliveryTime.minute.toString().padLeft(2, '0')} $amPm';
+                                  '$hour:${deliveryTime.minute.toString().padLeft(2, '0')} $amPm';
 
                               final mealName =
                                   order['mealplan']?['meal_name'] ?? 'N/A';
@@ -1431,8 +1431,8 @@ class _OrdersPageState extends State<OrdersPage> {
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => fetchOrders(),
-        child: const Icon(Icons.refresh),
         tooltip: 'Refresh orders',
+        child: const Icon(Icons.refresh),
       ),
     );
   }

@@ -32,7 +32,7 @@ class CookDashboard extends StatefulWidget {
 class CookDashboardState extends State<CookDashboard> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _selectedIndex = 0;
-  bool _isDrawerOpen = false;
+  final bool _isDrawerOpen = false;
   bool _isSessionRestoring = true;
   bool _isLoggingOut = false;
 

@@ -6,9 +6,9 @@ class CookChatPage extends StatefulWidget {
   final String currentUserId; // Cook's user ID
 
   const CookChatPage({
-    Key? key,
+    super.key,
     required this.currentUserId,
-  }) : super(key: key);
+  });
 
   @override
   _CookChatPageState createState() => _CookChatPageState();
@@ -44,10 +44,6 @@ class _CookChatPageState extends State<CookChatPage> {
                   .select('localcookid')
                   .eq('user_id', widget.currentUserId)
                   .single())['localcookid']);
-
-      if (response == null) {
-        throw Exception('No response received.');
-      }
 
       // Remove duplicates based on familymember_id
       final Map<String, dynamic> uniqueFamilyHeads = {};

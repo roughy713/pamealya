@@ -71,9 +71,20 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
         isLoading = false;
       });
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching booking requests: $e')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text('Error fetching booking requests $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          });
       setState(() {
         isLoading = false;
       });
@@ -110,9 +121,20 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
                   _showIngredientsDialog(
                       booking['mealplan_id']); // Pass mealplan_id
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('No meal plan ID available.')),
-                  );
+                  showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          title: const Text('Error'),
+                          content: const Text('No meal plan ID available'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Close'),
+                            ),
+                          ],
+                        );
+                      });
                 }
               },
               child: const Text('Show Ingredients'),
@@ -148,27 +170,25 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
           mealplan ( meal_name )
         ''').eq('bookingrequest_id', bookingId).single();
 
-      if (bookingDetails != null) {
-        final familyHeadUserId = bookingDetails['user_id'];
-        final cookName =
-            "${bookingDetails['Local_Cook']['first_name']} ${bookingDetails['Local_Cook']['last_name']}";
-        final mealName = bookingDetails['mealplan']['meal_name'];
+      final familyHeadUserId = bookingDetails['user_id'];
+      final cookName =
+          "${bookingDetails['Local_Cook']['first_name']} ${bookingDetails['Local_Cook']['last_name']}";
+      final mealName = bookingDetails['mealplan']['meal_name'];
 
-        // Create notification for the family head
-        await supabase.rpc(
-          'create_notification',
-          params: {
-            'p_recipient_id': familyHeadUserId,
-            'p_sender_id': supabase.auth.currentUser?.id,
-            'p_title': isAccepted ? 'Booking Accepted' : 'Booking Declined',
-            'p_message': isAccepted
-                ? 'Your booking for $mealName has been accepted by cook $cookName.'
-                : 'Your booking for $mealName has been declined by cook $cookName.',
-            'p_notification_type': 'booking_status',
-            'p_related_id': bookingId,
-          },
-        );
-      }
+      // Create notification for the family head
+      await supabase.rpc(
+        'create_notification',
+        params: {
+          'p_recipient_id': familyHeadUserId,
+          'p_sender_id': supabase.auth.currentUser?.id,
+          'p_title': isAccepted ? 'Booking Accepted' : 'Booking Declined',
+          'p_message': isAccepted
+              ? 'Your booking for $mealName has been accepted by cook $cookName.'
+              : 'Your booking for $mealName has been declined by cook $cookName.',
+          'p_notification_type': 'booking_status',
+          'p_related_id': bookingId,
+        },
+      );
 
       setState(() {
         bookingRequests.removeWhere(
@@ -176,19 +196,53 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
         );
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            isAccepted
-                ? 'Booking request successfully accepted.'
-                : 'Booking request successfully declined.',
-          ),
-        ),
+      // Instead of multiple Navigator.pop() calls
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(
+                  isAccepted ? Icons.check_circle : Icons.cancel,
+                  color: isAccepted ? Colors.green : Colors.red,
+                ),
+                const SizedBox(width: 10),
+                Text(isAccepted ? 'Booking Accepted' : 'Booking Declined'),
+              ],
+            ),
+            content: Text(
+              isAccepted
+                  ? 'Booking request successfully accepted.'
+                  : 'Booking request successfully declined.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  // Only one pop to close the current dialog
+                  Navigator.of(context).pop();
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error updating booking status: $e')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text('Error updating booking status: $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          });
     }
   }
 
@@ -201,7 +255,7 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
           .eq('mealplan_id', mealplanId)
           .single();
 
-      if (mealplanResponse == null || mealplanResponse.isEmpty) {
+      if (mealplanResponse.isEmpty) {
         throw Exception('No recipe linked to this meal.');
       }
 
@@ -214,10 +268,20 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
           .eq('recipe_id', recipeId);
 
       if (ingredientsResponse.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('No ingredients found for this recipe.')),
-        );
+        showDialog(
+            context: context,
+            builder: (BuildContext builder) {
+              return AlertDialog(
+                title: const Text('No Ingredients'),
+                content: const Text('No ingredients found for this recipe.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            });
         return;
       }
 
@@ -262,9 +326,20 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
         },
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching ingredients: $e')),
-      );
+      showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Error'),
+              content: Text('Error fetching ingredients: $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
+              ],
+            );
+          });
     }
   }
 
@@ -278,9 +353,20 @@ class _BookingRequestsPageState extends State<BookingRequestsPage> {
           .order('step_number', ascending: true);
 
       if (instructionsResponse.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('No instructions found for this recipe.')),
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('No Instructions'),
+              content: const Text('No instructions found for this recipe.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('OK'),
+                ),
+              ],
+            );
+          },
         );
         return;
       }
