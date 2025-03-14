@@ -44,7 +44,7 @@ class _SupportFormState extends State<SupportForm> {
     });
 
     try {
-      // First, insert the support request
+      // Insert the support request
       final supportResponse = await supabase.from('support_requests').insert({
         'email': email,
         'issue_type': issueType,
@@ -53,27 +53,7 @@ class _SupportFormState extends State<SupportForm> {
         'user_type': 'family_head',
       }).select('request_id');
 
-      // Get the ID of the inserted support request
-      final requestId = supportResponse[0]['request_id'];
-
-      // Manually fetch admin users to notify
-      final adminUsers = await supabase.from('admin').select('user_id');
-
-      // Create notifications for each admin (without using additional_data)
-      for (var admin in adminUsers) {
-        await supabase.from('notifications').insert({
-          'recipient_id': admin['user_id'],
-          'sender_id': supabase.auth.currentUser?.id,
-          'title': 'New Support Request',
-          'message': 'A new ${issueType} support request has been submitted',
-          'notification_type': 'support_request',
-          'related_id': requestId.toString(),
-          'is_read': false,
-          'created_at': DateTime.now().toIso8601String(),
-          'updated_at': DateTime.now().toIso8601String(),
-          // Notice we're not using additional_data
-        });
-      }
+      // Database trigger will automatically create admin notifications
 
       if (mounted) {
         _showSuccessDialog();

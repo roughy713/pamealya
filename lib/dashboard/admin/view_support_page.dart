@@ -104,8 +104,16 @@ class _ViewSupportPageState extends State<ViewSupportPage> {
 
       _fetchSupportRequests();
 
+      // Format the status for display
+      String formattedStatus = newStatus
+          .split('_')
+          .map((word) => word.isNotEmpty
+              ? '${word[0].toUpperCase()}${word.substring(1)}'
+              : '')
+          .join(' ');
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Request status updated to $newStatus')),
+        SnackBar(content: Text('Request status updated to $formattedStatus')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -478,7 +486,13 @@ class _ViewSupportPageState extends State<ViewSupportPage> {
                                                                 .circular(4),
                                                       ),
                                                       child: Text(
-                                                        status.toUpperCase(),
+                                                        status
+                                                            .split('_')
+                                                            .map((word) => word
+                                                                    .isNotEmpty
+                                                                ? '${word[0].toUpperCase()}${word.substring(1)}'
+                                                                : '')
+                                                            .join(' '),
                                                         style: TextStyle(
                                                           color: statusColor,
                                                           fontWeight:

@@ -131,8 +131,26 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
       print('Admin fetched notifications: $response');
 
       if (mounted) {
+        // Create a map to track seen notification types + related_ids to filter duplicates
+        final Map<String, String> seenNotifications = {};
+        final filteredNotifications =
+            List<Map<String, dynamic>>.from(response).where((notification) {
+          // Create a unique key combining notification_type and related_id
+          final key =
+              "${notification['notification_type']}_${notification['related_id']}";
+
+          // If we've seen this combination before, filter it out
+          if (seenNotifications.containsKey(key)) {
+            return false;
+          }
+
+          // Otherwise, mark as seen and keep it
+          seenNotifications[key] = notification['notification_id'].toString();
+          return true;
+        }).toList();
+
         setState(() {
-          notifications = List<Map<String, dynamic>>.from(response);
+          notifications = filteredNotifications;
           _updateUnreadCount();
           _groupNotificationsByDate();
           isLoading = false;
@@ -400,8 +418,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
     // Format status (replace underscores with spaces and capitalize)
     String status = supportRequest['status'] ?? 'pending';
     status = status
-        .replaceAll('_', ' ')
-        .split(' ')
+        .split('_')
         .map((word) => word.isNotEmpty
             ? '${word[0].toUpperCase()}${word.substring(1)}'
             : '')
@@ -501,10 +518,18 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
                       Navigator.pop(context);
                       _fetchNotifications();
 
+                      // Format the status for display
+                      String formattedStatus = newValue
+                          .split('_')
+                          .map((word) => word.isNotEmpty
+                              ? '${word[0].toUpperCase()}${word.substring(1)}'
+                              : '')
+                          .join(' ');
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                            content: Text(
-                                'Status updated to ${newValue.toUpperCase()}')),
+                            content:
+                                Text('Status updated to $formattedStatus')),
                       );
                     } catch (e) {
                       ScaffoldMessenger.of(context).showSnackBar(
