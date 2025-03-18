@@ -14,11 +14,31 @@ class _ApprovalPageState extends State<ApprovalPage> {
   List<dynamic> cooks = [];
   bool isLoading = true;
   bool hasError = false;
+  Map<String, dynamic>? preSelectedCook;
 
   @override
   void initState() {
     super.initState();
     _fetchCooks();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Check if a pre-selected cook was passed via route arguments
+    final arguments = ModalRoute.of(context)?.settings.arguments;
+    if (arguments is Map) {
+      preSelectedCook = arguments['selectedCook'];
+      final autoOpenDetails = arguments['autoOpenDetails'] ?? false;
+
+      // If autoOpenDetails is true, open the details dialog for the pre-selected cook
+      if (preSelectedCook != null && autoOpenDetails) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _showCookDetailsDialog(context, preSelectedCook!);
+        });
+      }
+    }
   }
 
   Future<void> downloadFile(Uint8List bytes, String fileName) async {
@@ -474,6 +494,15 @@ class _ApprovalPageState extends State<ApprovalPage> {
           .from('Local_Cook')
           .update({'is_accepted': true}).eq('localcookid', cook['localcookid']);
 
+      // Notify via admin notification service if possible
+      try {
+        // You might want to inject or import the AdminNotificationService
+        // This is a placeholder - adjust based on your actual implementation
+        // await AdminNotificationService().notifyCookApproved(cook['user_id']);
+      } catch (notificationError) {
+        print('Error sending approval notification: $notificationError');
+      }
+
       showDialog(
           context: context,
           builder: (BuildContext context) {
@@ -508,10 +537,28 @@ class _ApprovalPageState extends State<ApprovalPage> {
 
   Future<void> _rejectCook(Map<String, dynamic> cook) async {
     try {
+      // Delete the cook's record from the Local_Cook table
       await Supabase.instance.client
           .from('Local_Cook')
           .delete()
           .eq('localcookid', cook['localcookid']);
+
+      // Optional: Delete the user from auth if needed
+      // Note: This might require additional backend setup
+      try {
+        await Supabase.instance.client.auth.admin.deleteUser(cook['user_id']);
+      } catch (authError) {
+        print('Error deleting user from auth: $authError');
+      }
+
+      // Notify via admin notification service if possible
+      try {
+        // You might want to inject or import the AdminNotificationService
+        // This is a placeholder - adjust based on your actual implementation
+        // await AdminNotificationService().notifyCookRejected(cook['user_id']);
+      } catch (notificationError) {
+        print('Error sending rejection notification: $notificationError');
+      }
 
       showDialog(
           context: context,

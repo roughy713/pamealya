@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pamealya/dashboard/admin/admin_notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
@@ -431,6 +432,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
       await _showErrorDialog('Please upload your certification and licenses');
       return;
     }
+
     if (formKey.currentState?.validate() == true && _isChecked) {
       try {
         final authResponse = await Supabase.instance.client.auth.signUp(
@@ -464,7 +466,30 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
             'is_accepted': false,
           };
 
-          await Supabase.instance.client.from('Local_Cook').insert(insertData);
+          // Insert cook data
+          final cookResponse = await Supabase.instance.client
+              .from('Local_Cook')
+              .insert(insertData)
+              .select('localcookid')
+              .single();
+
+          // Notify admins about cook registration
+          try {
+            final cookName =
+                '${firstNameController.text} ${lastNameController.text}';
+            final adminNotificationService = AdminNotificationService(
+              supabase: Supabase.instance.client,
+            );
+
+            await adminNotificationService.notifyCookRegistration(
+                userId, cookName);
+            print('Cook registration notification sent successfully');
+          } catch (notificationError) {
+            print(
+                'Error sending cook registration notification: $notificationError');
+            // Continue with account creation even if notification fails
+          }
+
           await _showSuccessDialog();
         } else {
           throw Exception('User registration failed in Supabase Auth.');

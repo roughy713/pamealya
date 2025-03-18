@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pamealya/dashboard/admin/admin_notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../dashboard/famhead/famhead_dashboard.dart';
 import 'address_fields.dart';
@@ -385,6 +386,21 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
             .select();
 
         if (insertResponse.isNotEmpty) {
+          // Notify admins about family head registration
+          try {
+            final adminNotificationService = AdminNotificationService(
+              supabase: Supabase.instance.client,
+            );
+
+            await adminNotificationService.notifyFamilyHeadRegistration(
+                userId, uniqueFamilyHeadName);
+            print('Family head registration notification sent successfully');
+          } catch (notificationError) {
+            print(
+                'Error sending family head registration notification: $notificationError');
+            // Continue with account creation even if notification fails
+          }
+
           // Show success and proceed to dashboard
           await _showSuccessDialog();
           if (mounted) {
@@ -629,6 +645,20 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _dobController,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Date of Birth',
+                          border: OutlineInputBorder(),
+                          suffixIcon: Icon(Icons.calendar_today),
+                        ),
+                        onTap: () => _selectDate(context),
+                        validator: (value) => value?.isEmpty ?? true
+                            ? 'Please select your date of birth'
+                            : null,
                       ),
                       const SizedBox(height: 10),
 

@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'dart:async';
+import 'approval_page.dart'; // Import the approval page
 
 class AdminNotificationsPage extends StatefulWidget {
   const AdminNotificationsPage({super.key});
@@ -367,6 +368,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
     final notificationType = notification['notification_type'];
     final notificationId = notification['notification_id'].toString();
     final relatedId = notification['related_id'];
+    final senderId = notification['sender_id'];
 
     print('Handling notification type: $notificationType');
 
@@ -375,28 +377,362 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
       await markAsRead(notificationId);
     }
 
-    // Handle support_request notifications
-    if (notificationType == 'support_request' && relatedId != null) {
+    // Handle different notification types
+    if (notificationType == 'cook_registration') {
+      // Retrieve the cook details
       try {
-        // Fetch the support request details
-        final supportRequest = await supabase
-            .from('support_requests')
-            .select('*')
-            .eq('request_id', relatedId)
+        final cookData = await supabase
+            .from('Local_Cook')
+            .select()
+            .eq('user_id', relatedId)
             .single();
 
-        // Show support request details dialog
         if (mounted) {
-          _showSupportRequestDialog(supportRequest);
+          Navigator.of(context).push(
+            MaterialPageRoute(
+                builder: (context) => const ApprovalPage(),
+                settings: RouteSettings(arguments: {
+                  'selectedCook': cookData,
+                  'autoOpenDetails': true
+                })),
+          );
         }
       } catch (e) {
+        print('Error fetching cook details: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error loading support request: $e')),
+            SnackBar(content: Text('Error loading cook details: $e')),
           );
         }
       }
+    } else if (notificationType == 'family_head_registration') {
+      // Retrieve the family head details
+      try {
+        final familyHeadData = await supabase
+            .from('familymember')
+            .select()
+            .eq('user_id', relatedId)
+            .single();
+
+        if (mounted) {
+          _showFamilyMemberDetailsDialog(familyHeadData);
+        }
+      } catch (e) {
+        print('Error fetching family head details: $e');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error loading family head details: $e')),
+          );
+        }
+      }
+    } else if (notificationType == 'support_request') {
+      if (relatedId != null) {
+        try {
+          // Fetch the support request details
+          final supportRequest = await supabase
+              .from('support_requests')
+              .select('*')
+              .eq('request_id', relatedId)
+              .single();
+
+          // Show support request details dialog
+          if (mounted) {
+            _showSupportRequestDialog(supportRequest);
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error loading support request: $e')),
+            );
+          }
+        }
+      }
+    } else {
+      // For any other notification types, show a generic dialog
+      _showGenericNotificationDetailsDialog(notification);
     }
+  }
+
+  // Add this method to show family member details
+  void _showFamilyMemberDetailsDialog(Map<String, dynamic> familyMember) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(
+              '${familyMember['first_name']} ${familyMember['last_name']}'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDetailRow(
+                    'Age', familyMember['age']?.toString() ?? 'N/A'),
+                _buildDetailRow('Gender', familyMember['gender'] ?? 'N/A'),
+                _buildDetailRow('Date of Birth', familyMember['dob'] ?? 'N/A'),
+                _buildDetailRow(
+                    'Phone', familyMember['phone']?.toString() ?? 'N/A'),
+                _buildDetailRow('Position', familyMember['position'] ?? 'N/A'),
+                _buildDetailRow(
+                    'Family Head', familyMember['family_head'] ?? 'N/A'),
+                _buildDetailRow('Religion', familyMember['religion'] ?? 'N/A'),
+                const Divider(),
+                const Text(
+                  'Address Information:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                _buildDetailRow(
+                    'Address', familyMember['address_line1'] ?? 'N/A'),
+                _buildDetailRow('Province', familyMember['province'] ?? 'N/A'),
+                _buildDetailRow('City', familyMember['city'] ?? 'N/A'),
+                _buildDetailRow('Barangay', familyMember['barangay'] ?? 'N/A'),
+                _buildDetailRow(
+                    'Postal Code', familyMember['postal_code'] ?? 'N/A'),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Add this method to show generic notification details
+  void _showGenericNotificationDetailsDialog(
+      Map<String, dynamic> notification) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(notification['title'] ?? 'Notification Details'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDetailRow(
+                    'Type', notification['notification_type'] ?? 'N/A'),
+                _buildDetailRow('Message', notification['message'] ?? 'N/A'),
+                _buildDetailRow('Created At',
+                    DateTime.parse(notification['created_at']).toString()),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Add this method to handle cook registration details
+  Future<void> _handleCookRegistrationNotification(String cookId) async {
+    try {
+      // Show loading spinner
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return const Dialog(
+            child: Padding(
+              padding: EdgeInsets.all(20.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(),
+                  SizedBox(width: 20),
+                  Text("Loading cook details..."),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      // Fetch the cook details
+      final cookData = await supabase
+          .from('Local_Cook')
+          .select()
+          .eq('user_id', cookId)
+          .single();
+
+      // Close loading dialog
+      if (mounted) Navigator.of(context).pop();
+
+      // If cook is already approved, show details
+      if (cookData['is_accepted'] == true) {
+        if (mounted) {
+          _showCookDetailsDialog(cookData);
+        }
+      } else {
+        // Navigate to the approval page
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => const ApprovalPage(),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Close loading dialog if open
+      try {
+        if (mounted) Navigator.of(context).pop();
+      } catch (_) {
+        // Dialog might not be open
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading cook details: $e')),
+        );
+      }
+    }
+  }
+
+  // Add this method to show cook details dialog for already approved cooks
+  void _showCookDetailsDialog(Map<String, dynamic> cook) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Container(
+            width: 500,
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    CircleAvatar(
+                      backgroundColor: Colors.green.withOpacity(0.1),
+                      child: const Icon(Icons.restaurant, color: Colors.green),
+                    ),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${cook['first_name']} ${cook['last_name']}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Approved Cook',
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Divider(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildDetailSection(
+                          'Personal Information',
+                          [
+                            _buildDetailRow(
+                                'Age', cook['age']?.toString() ?? 'N/A'),
+                            _buildDetailRow('Gender', cook['gender'] ?? 'N/A'),
+                            _buildDetailRow(
+                                'Date of Birth', cook['dateofbirth'] ?? 'N/A'),
+                            _buildDetailRow('Phone', cook['phone'] ?? 'N/A'),
+                          ],
+                        ),
+                        _buildDetailSection(
+                          'Location',
+                          [
+                            _buildDetailRow(
+                                'Address', cook['address_line1'] ?? 'N/A'),
+                            _buildDetailRow('City', cook['city'] ?? 'N/A'),
+                            _buildDetailRow(
+                                'Province', cook['province'] ?? 'N/A'),
+                            _buildDetailRow(
+                                'Barangay', cook['barangay'] ?? 'N/A'),
+                            _buildDetailRow(
+                                'Postal Code', cook['postal_code'] ?? 'N/A'),
+                          ],
+                        ),
+                        _buildDetailSection(
+                          'Availability',
+                          [
+                            _buildDetailRow(
+                                'Days', cook['availability_days'] ?? 'N/A'),
+                            _buildDetailRow('Hours',
+                                '${cook['time_available_from'] ?? 'N/A'} - ${cook['time_available_to'] ?? 'N/A'}'),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Close'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Helper method for detail sections
+  Widget _buildDetailSection(String title, List<Widget> details) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...details,
+        const SizedBox(height: 8),
+        const Divider(),
+      ],
+    );
   }
 
   void _showSupportRequestDialog(Map<String, dynamic> supportRequest) {
@@ -670,6 +1006,159 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
     );
   }
 
+  // Placeholder methods for other dialog types
+  void _showBookingDetailsDialog(Map<String, dynamic> booking) {
+    // Implement a dialog to display booking details
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Booking Details'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDetailRow('Booking ID', booking['booking_id'] ?? 'N/A'),
+                _buildDetailRow('Status', booking['status'] ?? 'N/A'),
+                _buildDetailRow('Created At', booking['created_at'] ?? 'N/A'),
+                // Add more booking details as needed
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showTransactionDetailsDialog(Map<String, dynamic> transaction) {
+    // Implement a dialog to display transaction details
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Transaction Details'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDetailRow(
+                    'Transaction ID', transaction['transaction_id'] ?? 'N/A'),
+                _buildDetailRow('Amount',
+                    '₱${transaction['amount']?.toStringAsFixed(2) ?? 'N/A'}'),
+                _buildDetailRow('Status', transaction['status'] ?? 'N/A'),
+                _buildDetailRow('Date', transaction['created_at'] ?? 'N/A'),
+                // Add more transaction details as needed
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildNotificationIcon(String type, [String? title]) {
+    IconData iconData;
+    Color iconColor;
+
+    switch (type) {
+      case 'support_request':
+        iconData = Icons.contact_support;
+        iconColor = Colors.blue;
+        break;
+      case 'cook_registration':
+        iconData = Icons.restaurant;
+        iconColor = Colors.orange;
+        break;
+      case 'family_update':
+        iconData = Icons.family_restroom;
+        iconColor = Colors.green;
+        break;
+      case 'meal_plan_generation':
+        iconData = Icons.fastfood;
+        iconColor = Colors.purple;
+        break;
+      case 'booking_request':
+        iconData = Icons.book_online;
+        iconColor = Colors.indigo;
+        break;
+      case 'payment':
+        iconData = Icons.payment;
+        iconColor = Colors.teal;
+        break;
+      case 'order_status':
+        iconData = Icons.delivery_dining;
+        iconColor = Colors.amber;
+        break;
+      case 'meal_completion':
+        iconData = Icons.check_circle;
+        iconColor = Colors.green;
+        break;
+      default:
+        iconData = Icons.notifications;
+        iconColor = Colors.grey;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: iconColor.withOpacity(0.1),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(iconData, color: iconColor),
+    );
+  }
+
+  // Add this method to display user type badges
+  Widget _buildUserTypeBadge(String? additionalData) {
+    if (additionalData == null) return const SizedBox.shrink();
+
+    Color badgeColor;
+    String label;
+
+    if (additionalData.contains('cook')) {
+      badgeColor = Colors.blue;
+      label = 'COOK';
+    } else if (additionalData.contains('family_head')) {
+      badgeColor = Colors.purple;
+      label = 'FAMILY';
+    } else if (additionalData.contains('admin')) {
+      badgeColor = Colors.red;
+      label = 'ADMIN';
+    } else {
+      badgeColor = Colors.grey;
+      label = 'USER';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: badgeColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.bold,
+          color: badgeColor,
+        ),
+      ),
+    );
+  }
+
   Widget _buildDetailRow(String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -694,29 +1183,6 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildNotificationIcon(String type, [String? title]) {
-    IconData iconData;
-    Color iconColor;
-
-    // Only handling support_request type
-    if (type == 'support_request') {
-      iconData = Icons.contact_support;
-      iconColor = Colors.blue;
-    } else {
-      iconData = Icons.notifications;
-      iconColor = Colors.grey;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: iconColor.withOpacity(0.1),
-        shape: BoxShape.circle,
-      ),
-      child: Icon(iconData, color: iconColor),
     );
   }
 
@@ -1031,42 +1497,6 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
                                 color: Colors.grey.shade500,
                               ),
                             ),
-
-                            // Show user type badge for support requests
-                            if (notification['notification_type'] ==
-                                    'support_request' &&
-                                notification['additional_data'] != null)
-                              Padding(
-                                padding: const EdgeInsets.only(left: 8.0),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: notification['additional_data']
-                                            .toString()
-                                            .contains('cook')
-                                        ? Colors.blue.withOpacity(0.1)
-                                        : Colors.purple.withOpacity(0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    notification['additional_data']
-                                            .toString()
-                                            .contains('cook')
-                                        ? 'COOK'
-                                        : 'FAMILY',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: notification['additional_data']
-                                              .toString()
-                                              .contains('cook')
-                                          ? Colors.blue
-                                          : Colors.purple,
-                                    ),
-                                  ),
-                                ),
-                              ),
                           ],
                         ),
                       ],
