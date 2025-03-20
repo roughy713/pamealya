@@ -394,12 +394,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
 
             await adminNotificationService.notifyFamilyHeadRegistration(
                 userId, uniqueFamilyHeadName);
-            print('Family head registration notification sent successfully');
-          } catch (notificationError) {
-            print(
-                'Error sending family head registration notification: $notificationError');
-            // Continue with account creation even if notification fails
-          }
+          } catch (notificationError) {}
 
           // Show success and proceed to dashboard
           await _showSuccessDialog();

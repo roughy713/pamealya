@@ -18,7 +18,6 @@ class AdminNotificationService {
       }
       return [];
     } catch (e) {
-      print('Error fetching admin users: $e');
       return [];
     }
   }
@@ -35,7 +34,6 @@ class AdminNotificationService {
     try {
       final adminIds = await _getAdminUserIds();
       if (adminIds.isEmpty) {
-        print('No admin users found to notify');
         return;
       }
 
@@ -57,11 +55,7 @@ class AdminNotificationService {
           });
         }
       }
-
-      print('Admin notification created successfully');
-    } catch (e) {
-      print('Error creating admin notification: $e');
-    }
+    } catch (e) {}
   }
 
   /// Notifies admin when a new cook registers

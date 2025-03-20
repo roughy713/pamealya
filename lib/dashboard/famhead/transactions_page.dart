@@ -76,7 +76,6 @@ class _TransactionPageState extends State<TransactionPage> {
         isLoading = false;
       });
     } catch (e) {
-      print('Error details: $e');
       if (mounted) {
         setState(() {
           isLoading = false;

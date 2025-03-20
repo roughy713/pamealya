@@ -20,7 +20,6 @@ class FamilyHeadNotificationService {
       }
       return [];
     } catch (e) {
-      debugPrint('Error fetching admin users: $e');
       return [];
     }
   }
@@ -37,7 +36,6 @@ class FamilyHeadNotificationService {
     try {
       final adminIds = await _getAdminUserIds();
       if (adminIds.isEmpty) {
-        debugPrint('No admin users found to notify');
         return;
       }
 
@@ -59,11 +57,7 @@ class FamilyHeadNotificationService {
           });
         }
       }
-
-      debugPrint('Admin notification created successfully');
-    } catch (e) {
-      debugPrint('Error creating admin notification: $e');
-    }
+    } catch (e) {}
   }
 
   /// Notifies admins when a family member is added

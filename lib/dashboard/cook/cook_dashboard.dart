@@ -121,7 +121,6 @@ class CookDashboardState extends State<CookDashboard> {
   }
 
   void changePage(int index) {
-    print('Changing page to index: $index'); // Debug print
     setState(() {
       _selectedIndex = index;
     });
@@ -137,7 +136,6 @@ class CookDashboardState extends State<CookDashboard> {
       ),
       CookNotificationsPage(
         onPageChange: (pageIndex) {
-          print('onPageChange called with index: $pageIndex');
           changePage(pageIndex);
         },
         currentUserId: widget.currentUserId, // Add this line

@@ -110,9 +110,7 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
           }
         });
       }
-    } catch (e) {
-      print('Error marking messages as read: $e');
-    }
+    } catch (e) {}
   }
 
   void _scrollToBottom() {

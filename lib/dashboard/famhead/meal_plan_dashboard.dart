@@ -81,9 +81,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           'p_related_id': widget.currentUserId,
         },
       );
-    } catch (e) {
-      print('Error sending meal completion notification: $e');
-    }
+    } catch (e) {}
   }
 
   Future<bool> checkAndNotifyWeekCompletion() async {
@@ -125,7 +123,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
       return allMealsCompleted;
     } catch (e) {
-      print('Error checking week completion: $e');
       return false;
     }
   }
@@ -154,15 +151,10 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         ),
       );
 
-      for (var meal in response ?? []) {
+      for (var meal in response) {
         try {
-          if (meal == null) {
-            print('Skipping null meal entry');
-            continue;
-          }
           int day = (meal['day'] ?? 1) - 1;
           if (day < 0 || day >= 7) {
-            print('Invalid day value: ${meal['day']}');
             continue;
           }
 
@@ -181,13 +173,11 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
               categoryIndex = 3;
               break;
             default:
-              print('Invalid meal_category_id: ${meal['meal_category_id']}');
               continue;
           }
 
           if (categoryIndex < 0 ||
               categoryIndex >= fetchedMealPlan[day].length) {
-            print('Invalid categoryIndex: $categoryIndex for day: $day');
             continue;
           }
 
@@ -200,7 +190,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
             'day': day + 1,
           };
         } catch (e) {
-          print('Error processing meal: $meal, Error: $e');
           continue;
         }
       }
@@ -433,9 +422,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
         'city': response['city'] as String,
         'barangay': response['barangay'] as String,
       };
-      return null;
     } catch (e) {
-      print('Error fetching user city and barangay: $e');
       return null;
     }
   }
@@ -456,7 +443,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
       return response != null ? List<Map<String, dynamic>>.from(response) : [];
     } catch (e) {
-      print('Error fetching cooks: $e');
       return [];
     }
   }
@@ -1169,7 +1155,6 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           ? constructImageUrl(response?[imageType])
           : null;
     } catch (e) {
-      print('Error fetching $imageType image: $e');
       return null;
     }
   }

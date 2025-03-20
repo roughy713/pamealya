@@ -65,8 +65,6 @@ class _EarningsPageState extends State<EarningsPage> {
             )
           ''').eq('localcookid', localCookId).eq('is_paid', true);
 
-      print('Found ${paidBookings.length} paid bookings');
-
       // Process each booking
       List<Map<String, dynamic>> processedTransactions = [];
       double totalEarningsAmount = 0.0;
@@ -80,8 +78,6 @@ class _EarningsPageState extends State<EarningsPage> {
             .select()
             .eq('bookingrequest_id', bookingId)
             .maybeSingle();
-
-        print('Transaction response for booking $bookingId: $response');
 
         if (response != null) {
           final processedTransaction = {
@@ -135,11 +131,7 @@ class _EarningsPageState extends State<EarningsPage> {
         totalEarnings = totalEarningsAmount;
         isLoading = false;
       });
-
-      print('Processed ${transactions.length} transactions');
-      print('Total earnings: $totalEarnings');
     } catch (e) {
-      print('Error fetching earnings: $e');
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -167,7 +159,6 @@ class _EarningsPageState extends State<EarningsPage> {
       try {
         transactionDate = DateTime.parse(paymentDateStr);
       } catch (e) {
-        print('Error parsing date: $e');
         return false;
       }
 
@@ -253,7 +244,6 @@ class _EarningsPageState extends State<EarningsPage> {
       // Handle the timestamp (no timezone)
       date = DateTime.parse(paymentDate);
     } catch (e) {
-      print('Error parsing date for transaction $index: $e');
       date = DateTime.now();
     }
 

@@ -64,7 +64,6 @@ class _AddMealsPageState extends State<AddMealsPage> {
 
   Future<String?> _uploadImage() async {
     if (_imageBytes == null || _imageName == null) {
-      print('No image selected');
       return null;
     }
 
@@ -75,7 +74,6 @@ class _AddMealsPageState extends State<AddMealsPage> {
       final String timestamp =
           DateTime.now().millisecondsSinceEpoch.toString().substring(5);
       final fileName = '${timestamp}_$cleanedFileName';
-      print('Attempting to upload image with filename: $fileName');
 
       // Upload the image
       await Supabase.instance.client.storage.from('meal-images').uploadBinary(
@@ -84,18 +82,13 @@ class _AddMealsPageState extends State<AddMealsPage> {
             fileOptions:
                 const FileOptions(contentType: 'image/jpeg', upsert: true),
           );
-      print('Image uploaded successfully');
 
       // Get the public URL
       final String publicUrl = Supabase.instance.client.storage
           .from('meal-images')
           .getPublicUrl(fileName);
-
-      print('Generated URL: $publicUrl');
-
       return publicUrl;
     } catch (e) {
-      print('Error during image upload: $e');
       showDialog(
           context: context,
           builder: (BuildContext context) {

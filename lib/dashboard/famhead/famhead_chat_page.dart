@@ -17,8 +17,6 @@ class FamHeadChatPage extends StatefulWidget {
 class _FamHeadChatPageState extends State<FamHeadChatPage> {
   Future<List<Map<String, dynamic>>> fetchCooksWithUnreadCount() async {
     try {
-      print('Fetching cooks for user ID: ${widget.currentUserId}');
-
       // First get the familymember_id
       final familyMemberResponse = await Supabase.instance.client
           .from('bookingrequest')
@@ -30,7 +28,6 @@ class _FamHeadChatPageState extends State<FamHeadChatPage> {
           .single();
 
       final String familyMemberId = familyMemberResponse['familymember_id'];
-      print('Family Member ID: $familyMemberId');
 
       // First fetch the cooks
       final cooksResponse = await Supabase.instance.client
@@ -95,7 +92,6 @@ class _FamHeadChatPageState extends State<FamHeadChatPage> {
             'last_message': lastMessage,
           });
         } catch (e) {
-          print('Error processing cook ${cook['localcookid']}: $e');
           // Add cook without message data
           processedCooks.add({
             ...cook,
@@ -107,7 +103,6 @@ class _FamHeadChatPageState extends State<FamHeadChatPage> {
 
       return processedCooks;
     } catch (e) {
-      print('Error in fetchCooksWithUnreadCount: $e');
       throw Exception('Error fetching booked cooks: $e');
     }
   }

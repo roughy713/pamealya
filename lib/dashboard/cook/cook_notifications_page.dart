@@ -47,15 +47,12 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return;
 
-    print('Setting up notifications for cook with ID: $userId');
-
     _notificationSubscription = supabase
         .from('notifications')
         .stream(primaryKey: ['notification_id'])
         .eq('recipient_id', userId)
         .order('created_at', ascending: _sortOrder == 'oldest')
         .listen((List<Map<String, dynamic>> data) {
-          print('Cook received notification data: $data');
           if (mounted) {
             setState(() {
               notifications = data;
@@ -63,9 +60,7 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
               _groupNotificationsByDate();
             });
           }
-        }, onError: (error) {
-          print('Cook notification subscription error: $error');
-        });
+        }, onError: (error) {});
   }
 
   void _updateUnreadCount() {
@@ -122,15 +117,11 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) throw Exception('User not authenticated');
 
-      print('Fetching notifications for cook: $userId');
-
       final response = await supabase
           .from('notifications')
           .select()
           .eq('recipient_id', userId)
           .order('created_at', ascending: _sortOrder == 'oldest');
-
-      print('Cook fetched notifications: $response');
 
       if (mounted) {
         setState(() {
@@ -141,7 +132,6 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
         });
       }
     } catch (e) {
-      print('Error fetching cook notifications: $e');
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -171,7 +161,6 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
         });
       }
     } catch (e) {
-      print('Error marking notification as read: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error marking notification as read: $e')),
@@ -441,7 +430,6 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
   Future<void> _handleNotificationTap(Map<String, dynamic> notification) async {
     final notificationType = notification['notification_type'];
     final senderId = notification['sender_id'];
-    print('Handling notification type: $notificationType');
 
     // Mark notification as read when clicked
     if (!(notification['is_read'] ?? false)) {
@@ -450,17 +438,14 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
 
     switch (notificationType) {
       case 'booking':
-        print('Navigating to booking requests page...');
         widget.onPageChange?.call(1);
         break;
 
       case 'delivery_status':
-        print('Navigating to orders page...');
         widget.onPageChange?.call(2);
         break;
 
       case 'message':
-        print('Navigating to chat room...');
         if (senderId != null && widget.currentUserId != null) {
           try {
             // Get or create chat room
@@ -490,7 +475,6 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
               );
             }
           } catch (e) {
-            print('Error navigating to chat room: $e');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Error opening chat: $e')),
@@ -504,7 +488,6 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
         await _handleSupportResponseNotification(notification);
         break;
       default:
-        print('Unknown notification type: $notificationType');
     }
   }
 
@@ -840,7 +823,6 @@ class _CookNotificationsPageState extends State<CookNotificationsPage> {
                       _updateUnreadCount();
                     });
                   } catch (e) {
-                    print('Error deleting notification: $e');
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(

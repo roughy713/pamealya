@@ -226,8 +226,6 @@ class _OrdersPageState extends State<OrdersPage> {
         isLoading = false;
       });
     } catch (e) {
-      // Debug: log the error
-      print('Error fetching orders: $e');
       if (mounted) {
         _showErrorDialog('Error fetching orders: $e');
       }
@@ -1121,16 +1119,12 @@ class _OrdersPageState extends State<OrdersPage> {
 
         return true;
       } else {
-        print('Database error: No rows affected.');
         return false;
       }
     } catch (e) {
-      print('Error updating order status: $e');
-
       if (mounted) {
         _showErrorDialog('Error updating status: $e');
       }
-
       return false;
     }
   }

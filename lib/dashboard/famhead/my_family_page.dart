@@ -873,11 +873,6 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
           memberData: memberData,
           onEdit: (updatedData) async {
             try {
-              // Explicitly log what's being updated for debugging
-              print(
-                  'Updating family member with ID: ${memberData['familymember_id']}');
-              print('Updated data: $updatedData');
-
               // Update the core family member record
               final response = await Supabase.instance.client
                   .from('familymember')

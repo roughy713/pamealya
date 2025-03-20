@@ -31,9 +31,7 @@ class _CookPageState extends State<CookPage> {
           userCity = city;
         });
         fetchCooks(city);
-      } else {
-        print('User city not found.');
-      }
+      } else {}
     });
   }
 
@@ -49,7 +47,6 @@ class _CookPageState extends State<CookPage> {
 
       return response != null ? response['city'] as String : null;
     } catch (e) {
-      print('Error fetching user city: $e');
       return null;
     }
   }
@@ -76,9 +73,7 @@ class _CookPageState extends State<CookPage> {
               response); // Ensure type consistency
         });
       }
-    } catch (e) {
-      print('Error fetching cooks: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> bookCook(String cookId, DateTime desiredDeliveryTime) async {

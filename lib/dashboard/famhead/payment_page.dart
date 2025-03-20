@@ -68,9 +68,6 @@ class _PaymentPageState extends State<PaymentPage> {
           pendingBookings = List<Map<String, dynamic>>.from(response);
           isLoading = false;
         });
-
-        print(
-            'Fetched ${pendingBookings.length} pending and accepted bookings'); // Debug print
       }
     } catch (e) {
       if (mounted) {
@@ -79,7 +76,6 @@ class _PaymentPageState extends State<PaymentPage> {
           isLoading = false;
         });
       }
-      print('Error in fetchPendingBookings: $e'); // Debug print
     }
   }
 
@@ -138,15 +134,6 @@ class _PaymentPageState extends State<PaymentPage> {
         throw Exception('Invalid amount. Amount must be greater than 0.');
       }
 
-      // Debug logs
-      print('Creating transaction with:');
-      print('- transaction_id: $transactionId');
-      print('- user_id (payer): ${widget.currentUserId}');
-      print('- localcookid: $cookId');
-      print('- cook user_id: $cookUserId');
-      print('- amount: $amount');
-      print('- bookingrequest_id: $selectedBookingId');
-
       // Create the transaction record - make sure localcookid is included properly
       await supabase.from('transactions').insert({
         'transaction_id': transactionId,
@@ -169,13 +156,8 @@ class _PaymentPageState extends State<PaymentPage> {
           .eq('transaction_id', transactionId)
           .single();
 
-      print('Verified transaction:');
-      print('- localcookid in DB: ${verifyTransaction['localcookid']}');
-      print('- expected localcookid: $cookId');
-
       // If localcookid is missing or null, try updating it
       if (verifyTransaction['localcookid'] == null) {
-        print('WARNING: Transaction created without localcookid, fixing...');
         await supabase.from('transactions').update({'localcookid': cookId}).eq(
             'transaction_id', transactionId);
       }
@@ -190,9 +172,7 @@ class _PaymentPageState extends State<PaymentPage> {
           'total_amount': amount,
           'status': 'Completed',
         });
-      } catch (e) {
-        print('Error creating transaction summary (non-critical): $e');
-      }
+      } catch (e) {}
 
       // Update booking request status
       await supabase

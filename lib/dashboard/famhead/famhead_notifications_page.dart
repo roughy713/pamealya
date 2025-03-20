@@ -62,7 +62,6 @@ class _OrderActionButtonState extends State<OrderActionButton> {
         }
       }
     } catch (e) {
-      print('Error checking order status: $e');
     } finally {
       if (mounted) {
         setState(() {
@@ -195,7 +194,6 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
 
       return mealDetails != null && mealDetails['is_completed'] == true;
     } catch (e) {
-      print('Error checking meal completion status: $e');
       return false;
     }
   }
@@ -398,8 +396,6 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return;
 
-    print('Setting up notifications for family head with ID: $userId');
-
     _notificationSubscription = supabase
         .from('notifications')
         .stream(primaryKey: ['notification_id'])
@@ -413,9 +409,7 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
               _groupNotificationsByDate();
             });
           }
-        }, onError: (error) {
-          print('Family head notification subscription error: $error');
-        });
+        }, onError: (error) {});
   }
 
   void _updateUnreadCount() {
@@ -463,8 +457,6 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) throw Exception('User not authenticated');
 
-      print('Fetching notifications for family head: $userId');
-
       final response = await supabase
           .from('notifications')
           .select()
@@ -480,7 +472,6 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
         isLoading = false;
       });
     } catch (e) {
-      print('Error fetching family head notifications: $e');
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -601,19 +592,12 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
       Map<String, dynamic> notification) async {
     final bookingRequestId = notification['related_id'];
 
-    // Add debugging output
-    print('Attempting to find booking request with ID: $bookingRequestId');
-    print('Notification data: ${notification.toString()}');
-
     try {
       // Debug query to check what's in the booking request table
       final allRequests = await supabase
           .from('bookingrequest')
           .select('bookingrequest_id')
           .limit(5); // Just get a few to check format
-
-      print(
-          'Sample booking request IDs in database: ${allRequests.map((r) => r['bookingrequest_id']).toList()}');
 
       // Check if booking request exists first
       final bookingExists = await supabase
@@ -624,7 +608,6 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
 
       // If null, booking request not found
       if (bookingExists == null) {
-        print('No booking request found with ID: $bookingRequestId');
         throw Exception('Order not found or invalid booking request ID');
       }
 
@@ -752,11 +735,7 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
                                   .from('mealplan')
                                   .update({'is_completed': true}).eq(
                                       'mealplan_id', mealplanId);
-
-                              print(
-                                  'Meal with ID $mealplanId marked as completed');
                             } catch (e) {
-                              print('Error marking meal as completed: $e');
                               // Continue with the process even if this update fails
                             }
                           }
@@ -768,8 +747,6 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
                                 .update({'is_received': true}).eq(
                                     'bookingrequest_id', bookingRequestId);
                           } catch (e) {
-                            print(
-                                'Warning: Could not update is_received column: $e');
                             // Continue with the process even if this update fails
                           }
 
@@ -870,8 +847,6 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
       );
     } catch (e) {
       if (!mounted) return;
-
-      print('Order completion dialog error: $e');
 
       // Handle the case where the booking request is missing
       return showDialog(
@@ -1068,9 +1043,7 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
           final dateTime =
               DateTime.parse(orderResponse['desired_delivery_time']);
           deliveryTime = DateFormat('MMM dd, yyyy - hh:mm a').format(dateTime);
-        } catch (e) {
-          print('Error parsing date: $e');
-        }
+        } catch (e) {}
       }
 
       // Determine status color and icon
@@ -1575,7 +1548,6 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
                       _updateUnreadCount();
                     });
                   } catch (e) {
-                    print('Error deleting notification: $e');
                     if (!mounted) return;
                     _showErrorDialog(
                         context, 'Error', 'Error deleting notification: $e');

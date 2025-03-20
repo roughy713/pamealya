@@ -41,15 +41,12 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
     final userId = supabase.auth.currentUser?.id;
     if (userId == null) return;
 
-    print('Setting up notifications for admin with ID: $userId');
-
     _notificationSubscription = supabase
         .from('notifications')
         .stream(primaryKey: ['notification_id'])
         .eq('recipient_id', userId)
         .order('created_at', ascending: _sortOrder == 'oldest')
         .listen((List<Map<String, dynamic>> data) {
-          print('Admin received notification data: $data');
           if (mounted) {
             setState(() {
               notifications = data;
@@ -57,9 +54,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
               _groupNotificationsByDate();
             });
           }
-        }, onError: (error) {
-          print('Admin notification subscription error: $error');
-        });
+        }, onError: (error) {});
   }
 
   void _updateUnreadCount() {
@@ -121,15 +116,11 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) throw Exception('User not authenticated');
 
-      print('Fetching notifications for admin: $userId');
-
       final response = await supabase
           .from('notifications')
           .select()
           .eq('recipient_id', userId)
           .order('created_at', ascending: _sortOrder == 'oldest');
-
-      print('Admin fetched notifications: $response');
 
       if (mounted) {
         // Create a map to track seen notification types + related_ids to filter duplicates
@@ -158,7 +149,6 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
         });
       }
     } catch (e) {
-      print('Error fetching admin notifications: $e');
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -189,7 +179,6 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
         });
       }
     } catch (e) {
-      print('Error marking notification as read: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error marking notification as read: $e')),
@@ -370,8 +359,6 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
     final relatedId = notification['related_id'];
     final senderId = notification['sender_id'];
 
-    print('Handling notification type: $notificationType');
-
     // Mark notification as read when clicked
     if (!(notification['is_read'] ?? false)) {
       await markAsRead(notificationId);
@@ -398,7 +385,6 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
           );
         }
       } catch (e) {
-        print('Error fetching cook details: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error loading cook details: $e')),
@@ -418,7 +404,6 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
           _showFamilyMemberDetailsDialog(familyHeadData);
         }
       } catch (e) {
-        print('Error fetching family head details: $e');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error loading family head details: $e')),
@@ -986,8 +971,6 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
                     // Close loading dialog if open
                     if (mounted) Navigator.of(context).pop();
 
-                    print('Error submitting response: $e');
-
                     // Show error dialog
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -1408,7 +1391,6 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
                       _updateUnreadCount();
                     });
                   } catch (e) {
-                    print('Error deleting notification: $e');
                     if (!mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -1539,7 +1521,6 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
       // Count the results
       return response.length;
     } catch (e) {
-      debugPrint('Error fetching unread notifications count: $e');
       return 0;
     }
   }
@@ -1561,7 +1542,6 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
         );
       }
     } catch (e) {
-      debugPrint('Error deleting notification: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error deleting notification: $e')),

@@ -42,7 +42,6 @@ class _DashboardPageState extends State<DashboardPage> {
       }
 
       final localCookId = localCookResponse['localcookid'];
-      print("Fetched localcookid: $localCookId");
 
       // Fetch Accepted Bookings
       final acceptedResponse = await supabase
@@ -51,8 +50,6 @@ class _DashboardPageState extends State<DashboardPage> {
           .eq('localcookid', localCookId)
           .eq('_isBookingAccepted', true);
 
-      print("Accepted Bookings Response: $acceptedResponse");
-
       // Fetch Booking Requests
       final bookingRequestsResponse = await supabase
           .from('bookingrequest')
@@ -60,8 +57,6 @@ class _DashboardPageState extends State<DashboardPage> {
           .eq('localcookid', localCookId)
           .eq('_isBookingAccepted', false)
           .eq('status', 'pending');
-
-      print("Booking Requests Response: $bookingRequestsResponse");
 
       // Fetch Upcoming Bookings
       final upcomingResponse = await supabase
@@ -76,8 +71,6 @@ class _DashboardPageState extends State<DashboardPage> {
           .eq('localcookid', localCookId)
           .eq('_isBookingAccepted', true)
           .order('desired_delivery_time', ascending: true);
-
-      print("Upcoming Bookings Response: $upcomingResponse");
 
       // Update state
       setState(() {
@@ -104,7 +97,6 @@ class _DashboardPageState extends State<DashboardPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error fetching data: $e')),
       );
-      print('Error fetching data: $e');
     }
   }
 

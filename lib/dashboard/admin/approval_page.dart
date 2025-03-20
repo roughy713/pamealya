@@ -313,8 +313,6 @@ class _ApprovalPageState extends State<ApprovalPage> {
                                                                 );
                                                               });
                                                         } catch (e) {
-                                                          print(
-                                                              'Download error: $e');
                                                           setState(() {
                                                             isDownloading =
                                                                 false;
@@ -499,9 +497,7 @@ class _ApprovalPageState extends State<ApprovalPage> {
         // You might want to inject or import the AdminNotificationService
         // This is a placeholder - adjust based on your actual implementation
         // await AdminNotificationService().notifyCookApproved(cook['user_id']);
-      } catch (notificationError) {
-        print('Error sending approval notification: $notificationError');
-      }
+      } catch (notificationError) {}
 
       showDialog(
           context: context,
@@ -547,18 +543,14 @@ class _ApprovalPageState extends State<ApprovalPage> {
       // Note: This might require additional backend setup
       try {
         await Supabase.instance.client.auth.admin.deleteUser(cook['user_id']);
-      } catch (authError) {
-        print('Error deleting user from auth: $authError');
-      }
+      } catch (authError) {}
 
       // Notify via admin notification service if possible
       try {
         // You might want to inject or import the AdminNotificationService
         // This is a placeholder - adjust based on your actual implementation
         // await AdminNotificationService().notifyCookRejected(cook['user_id']);
-      } catch (notificationError) {
-        print('Error sending rejection notification: $notificationError');
-      }
+      } catch (notificationError) {}
 
       showDialog(
           context: context,

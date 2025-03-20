@@ -26,8 +26,6 @@ class _ViewFamilyHeadsPageState extends State<ViewFamilyHeadsPage> {
     });
 
     try {
-      debugPrint('Fetching family heads...');
-
       final response = await Supabase.instance.client
           .from('familymember')
           .select()
@@ -38,7 +36,6 @@ class _ViewFamilyHeadsPageState extends State<ViewFamilyHeadsPage> {
         isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error fetching family heads: $e');
       setState(() {
         isLoading = false;
         hasError = true;
@@ -48,9 +45,6 @@ class _ViewFamilyHeadsPageState extends State<ViewFamilyHeadsPage> {
 
   Future<List<dynamic>> _fetchFamilyMembers(dynamic familyHead) async {
     try {
-      debugPrint('Fetching family members...');
-      debugPrint('Family head member ID: ${familyHead['familymember_id']}');
-
       final response = await Supabase.instance.client
           .from('familymember')
           .select()
@@ -58,10 +52,8 @@ class _ViewFamilyHeadsPageState extends State<ViewFamilyHeadsPage> {
               '${familyHead['first_name']} ${familyHead['last_name']}')
           .neq('familymember_id', familyHead['familymember_id']);
 
-      debugPrint('Family members response: $response');
       return response as List<dynamic>;
     } catch (e) {
-      debugPrint('Error in _fetchFamilyMembers: $e');
       return [];
     }
   }
@@ -250,7 +242,6 @@ class _ViewFamilyHeadsPageState extends State<ViewFamilyHeadsPage> {
         },
       );
     } catch (e) {
-      debugPrint('Error in showing family details: $e');
       if (context.mounted) {
         Navigator.of(context).pop();
         showDialog(

@@ -130,9 +130,7 @@ class _OrdersChatRoomPageState extends State<OrdersChatRoomPage> {
           }
         });
       }
-    } catch (e) {
-      print('Error marking messages as read: $e');
-    }
+    } catch (e) {}
   }
 
   void _scrollToBottom() {

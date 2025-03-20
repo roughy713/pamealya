@@ -8,8 +8,6 @@ Future<bool> generateMealPlan(
     final supabase = Supabase.instance.client;
 
     final userId = supabase.auth.currentUser?.id;
-    print('Debug - User ID: $userId');
-    print('Debug - Family Head Name: $familyHeadName');
 
     if (userId == null) {
       throw 'User not authenticated';
@@ -98,11 +96,8 @@ Future<bool> generateMealPlan(
         FamilyHeadNotificationService(supabase: supabase);
     await notificationService.notifyMealPlanGenerated(
         userId, verifiedFamilyHead);
-
-    print('Meal plan generation completed successfully');
     return true;
   } catch (e) {
-    print('Error in meal plan generation: $e');
     if (context.mounted) {
       showDialog(
         context: context,
@@ -140,7 +135,6 @@ Future<void> _saveMealToDatabase(
       'is_completed': false,
     });
   } catch (e) {
-    print('Error saving meal to database: $e');
     rethrow;
   }
 }

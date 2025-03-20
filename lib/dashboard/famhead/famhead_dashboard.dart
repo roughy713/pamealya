@@ -137,9 +137,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
       setState(() {
         familyMembers = members;
       });
-    } catch (e) {
-      print('Error fetching family members: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> fetchMealPlan() async {
@@ -374,9 +372,7 @@ class FamHeadDashboardState extends State<FamHeadDashboard> {
       setState(() {
         portionSizeData = portionSizeMap;
       });
-    } catch (e) {
-      print('Error fetching portion size data: $e');
-    }
+    } catch (e) {}
   }
 
   void changePage(int index) {

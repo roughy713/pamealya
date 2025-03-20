@@ -50,9 +50,7 @@ class _ViewMealsPageState extends State<ViewMealsPage> {
       setState(() {
         categories = List<Map<String, dynamic>>.from(response);
       });
-    } catch (e) {
-      debugPrint('Error loading categories: $e');
-    }
+    } catch (e) {}
   }
 
   Future<void> _fetchMeals() async {
@@ -99,7 +97,6 @@ class _ViewMealsPageState extends State<ViewMealsPage> {
         isLoading = false;
       });
     } catch (e) {
-      debugPrint('Error fetching meals: $e');
       setState(() {
         isLoading = false;
         hasError = true;
@@ -132,7 +129,6 @@ class _ViewMealsPageState extends State<ViewMealsPage> {
           .eq('recipe_id', recipeId);
       return response;
     } catch (e) {
-      debugPrint('Error fetching ingredients: $e');
       return [];
     }
   }
@@ -146,7 +142,6 @@ class _ViewMealsPageState extends State<ViewMealsPage> {
           .order('step_number', ascending: true);
       return response;
     } catch (e) {
-      debugPrint('Error fetching instructions: $e');
       return [];
     }
   }
@@ -391,7 +386,6 @@ class _ViewMealsPageState extends State<ViewMealsPage> {
         },
       );
     } catch (e) {
-      debugPrint('Error showing meal details: $e');
       if (context.mounted) {
         Navigator.of(context).pop(); // Dismiss loading dialog
         showDialog(
@@ -694,7 +688,6 @@ class _ViewMealsPageState extends State<ViewMealsPage> {
       // Refresh the meals list
       _fetchMeals();
     } catch (e) {
-      debugPrint('Error updating meal: $e');
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -816,7 +809,6 @@ class _ViewMealsPageState extends State<ViewMealsPage> {
       // Refresh the meals list
       _fetchMeals();
     } catch (e) {
-      debugPrint('Error deleting meal: $e');
       showDialog(
           context: context,
           builder: (BuildContext context) {
