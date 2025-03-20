@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import 'famhead_notification_service.dart';
+
 // Utility function
 String constructImageUrl(String? imageUrl) {
   if (imageUrl == null || imageUrl.isEmpty) return '';
@@ -264,6 +266,7 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
 
       final mealPlanId = existingMeal['mealplan_id'];
       final oldRecipeId = existingMeal['recipe_id'];
+      final oldMealName = existingMeal['meal_name']; // Store the old meal name
 
       if (mealPlanId == null || oldRecipeId == null) {
         throw Exception(
@@ -362,6 +365,13 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
           'p_related_id': mealPlanId.toString(),
         },
       );
+
+      // Send notification to admins
+      final notificationService =
+          FamilyHeadNotificationService(supabase: Supabase.instance.client);
+
+      await notificationService.notifyMealRegenerated(widget.currentUserId,
+          widget.familyHeadName, newMeal['name'], day + 1);
 
       // Update the local state
       setState(() {
@@ -1986,6 +1996,18 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                         meal['day'] ?? 1,
                                       );
 
+                                      // Send notification to admins via FamilyHeadNotificationService
+                                      final notificationService =
+                                          FamilyHeadNotificationService(
+                                              supabase: supabase);
+
+                                      await notificationService
+                                          .notifyMealCompleted(
+                                              widget.currentUserId,
+                                              widget.familyHeadName,
+                                              meal['meal_name'],
+                                              meal['day'] ?? 1);
+
                                       // Update local state
                                       setState(() {
                                         for (var dayMeals in mealPlanData) {
@@ -2011,7 +2033,18 @@ class _MealPlanDashboardState extends State<MealPlanDashboard> {
                                             meal['mealplan_id'].toString());
 
                                         // If week is completed, show the week completion dialog
+                                        // and notify admins about the week completion
                                         if (weekCompleted) {
+                                          // Send notification to admins about week completion
+                                          final notificationService =
+                                              FamilyHeadNotificationService(
+                                                  supabase: supabase);
+
+                                          await notificationService
+                                              .notifyWeeklyMealPlanCompleted(
+                                                  widget.currentUserId,
+                                                  widget.familyHeadName);
+
                                           await showDialog(
                                             context: context,
                                             builder: (BuildContext context) {

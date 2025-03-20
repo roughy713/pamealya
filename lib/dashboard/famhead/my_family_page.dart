@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'add_family_member_dialog.dart';
 import 'edit_family_member_dialog.dart';
+import 'famhead_notification_service.dart';
 import 'meal_plan_generator.dart';
 import 'famhead_dashboard.dart';
 
@@ -872,39 +873,24 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
           memberData: memberData,
           onEdit: (updatedData) async {
             try {
-              await Supabase.instance.client
+              // Explicitly log what's being updated for debugging
+              print(
+                  'Updating family member with ID: ${memberData['familymember_id']}');
+              print('Updated data: $updatedData');
+
+              // Update the core family member record
+              final response = await Supabase.instance.client
                   .from('familymember')
                   .update(updatedData)
                   .eq('familymember_id', memberData['familymember_id'])
-                  .eq('user_id', widget.currentUserId); // Add user_id check
+                  .eq('user_id', widget.currentUserId)
+                  .select(); // Add .select() to get response data
 
-              fetchFamilyMembers();
-              if (context.mounted) {
-                Navigator.of(context).pop();
-                showDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) => AlertDialog(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    title: const Row(
-                      children: [
-                        Icon(Icons.check_circle, color: Colors.green, size: 30),
-                        SizedBox(width: 10),
-                        Text('Success', style: TextStyle(color: Colors.green)),
-                      ],
-                    ),
-                    content: const Text('Family member updated successfully!'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('OK'),
-                      ),
-                    ],
-                  ),
-                );
-              }
+              // Refresh the family members list to show updated data
+              await fetchFamilyMembers();
+
+              // No need to call Navigator.pop() here as it's done in the dialog
+              // No need to show success dialog as it's shown in the dialog
             } catch (e) {
               if (context.mounted) {
                 showDialog(
@@ -961,23 +947,52 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
 
   Future<void> _deleteFamilyMember(String familyMemberId) async {
     try {
-      // Delete allergens associated with the family member
-      await Supabase.instance.client
-          .from('familymember_allergens')
-          .delete()
-          .eq('familymember_id', familyMemberId);
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const AlertDialog(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text("Deleting family member...")
+            ],
+          ),
+        ),
+      );
 
-      // Delete special conditions associated with the family member
-      await Supabase.instance.client
-          .from('familymember_specialconditions')
-          .delete()
-          .eq('familymember_id', familyMemberId);
-
-      // Delete the family member record
-      await Supabase.instance.client
+      final memberDetails = await Supabase.instance.client
           .from('familymember')
-          .delete()
-          .eq('familymember_id', familyMemberId);
+          .select('first_name, last_name, family_head')
+          .eq('familymember_id', familyMemberId)
+          .single();
+
+      final memberName =
+          '${memberDetails['first_name']} ${memberDetails['last_name']}';
+      final familyHeadName = memberDetails['family_head'];
+
+      // Call the database function to delete everything
+      await Supabase.instance.client.rpc(
+        'delete_family_member_with_relations',
+        params: {'family_member_id': familyMemberId},
+      );
+
+      // Close the loading dialog
+      if (context.mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Send notification to admins
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId != null) {
+        final notificationService =
+            FamilyHeadNotificationService(supabase: Supabase.instance.client);
+
+        await notificationService.notifyFamilyMemberDeleted(
+            userId, familyHeadName, memberName);
+      }
 
       // Update the UI
       setState(() {
@@ -1004,7 +1019,7 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
                 ),
               ],
             ),
-            content: const Text('Family member deleted successfully!'),
+            content: Text('Family member $memberName deleted successfully!'),
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -1015,7 +1030,14 @@ class _MyFamilyPageState extends State<MyFamilyPage> {
         );
       }
     } catch (e) {
+      // Close loading dialog if open
       if (context.mounted) {
+        try {
+          Navigator.of(context).pop();
+        } catch (_) {
+          // Dialog might not be open
+        }
+
         showDialog(
           context: context,
           barrierDismissible: false,

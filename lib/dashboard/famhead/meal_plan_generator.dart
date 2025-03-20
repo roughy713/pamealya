@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'famhead_notification_service.dart';
 
 Future<bool> generateMealPlan(
     BuildContext context, String familyHeadName) async {
@@ -91,6 +92,12 @@ Future<bool> generateMealPlan(
         'p_related_id': userId,
       },
     );
+
+    // Send notification to admins
+    final notificationService =
+        FamilyHeadNotificationService(supabase: supabase);
+    await notificationService.notifyMealPlanGenerated(
+        userId, verifiedFamilyHead);
 
     print('Meal plan generation completed successfully');
     return true;

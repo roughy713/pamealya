@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'famhead_notification_service.dart';
+
 class EditFamilyMemberDialog extends StatefulWidget {
   final Map<String, dynamic> memberData;
   final Function(Map<String, dynamic>) onEdit;
@@ -162,12 +164,24 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
     }
   }
 
-  Future<void> _showSuccessDialog(String message) async {
+  Future<void> _showSuccessDialog(String message, String memberName) async {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Success'),
-        content: Text(message),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.green, size: 30),
+            SizedBox(width: 10),
+            Text(
+              'Success',
+              style: TextStyle(color: Colors.green),
+            ),
+          ],
+        ),
+        content: Text('Family member $memberName updated successfully!'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -346,34 +360,64 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
                 ),
                 TextButton(
                   onPressed: () async {
-                    final updatedMember = {
-                      'first_name': firstNameController.text.isNotEmpty
-                          ? firstNameController.text
-                          : null,
-                      'last_name': lastNameController.text.isNotEmpty
-                          ? lastNameController.text
-                          : null,
-                      'age': int.tryParse(ageController.text),
-                      'dob': dobController.text.isNotEmpty
-                          ? dobController.text
-                          : null,
-                      'religion': religionController.text.isNotEmpty
-                          ? religionController.text
-                          : null,
-                      'gender': gender ?? 'N/A',
-                      'position': position ?? 'N/A',
-                    };
-
                     try {
+                      final response = await Supabase.instance.client.rpc(
+                        'update_family_member',
+                        params: {
+                          'p_familymember_id':
+                              widget.memberData['familymember_id'],
+                          'p_first_name': firstNameController.text,
+                          'p_last_name': lastNameController.text,
+                          'p_age': int.tryParse(ageController.text) ?? 0,
+                          'p_dob': dobController.text,
+                          'p_religion': religionController.text,
+                          'p_gender': gender ?? 'N/A',
+                          'p_position': position ?? 'N/A'
+                        },
+                      );
+
+                      // Then update the related allergens and special conditions
                       await saveAllergens(widget.memberData['familymember_id']);
                       await saveSpecialCondition(
                           widget.memberData['familymember_id']);
-                      widget.onEdit(updatedMember);
+
+                      // Send notification only after all database operations succeed
+                      final userId =
+                          Supabase.instance.client.auth.currentUser?.id;
+                      if (userId != null) {
+                        final notificationService =
+                            FamilyHeadNotificationService(
+                                supabase: Supabase.instance.client);
+
+                        final familyHeadName =
+                            widget.memberData['family_head'] ?? 'Family Head';
+                        final memberName =
+                            '${firstNameController.text} ${lastNameController.text}';
+
+                        await notificationService.notifyFamilyMemberEdited(
+                            userId, familyHeadName, memberName);
+                      }
+
+                      // Only close the dialog and show success after all operations complete
                       Navigator.pop(context);
                       await _showSuccessDialog(
-                          'Family member updated successfully!');
+                          'Family member updated successfully!',
+                          '${firstNameController.text} ${lastNameController.text}');
                     } catch (e) {
-                      print('Error: $e');
+                      // Show an error dialog with details
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Error'),
+                          content: Text('Error updating family member: $e'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
                     }
                   },
                   child: const Text("Save"),

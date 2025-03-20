@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'famhead_notification_service.dart';
+
 class AddFamilyMemberDialog extends StatefulWidget {
   final Function(Map<String, dynamic>) onAdd;
   final String familyHeadName;
@@ -74,6 +76,17 @@ class AddFamilyMemberDialogState extends State<AddFamilyMemberDialog> {
         'is_lactating': _selectedCondition == 'Lactating',
         'is_none': _selectedCondition == 'None',
       });
+
+      // Send notification to admins
+      final userId = supabase.auth.currentUser?.id;
+      if (userId != null) {
+        final notificationService =
+            FamilyHeadNotificationService(supabase: supabase);
+        final memberName =
+            '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}';
+        await notificationService.notifyFamilyMemberAdded(
+            userId, widget.familyHeadName, memberName);
+      }
 
       widget.onAdd(newMember);
       Navigator.of(context).pop();

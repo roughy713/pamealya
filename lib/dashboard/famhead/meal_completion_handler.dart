@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'famhead_notification_service.dart';
 import 'meal_plan_generator.dart';
 import 'famhead_dashboard.dart';
 
@@ -223,6 +224,14 @@ class MealPlanCompletionHandler {
 
                               // Generate new meal plan
                               await generateMealPlan(context, familyHeadName);
+
+                              // Create notification for admin using the notification service
+                              final notificationService =
+                                  FamilyHeadNotificationService(
+                                      supabase: supabase);
+
+                              await notificationService.notifyMealPlanGenerated(
+                                  userId, familyHeadName);
 
                               // Split the family head name for later use
                               final names = familyHeadName.split(' ');
