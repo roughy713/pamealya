@@ -43,6 +43,17 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
     'Uncle',
     'Aunt',
   ];
+  final List<String> religionOptions = [
+    'Roman Catholic',
+    'Islam',
+    'Christian',
+    'Saksi ni Jehova',
+    '7th Day Adventist',
+    'Iglesia Ni Cristo',
+    'Mormons',
+    'Other',
+  ];
+  final List<String> conditionOptions = ['None', 'Lactating', 'Pregnant'];
 
   @override
   void initState() {
@@ -58,12 +69,57 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
     dobController = TextEditingController(text: widget.memberData['dob'] ?? '');
     religionController =
         TextEditingController(text: widget.memberData['religion'] ?? '');
-    gender = widget.memberData['gender'];
-    position = widget.memberData['position'];
+
+    // Initialize dropdown values - make sure they're valid
+    _initializeDropdownValues();
 
     // Fetch allergen and special condition data for the family member
     _fetchAllergens();
     _fetchSpecialCondition();
+
+    // Add debug logging to help identify issues
+    print(
+        'Position: $position, in options list: ${positionOptions.contains(position)}');
+    print(
+        'Gender: $gender, in options list: ${genderOptions.contains(gender)}');
+    print(
+        'Religion: ${religionController.text}, in options list: ${religionOptions.contains(religionController.text)}');
+  }
+
+  void _initializeDropdownValues() {
+    // Handle gender
+    gender = widget.memberData['gender'];
+    if (gender != null && !genderOptions.contains(gender)) {
+      print('Warning: Gender "$gender" not in dropdown options');
+      gender = genderOptions.isNotEmpty ? genderOptions.first : null;
+    }
+
+    // Handle position - special care for Family Head
+    position = widget.memberData['position'];
+
+    // Normalize Family Head if needed
+    if (position != null && position!.toLowerCase().trim() == 'family head') {
+      position = 'Family Head';
+    }
+
+    // Ensure position exists in options
+    if (position != null && !positionOptions.contains(position)) {
+      print('Warning: Position "$position" not in dropdown options');
+      if (position == 'Family Head') {
+        // This should never happen after normalization above, but just in case
+        positionOptions.insert(0, 'Family Head');
+      } else {
+        // Use a default for non-Family Head positions
+        position = positionOptions.isNotEmpty ? positionOptions.first : null;
+      }
+    }
+
+    // Handle religion
+    String dbReligion = religionController.text;
+    if (dbReligion.isNotEmpty && !religionOptions.contains(dbReligion)) {
+      print('Warning: Religion "$dbReligion" not in dropdown options');
+      religionController.text = 'Other';
+    }
   }
 
   Future<void> _fetchAllergens() async {
@@ -81,20 +137,22 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
         dairyAllergy = response?['is_dairy'] ?? false;
       });
     } catch (e) {
-      showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Error'),
-              content: Text('Failed to fetch allergens: $e'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('OK'),
-                ),
-              ],
-            );
-          });
+      if (context.mounted) {
+        showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Error'),
+                content: Text('Failed to fetch allergens: $e'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            });
+      }
     }
   }
 
@@ -118,21 +176,32 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
           }
         });
       }
+
+      // Validate the selected condition
+      if (_selectedCondition != null &&
+          !conditionOptions.contains(_selectedCondition)) {
+        print(
+            'Warning: Condition "$_selectedCondition" not in dropdown options');
+        _selectedCondition =
+            conditionOptions.isNotEmpty ? conditionOptions.first : null;
+      }
     } catch (e) {
-      showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: const Text('Error'),
-              content: Text('Failed to fetch special condition: $e'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('OK'),
-                ),
-              ],
-            );
-          });
+      if (context.mounted) {
+        showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Error'),
+                content: Text('Failed to fetch special condition: $e'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            });
+      }
     }
   }
 
@@ -165,6 +234,8 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
   }
 
   Future<void> _showSuccessDialog(String message, String memberName) async {
+    if (!context.mounted) return;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -273,20 +344,14 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
                         },
                       ),
                       DropdownButtonFormField<String>(
-                        value: religionController.text.isNotEmpty
+                        value: religionController.text.isNotEmpty &&
+                                religionOptions
+                                    .contains(religionController.text)
                             ? religionController.text
                             : null,
                         onChanged: (value) =>
                             setState(() => religionController.text = value!),
-                        items: [
-                          'Roman Catholic',
-                          'Islam',
-                          'Christian',
-                          'Saksi ni Jehova',
-                          '7th Day Adventist',
-                          'Iglesia Ni Cristo',
-                          'Mormons',
-                        ].map((religion) {
+                        items: religionOptions.map((religion) {
                           return DropdownMenuItem(
                               value: religion, child: Text(religion));
                         }).toList(),
@@ -318,8 +383,7 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
                         value: _selectedCondition,
                         onChanged: (value) =>
                             setState(() => _selectedCondition = value),
-                        items:
-                            ['None', 'Lactating', 'Pregnant'].map((condition) {
+                        items: conditionOptions.map((condition) {
                           return DropdownMenuItem(
                               value: condition, child: Text(condition));
                         }).toList(),
@@ -371,8 +435,10 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
                           'p_age': int.tryParse(ageController.text) ?? 0,
                           'p_dob': dobController.text,
                           'p_religion': religionController.text,
-                          'p_gender': gender ?? 'N/A',
-                          'p_position': position ?? 'N/A'
+                          'p_gender': gender ??
+                              'Male', // Use default value instead of N/A
+                          'p_position': position ??
+                              'Family Member' // Use default value instead of N/A
                         },
                       );
 
@@ -405,19 +471,21 @@ class _EditFamilyMemberDialogState extends State<EditFamilyMemberDialog> {
                           '${firstNameController.text} ${lastNameController.text}');
                     } catch (e) {
                       // Show an error dialog with details
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Error'),
-                          content: Text('Error updating family member: $e'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(context).pop(),
-                              child: const Text('OK'),
-                            ),
-                          ],
-                        ),
-                      );
+                      if (context.mounted) {
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Error'),
+                            content: Text('Error updating family member: $e'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
                     }
                   },
                   child: const Text("Save"),
