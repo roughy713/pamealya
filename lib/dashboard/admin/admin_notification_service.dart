@@ -80,4 +80,82 @@ class AdminNotificationService {
       relatedId: userId,
     );
   }
+
+  // ----- NEW ORDER NOTIFICATION METHODS -----
+
+  /// Notifies admins when a cook accepts a booking request
+  Future<void> notifyBookingAccepted(String cookId, String cookName,
+      String familyHeadName, String mealName, String bookingId) async {
+    await _notifyAdmins(
+      senderId: cookId,
+      title: 'Booking Accepted',
+      message:
+          '$cookName has accepted a booking request from $familyHeadName for $mealName.',
+      notificationType: 'booking_status',
+      relatedId: bookingId,
+    );
+  }
+
+  /// Notifies admins when a cook declines a booking request
+  Future<void> notifyBookingDeclined(String cookId, String cookName,
+      String familyHeadName, String mealName, String bookingId) async {
+    await _notifyAdmins(
+      senderId: cookId,
+      title: 'Booking Declined',
+      message:
+          '$cookName has declined a booking request from $familyHeadName for $mealName.',
+      notificationType: 'booking_status',
+      relatedId: bookingId,
+    );
+  }
+
+  /// Notifies admins when a cook updates order status to preparing
+  Future<void> notifyOrderPreparing(String cookId, String cookName,
+      String familyHeadName, String mealName, String bookingId) async {
+    await _notifyAdmins(
+      senderId: cookId,
+      title: 'Order Status: Preparing',
+      message: '$cookName has started preparing $mealName for $familyHeadName.',
+      notificationType: 'order_status',
+      relatedId: bookingId,
+    );
+  }
+
+  /// Notifies admins when a cook updates order status to on delivery
+  Future<void> notifyOrderOnDelivery(String cookId, String cookName,
+      String familyHeadName, String mealName, String bookingId) async {
+    await _notifyAdmins(
+      senderId: cookId,
+      title: 'Order Status: On Delivery',
+      message: '$cookName is delivering $mealName to $familyHeadName.',
+      notificationType: 'order_status',
+      relatedId: bookingId,
+    );
+  }
+
+  /// Notifies admins when a cook updates order status to completed
+  Future<void> notifyOrderCompleted(String cookId, String cookName,
+      String familyHeadName, String mealName, String bookingId) async {
+    await _notifyAdmins(
+      senderId: cookId,
+      title: 'Order Status: Completed',
+      message:
+          '$cookName has completed the order for $mealName to $familyHeadName.',
+      notificationType: 'order_status',
+      relatedId: bookingId,
+    );
+  }
+
+  /// Notifies admins when a family head confirms receipt of an order
+  Future<void> notifyOrderReceived(String familyHeadId, String familyHeadName,
+      String cookName, String mealName, String bookingId) async {
+    await _notifyAdmins(
+      senderId: familyHeadId,
+      title: 'Order Received',
+      message:
+          '$familyHeadName has confirmed receipt of $mealName from $cookName.',
+      notificationType: 'order_received',
+      relatedId: bookingId,
+    );
+  }
 }

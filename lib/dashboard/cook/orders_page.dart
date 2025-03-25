@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pamealya/common/order_chat_room_page.dart';
+import 'package:pamealya/dashboard/admin/admin_notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class OrdersPage extends StatefulWidget {
@@ -1048,6 +1049,7 @@ class _OrdersPageState extends State<OrdersPage> {
 
       final cookName = order['cook_name'] ?? 'Your cook';
       final mealName = order['mealplan']?['meal_name'] ?? 'your meal';
+      final familyHeadName = order['family_head_name'] ?? 'the customer';
 
       switch (step) {
         case 2:
@@ -1096,6 +1098,26 @@ class _OrdersPageState extends State<OrdersPage> {
               'p_related_id': bookingRequestId,
             },
           );
+        }
+
+        // Send notification to admin
+        final adminNotificationService =
+            AdminNotificationService(supabase: supabase);
+        final currentUserId = supabase.auth.currentUser!.id;
+
+        switch (step) {
+          case 2:
+            await adminNotificationService.notifyOrderPreparing(currentUserId,
+                cookName, familyHeadName, mealName, bookingRequestId);
+            break;
+          case 3:
+            await adminNotificationService.notifyOrderOnDelivery(currentUserId,
+                cookName, familyHeadName, mealName, bookingRequestId);
+            break;
+          case 4:
+            await adminNotificationService.notifyOrderCompleted(currentUserId,
+                cookName, familyHeadName, mealName, bookingRequestId);
+            break;
         }
 
         await fetchOrders();

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pamealya/dashboard/admin/admin_notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:intl/intl.dart';
@@ -613,10 +614,10 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
 
       // Now fetch with details
       final orderResponse = await supabase.from('bookingrequest').select('''
-          bookingrequest_id, 
-          Local_Cook:localcookid(first_name, last_name, user_id, phone),
-          mealplan:mealplan_id(meal_name)
-        ''').eq('bookingrequest_id', bookingRequestId).single();
+        bookingrequest_id, 
+        Local_Cook:localcookid(first_name, last_name, user_id, phone),
+        mealplan:mealplan_id(meal_name)
+      ''').eq('bookingrequest_id', bookingRequestId).single();
 
       if (orderResponse.isEmpty) {
         throw Exception('Order details are incomplete');
@@ -755,6 +756,40 @@ class _FamHeadNotificationsPageState extends State<FamHeadNotificationsPage> {
                               .from('bookingrequest')
                               .update({'is_received': true}).eq(
                                   'bookingrequest_id', bookingRequestId);
+
+                          // Get full order details for notifications
+                          final orderDetails =
+                              await supabase.from('bookingrequest').select('''
+                          bookingrequest_id,
+                          Local_Cook:localcookid(first_name, last_name, user_id),
+                          mealplan:mealplan_id(meal_name),
+                          familymember(first_name, last_name)
+                        ''').eq('bookingrequest_id', bookingRequestId).single();
+
+                          final familyMember =
+                              orderDetails['familymember'] ?? {};
+                          final cook = orderDetails['Local_Cook'] ?? {};
+                          final mealplanDetails =
+                              orderDetails['mealplan'] ?? {};
+
+                          final familyHeadName =
+                              '${familyMember['first_name'] ?? 'Unknown'} ${familyMember['last_name'] ?? ''}'
+                                  .trim();
+                          final cookFullName =
+                              '${cook['first_name'] ?? 'Unknown'} ${cook['last_name'] ?? ''}'
+                                  .trim();
+                          final mealName =
+                              mealplanDetails['meal_name'] ?? 'N/A';
+
+                          // Notify admin about order receipt confirmation
+                          final adminNotificationService =
+                              AdminNotificationService(supabase: supabase);
+                          await adminNotificationService.notifyOrderReceived(
+                              widget.currentUserId!,
+                              familyHeadName,
+                              cookFullName,
+                              mealName,
+                              bookingRequestId);
 
                           if (!mounted) return;
 
