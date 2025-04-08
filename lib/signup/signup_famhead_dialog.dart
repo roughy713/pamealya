@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:pamealya/dashboard/admin/admin_notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../dashboard/famhead/famhead_dashboard.dart';
 import 'address_fields.dart';
 
@@ -38,6 +40,16 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
   String? _postalCode;
   bool _isChecked = false;
 
+  // Religion options
+  final List<String> _religionOptions = [
+    'Roman Catholic',
+    'Islam',
+    'Christian',
+    'Saksi ni Jehova',
+    '7th Day Adventist',
+    'Iglesia Ni Cristo',
+  ];
+
   // Password validation
   final String _passwordPattern =
       r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$';
@@ -51,7 +63,14 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
   });
 
   @override
+  void initState() {
+    super.initState();
+    _loadSavedFormData();
+  }
+
+  @override
   void dispose() {
+    _saveFormData();
     _firstNameController.dispose();
     _lastNameController.dispose();
     _emailController.dispose();
@@ -62,6 +81,79 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
     _phoneController.dispose();
     _addressController.dispose();
     super.dispose();
+  }
+
+  // Save form data when dialog is closed
+  Future<void> _saveFormData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final formData = {
+        'firstName': _firstNameController.text,
+        'lastName': _lastNameController.text,
+        'email': _emailController.text,
+        'age': _ageController.text,
+        'dob': _dobController.text,
+        'phone': _phoneController.text,
+        'address': _addressController.text,
+        'gender': _selectedGender,
+        'religion': _selectedReligion,
+        'province': _selectedProvince,
+        'city': _selectedCity,
+        'barangay': _selectedBarangay,
+        'postalCode': _postalCode,
+        'isChecked': _isChecked,
+      };
+
+      // Only save if there's at least one non-empty field
+      if (formData.values
+          .any((value) => value != null && value.toString().isNotEmpty)) {
+        await prefs.setString('famhead_signup_data', jsonEncode(formData));
+      }
+    } catch (e) {
+      debugPrint('Error saving form data: $e');
+    }
+  }
+
+  // Load saved form data when dialog is opened
+  Future<void> _loadSavedFormData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedData = prefs.getString('famhead_signup_data');
+
+      if (savedData != null && savedData.isNotEmpty) {
+        final formData = jsonDecode(savedData) as Map<String, dynamic>;
+
+        setState(() {
+          _firstNameController.text = formData['firstName'] ?? '';
+          _lastNameController.text = formData['lastName'] ?? '';
+          _emailController.text = formData['email'] ?? '';
+          _ageController.text = formData['age'] ?? '';
+          _dobController.text = formData['dob'] ?? '';
+          _phoneController.text = formData['phone'] ?? '';
+          _addressController.text = formData['address'] ?? '';
+          _selectedGender = formData['gender'];
+          _selectedReligion = formData['religion'];
+          _selectedProvince = formData['province'];
+          _selectedCity = formData['city'];
+          _selectedBarangay = formData['barangay'];
+          _postalCode = formData['postalCode'];
+          _isChecked = formData['isChecked'] ?? false;
+        });
+
+        // Show snackbar to notify user their data was recovered
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Your previously entered information has been recovered.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading form data: $e');
+    }
   }
 
   Widget _buildRequirementRow(String text, bool isValid) {
@@ -367,7 +459,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
           'dob': _dobController.text,
           'position': 'Family Head',
           'family_head': uniqueFamilyHeadName,
-          'religion': _selectedReligion ?? 'N/A',
+          'religion': _selectedReligion ?? 'Roman Catholic',
           'user_id': userId,
           'address_line1': _addressController.text,
           'province': _selectedProvince,
@@ -376,7 +468,7 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
           'postal_code': _postalCode,
           'phone': int.tryParse(_phoneController.text),
           'is_family_head': true,
-          'is_halal': false,
+          'is_halal': _selectedReligion == 'Islam',
         };
 
         // Insert into familymember table
@@ -386,6 +478,10 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
             .select();
 
         if (insertResponse.isNotEmpty) {
+          // Clear saved form data after successful signup
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('famhead_signup_data');
+
           // Notify admins about family head registration
           try {
             final adminNotificationService = AdminNotificationService(
@@ -457,7 +553,10 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                     children: [
                       IconButton(
                         icon: const Icon(Icons.close, color: Colors.black),
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () {
+                          _saveFormData(); // Save form data before closing
+                          Navigator.of(context).pop();
+                        },
                       ),
                     ],
                   ),
@@ -563,14 +662,13 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                       ),
                       const SizedBox(height: 10),
 
-                      // Confirm Password - FIXED with proper spacing and padding
+                      // Confirm Password
                       TextFormField(
                         controller: _confirmPasswordController,
                         obscureText: !_confirmPasswordVisible,
                         decoration: InputDecoration(
                           labelText: 'Confirm Password',
                           border: const OutlineInputBorder(),
-                          // Set explicit content padding to match other fields
                           contentPadding: const EdgeInsets.symmetric(
                               vertical: 16, horizontal: 12),
                           suffixIcon: IconButton(
@@ -596,11 +694,25 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           return null;
                         },
                       ),
-                      const SizedBox(
-                          height:
-                              10), // Ensure proper spacing after confirm password field
+                      const SizedBox(height: 10),
 
-                      // Personal Details
+                      // Date of Birth field - Moved above Age and Gender
+                      TextFormField(
+                        controller: _dobController,
+                        readOnly: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Date of Birth',
+                          border: OutlineInputBorder(),
+                          suffixIcon: Icon(Icons.calendar_today),
+                        ),
+                        onTap: () => _selectDate(context),
+                        validator: (value) => value?.isEmpty ?? true
+                            ? 'Please select your date of birth'
+                            : null,
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Personal Details - Age and Gender row
                       Row(
                         children: [
                           Expanded(
@@ -642,17 +754,27 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                         ],
                       ),
                       const SizedBox(height: 10),
-                      TextFormField(
-                        controller: _dobController,
-                        readOnly: true,
+
+                      // Religion dropdown - Added below Age and Gender
+                      DropdownButtonFormField<String>(
                         decoration: const InputDecoration(
-                          labelText: 'Date of Birth',
+                          labelText: 'Religion',
                           border: OutlineInputBorder(),
-                          suffixIcon: Icon(Icons.calendar_today),
                         ),
-                        onTap: () => _selectDate(context),
-                        validator: (value) => value?.isEmpty ?? true
-                            ? 'Please select your date of birth'
+                        value: _selectedReligion,
+                        items: _religionOptions.map((String religion) {
+                          return DropdownMenuItem<String>(
+                            value: religion,
+                            child: Text(religion),
+                          );
+                        }).toList(),
+                        onChanged: (String? value) {
+                          setState(() {
+                            _selectedReligion = value;
+                          });
+                        },
+                        validator: (value) => value == null
+                            ? 'Please select your religion'
                             : null,
                       ),
                       const SizedBox(height: 10),
@@ -693,7 +815,6 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                           Theme(
                             data: Theme.of(context).copyWith(
                               unselectedWidgetColor: Colors.grey[600],
-                              // This ensures checkbox hover matches terms text hover
                               hoverColor: Colors.green[50],
                             ),
                             child: Checkbox(
@@ -714,7 +835,6 @@ class SignUpFormDialogState extends State<SignUpFormDialog> {
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 4.0),
                                   decoration: const BoxDecoration(
-                                    // This creates hover effect area
                                     color: Colors.transparent,
                                   ),
                                   child: const Text(

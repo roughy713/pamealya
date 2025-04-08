@@ -4,6 +4,8 @@ import 'package:pamealya/dashboard/admin/admin_notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:typed_data';
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../home_page.dart';
 import 'address_fields.dart';
 
@@ -82,7 +84,14 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
   };
 
   @override
+  void initState() {
+    super.initState();
+    _loadSavedFormData();
+  }
+
+  @override
   void dispose() {
+    _saveFormData();
     firstNameController.dispose();
     lastNameController.dispose();
     emailController.dispose();
@@ -94,6 +103,138 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
     locationController.dispose();
     dateOfBirthController.dispose();
     super.dispose();
+  }
+
+  // Save form data when dialog is closed
+  Future<void> _saveFormData() async {
+    try {
+      // Convert TimeOfDay to string for storage
+      String? timeFromStr = timeFrom?.format(context);
+      String? timeToStr = timeTo?.format(context);
+
+      final prefs = await SharedPreferences.getInstance();
+      final formData = {
+        'firstName': firstNameController.text,
+        'lastName': lastNameController.text,
+        'email': emailController.text,
+        'username': usernameController.text,
+        'age': ageController.text,
+        'phone': phoneController.text,
+        'location': locationController.text,
+        'dateOfBirth': dateOfBirthController.text,
+        'gender': _selectedGender,
+        'province': _selectedProvince,
+        'city': _selectedCity,
+        'barangay': _selectedBarangay,
+        'postalCode': _postalCode,
+        'timeFrom': timeFromStr,
+        'timeTo': timeToStr,
+        'availabilityDays': availabilityDays,
+        'daySelection': daySelection,
+        'uploadedFileName': uploadedFileName,
+        'certificationUrl': certificationUrl,
+        'isChecked': _isChecked,
+      };
+
+      // Only save if there's at least one non-empty field
+      if (formData.values.any((value) =>
+          value != null &&
+          (value is String ? value.isNotEmpty : true) &&
+          (value is List ? value.isNotEmpty : true))) {
+        await prefs.setString('cook_signup_data', jsonEncode(formData));
+      }
+    } catch (e) {
+      debugPrint('Error saving form data: $e');
+    }
+  }
+
+  // Load saved form data when dialog is opened
+  Future<void> _loadSavedFormData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedData = prefs.getString('cook_signup_data');
+
+      if (savedData != null && savedData.isNotEmpty) {
+        final Map<String, dynamic> formData = jsonDecode(savedData);
+
+        setState(() {
+          firstNameController.text = formData['firstName'] ?? '';
+          lastNameController.text = formData['lastName'] ?? '';
+          emailController.text = formData['email'] ?? '';
+          usernameController.text = formData['username'] ?? '';
+          ageController.text = formData['age'] ?? '';
+          phoneController.text = formData['phone'] ?? '';
+          locationController.text = formData['location'] ?? '';
+          dateOfBirthController.text = formData['dateOfBirth'] ?? '';
+
+          _selectedGender = formData['gender'];
+          _selectedProvince = formData['province'];
+          _selectedCity = formData['city'];
+          _selectedBarangay = formData['barangay'];
+          _postalCode = formData['postalCode'];
+
+          // Restore time values if they exist
+          if (formData['timeFrom'] != null) {
+            final timeParts = formData['timeFrom'].split(':');
+            if (timeParts.length == 2) {
+              final hour = int.tryParse(timeParts[0]) ?? 0;
+              String minutePart = timeParts[1];
+              if (minutePart.contains(' ')) {
+                minutePart = minutePart.split(' ')[0];
+              }
+              final minute = int.tryParse(minutePart) ?? 0;
+              timeFrom = TimeOfDay(hour: hour, minute: minute);
+            }
+          }
+
+          if (formData['timeTo'] != null) {
+            final timeParts = formData['timeTo'].split(':');
+            if (timeParts.length == 2) {
+              final hour = int.tryParse(timeParts[0]) ?? 0;
+              String minutePart = timeParts[1];
+              if (minutePart.contains(' ')) {
+                minutePart = minutePart.split(' ')[0];
+              }
+              final minute = int.tryParse(minutePart) ?? 0;
+              timeTo = TimeOfDay(hour: hour, minute: minute);
+            }
+          }
+
+          // Restore availability days
+          if (formData['availabilityDays'] != null) {
+            availabilityDays = List<String>.from(formData['availabilityDays']);
+          }
+
+          // Restore day selections
+          if (formData['daySelection'] != null) {
+            final Map<String, dynamic> savedDaySelection =
+                formData['daySelection'];
+            savedDaySelection.forEach((key, value) {
+              if (daySelection.containsKey(key)) {
+                daySelection[key] = value;
+              }
+            });
+          }
+
+          uploadedFileName = formData['uploadedFileName'];
+          certificationUrl = formData['certificationUrl'];
+          _isChecked = formData['isChecked'] ?? false;
+        });
+
+        // Show snackbar to notify user their data was recovered
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Your previously entered information has been recovered.'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading form data: $e');
+    }
   }
 
   Widget _buildRequirementRow(String text, bool isValid) {
@@ -250,7 +391,11 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
           ),
           actions: [
             TextButton(
-              onPressed: () {
+              onPressed: () async {
+                // Clear saved form data after successful signup
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.remove('cook_signup_data');
+
                 Navigator.of(context).pop();
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
@@ -522,7 +667,10 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                   children: [
                     IconButton(
                       icon: const Icon(Icons.close, color: Colors.black),
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: () {
+                        _saveFormData(); // Save form data before closing
+                        Navigator.of(context).pop();
+                      },
                     ),
                   ],
                 ),
@@ -664,6 +812,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                           ),
                           const SizedBox(height: 10),
 
+                          // Date of Birth field - moved above Age and Gender
                           TextFormField(
                             controller: dateOfBirthController,
                             readOnly: true,
@@ -678,6 +827,7 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                                 : null,
                           ),
                           const SizedBox(height: 10),
+
                           Row(
                             children: [
                               Expanded(
@@ -719,8 +869,8 @@ class SignUpCookDialogState extends State<SignUpCookDialog> {
                               ),
                             ],
                           ),
-
                           const SizedBox(height: 10),
+
                           TextFormField(
                             controller: phoneController,
                             decoration: const InputDecoration(
